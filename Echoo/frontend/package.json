@@ -1,7 +1,7 @@
 {
   "name": "frontend",
   "version": "0.0.1",
-  "description": "quasar frontend",
+  "description": "Echoo frontend",
   "productName": "Echoo",
   "author": "Zsófia Gergely <xgergelyz@stuba.sk>",
   "type": "module",

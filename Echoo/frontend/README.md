@@ -1,6 +1,6 @@
 # Echoo (frontend)
 
-quasar frontend
+Echoo frontend
 
 ## Install the dependencies
 
