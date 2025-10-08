@@ -111,7 +111,7 @@ async function onLogin() {
   alert('Pretend we logged in');
 
   // Wait for navigation to complete before continuing (redirects to main chat page)
-  await router.push('/'); // this will hit '/' route which redirects to '/chat/1'
+ await router.push('/chat/1'); // this redirects to '/chat/1'
   // without sync and await ESLint error
 }
 
@@ -144,14 +144,14 @@ async function onSubmit() {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 100vw; 
-  height: 100vh; 
+  width: 100vw;
+  height: 100vh;
   min-height: 520px;
   background: #e6eaee;
 }
 
 .left-strip {
-  position: absolute; 
+  position: absolute;
   top: 0;
   left: 0;
   bottom: 0;
@@ -191,7 +191,7 @@ async function onSubmit() {
   width: 54ch;
   max-width: 80%; /* prevent overflow on small screens */
   border-radius: 22px;
-  background: #e0e0e0;  
+  background: #e0e0e0;
   box-shadow: -6px 6px 0 rgba(0,0,0,0.12);
 }
 
