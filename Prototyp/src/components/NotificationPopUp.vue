@@ -2,30 +2,28 @@
   <transition name="slide-up">
     <div v-if="visible" class="notification-popup">
       <div class="header">
-        <span class="sender">Name of the sender</span>
-        <img class="logo" src="/pictures/logo.jpg" alt="app logo" />
+        <span class="sender">{{ sender }}</span>
+        <img class="logo" :src="logo" alt="app logo" />
       </div>
       <div class="message-box">
-        <!-- {{ message }} -->
-          Message of the sender
+        {{ message }}
       </div>
     </div>
   </transition>
 </template>
 
-
-
 <script lang="ts" setup>
-interface Props {
+import { toRefs } from 'vue'
+
+const props = defineProps<{
   sender: string
   message: string
   logo: string
   visible: boolean
-}
-defineProps<Props>()
+}>()
+
+const { sender, message, logo, visible } = toRefs(props)
 </script>
-
-
 
 <style scoped>
 .notification-popup {

@@ -56,7 +56,7 @@
 
     </q-header>
 
-<!-- SIDEBAR -->
+    <!-- SIDEBAR -->
     <q-drawer
       v-model="drawerOpen"
       show-if-above
@@ -107,7 +107,11 @@
     </q-page-container>
 
     <!-- Typing status -->
-    <div class="typing-status-fixed" :style="typingStatusStyle">
+    <div
+      v-if="isTyping"
+      class="typing-status-fixed"
+      :style="typingStatusStyle"
+    >
       User 1 is typing...
     </div>
 
@@ -122,8 +126,17 @@
         dense
         outlined
         borderless
+        @keydown="onEnterPress"
       />
     </footer>
+
+    <!-- Notification Popup -->
+    <NotificationPopUp
+      :visible="showNotification"
+      sender="User 1"
+      message="Message sent!"
+      logo="/pictures/logo.jpg"
+    />
 
   </q-layout>
 </template>
@@ -132,9 +145,12 @@
 
 <script lang="ts" setup>
 
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useQuasar } from 'quasar'
+import NotificationPopUp from 'components/NotificationPopUp.vue'
+
+defineOptions({ name: 'ChatLayout' })
 
 const router = useRouter()
 const $q = useQuasar()
@@ -142,6 +158,8 @@ const command = ref('')
 const newMessage = ref('')
 const drawerOpen = ref($q.screen.gt.sm)
 const drawerWidth = 300
+const isTyping = ref(false)
+const showNotification = ref(false)
 
 const privateChannels = ref([
   { name: '#private-1', path: '/chat/private1' },
@@ -157,6 +175,18 @@ const publicChannels = ref([
 
 function goToChannel(ch: { path: string }) {
   void router.push(ch.path)
+}
+
+function onEnterPress(e: KeyboardEvent) {
+  if (e.key === 'Enter' && newMessage.value.trim() !== '') {
+    e.preventDefault()
+    showNotification.value = true
+    newMessage.value = ''
+
+    setTimeout(() => {
+      showNotification.value = false
+    }, 2500)
+  }
 }
 
 const footerStyle = computed(() => ({
@@ -176,6 +206,20 @@ const typingStatusStyle = computed(() => ({
   fontStyle: 'italic',
   zIndex: 2150
 }))
+
+let typingTimeout: NodeJS.Timeout | null = null
+
+watch(newMessage, (value) => {
+  if (value !== '') {
+    isTyping.value = true
+    if (typingTimeout) clearTimeout(typingTimeout)
+    typingTimeout = setTimeout(() => {
+      isTyping.value = false
+    }, 1000)
+  } else {
+    isTyping.value = false
+  }
+})
 
 </script>
 

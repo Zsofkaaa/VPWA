@@ -8,19 +8,5 @@
         </div>
       </div>
     </div>
-
-    <!-- Test Notification -->
-    <NotificationPopUp
-      :sender="'Name of sender'"
-      :message="'Message of the sender'"
-      :logo="'/pictures/logo.jpg'"
-      :visible="true"
-    />
   </q-page>
 </template>
-
-
-
-<script lang="ts" setup>
-import NotificationPopUp from 'components/NotificationPopUp.vue'
-</script>
