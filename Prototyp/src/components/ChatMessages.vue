@@ -10,6 +10,7 @@
           {{ msg.text }}
         </div>
       </div>
+      <div class="footer-blocker"></div>
     </div>
 </template>
 
@@ -37,6 +38,18 @@ async function getMessages(): Promise<Message[]> {
   return [
     { id: 1, user: 'User 1', text: 'Hello there!' },
     { id: 2, user: 'User 2', text: 'Hi! How are you?' },
+    { id: 3, user: 'User 3', text: 'All good, working on a project.' },
+    { id: 1, user: 'User 1', text: 'Hello there!' },
+    { id: 2, user: 'User 2', text: 'Hi! How are you?' },
+    { id: 3, user: 'User 3', text: 'All good, working on a project.' },
+    { id: 1, user: 'User 1', text: 'Hello there!' },
+    { id: 2, user: 'User 2', text: 'Hi! How are you?' },
+    { id: 3, user: 'User 3', text: 'All good, working on a project.' },
+    { id: 1, user: 'User 1', text: 'Hello there!' },
+    { id: 2, user: 'User 2', text: 'Hi! How are you?' },
+    { id: 3, user: 'User 3', text: 'All good, working on a project.' },
+    { id: 1, user: 'User 1', text: 'Hello there!' },
+    { id: 2, user: 'User 2', text: 'Hi! How are you?' },
     { id: 3, user: 'User 3', text: 'All good, working on a project.' }
   ]
 }
@@ -55,5 +68,11 @@ async function getMessages(): Promise<Message[]> {
   overflow-y: auto; /* CSAK az üzenetek scrollozódnak */
   padding: 16px;
   padding-bottom: 80px; /* hely a footernek */
+}
+
+.footer-blocker {
+  height: 80px;
+  background-color: #1E1E1E; /* chat háttérszín */
+  flex-shrink: 0;
 }
 </style>

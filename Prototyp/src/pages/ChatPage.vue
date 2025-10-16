@@ -11,10 +11,9 @@ import ChatMessages from 'components/ChatMessages.vue'
 
 <style>
 .chat-page {
-  background-color: #3f1c1c;
+  background-color: #1E1E1E;
   height: 100%;
   display: flex;
   flex-direction: column;
-
 }
 </style>
