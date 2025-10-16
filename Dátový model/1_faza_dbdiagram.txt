@@ -1,0 +1,64 @@
+Table Commands {
+  id integer [primary key]
+  name varchar
+  description varchar
+}
+
+Table User_Commands {
+  user_id integer [primary key]
+  command_id integer [primary key]
+  message_id integer [primary key]
+  object varchar
+}
+
+Table User {
+  id integer [primary key]
+  first_name varchar
+  last_name varchar
+  nick_name varchar [unique]
+  email varchar
+  password varchar
+  status varchar
+}
+
+Table User_Channel {
+  user_id integer [primary key]
+  channel_id integer [primary key]
+  role varchar
+  notification_settings varchar
+}
+
+Table Channel {
+  id integer [primary key]
+  name varchar [unique]
+  type varchar
+  created_by integer [not null]
+  last_active_at timestamp
+}
+
+Table Channel_History {
+  channel_id integer [primary key]
+  last_fetched_message_id integer [primary key]
+  has_more varchar
+}
+
+Table Message {
+  id integer [primary key]
+  channel_id integer [not null]
+  sender_id integer [not null]
+  content varchar
+  sent_at timestamp
+}
+
+
+
+Ref: User_Commands.command_id > Commands.id
+Ref: User_Commands.user_id > User.id
+Ref: User_Commands.message_id - Message.id
+Ref: Message.sender_id > User.id
+Ref: Message.channel_id > Channel.id
+Ref: Channel_History.last_fetched_message_id - Message.id
+Ref: Channel_History.channel_id - Channel.id
+Ref: Channel.created_by > User.id
+Ref: User_Channel.user_id > User.id
+Ref: User_Channel.channel_id > Channel.id
