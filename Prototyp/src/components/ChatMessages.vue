@@ -1,5 +1,4 @@
 <template>
-  <q-page class="chat-page">
     <div class="chat-messages">
       <div
         v-for="msg in messages"
@@ -12,7 +11,6 @@
         </div>
       </div>
     </div>
-  </q-page>
 </template>
 
 <script lang="ts" setup>
