@@ -26,6 +26,7 @@ Table User_Channel {
   channel_id integer [primary key]
   role varchar
   notification_settings varchar
+  kick_count integer
 }
 
 Table Channel {
