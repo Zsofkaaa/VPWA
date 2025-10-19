@@ -42,6 +42,18 @@
         <q-item-section>{{ ch.name }}</q-item-section>
       </q-item>
     </q-list>
+
+    <!-- 🔻 Logout button (bal alsó sarokban) -->
+    <div class="logout-wrapper">
+      <q-btn
+        flat
+        color="red"
+        icon="logout"
+        label="Log Out"
+        class="logout-btn"
+        @click="$emit('logout')"
+      />
+    </div>
   </q-drawer>
 </template>
 
@@ -60,6 +72,7 @@ defineProps<{
 defineEmits<{
   'update:drawerOpen': [value: boolean]
   'goToChannel': [channel: Channel]
+  'logout': []
 }>()
 </script>
 
@@ -94,5 +107,24 @@ defineEmits<{
   margin-top: 8px;
   margin-bottom: 4px;
   font-size: 0.85rem;
+}
+
+
+.logout-wrapper {
+  position: absolute;
+  bottom: 20px;
+  left: 20px;
+}
+
+.logout-btn {
+  background-color: rgba(255, 0, 0, 0.15);
+  font-weight: bold;
+  text-transform: none;
+  border-radius: 8px;
+  transition: background-color 0.2s ease;
+}
+
+.logout-btn:hover {
+  background-color: rgba(255, 0, 0, 0.3);
 }
 </style>

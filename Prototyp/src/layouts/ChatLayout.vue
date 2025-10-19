@@ -10,6 +10,7 @@
       :private-channels="privateChannels"
       :public-channels="publicChannels"
       @go-to-channel="goToChannel"
+      @logout="handleLogout"
     />
 
     <!-- MAIN CONTENT -->
@@ -87,6 +88,15 @@ function onEnterPress(e: KeyboardEvent) {
     }, 2500)
   }
 }
+
+function handleLogout() {
+  console.log('Logging out...')
+
+  localStorage.removeItem('userToken')
+
+  void router.push('/')
+}
+
 
 const footerStyle = computed(() => ({
   left: $q.screen.lt.md ? '0' : `${drawerWidth}px`,
