@@ -14,6 +14,7 @@
       :public-channels="publicChannels"
       @go-to-channel="goToChannel"
       @logout="handleLogout"
+      @create-channel="handleCreateChannel"
     />
 
     <!-- MAIN CONTENT -->
@@ -55,13 +56,21 @@ import TypingStatus from 'components/TypingStatus.vue'
 
 defineOptions({ name: 'ChatLayout' })
 
+interface ChannelData {
+  name: string
+  visibility: 'private' | 'public'
+  description: string
+  invitedMembers: string[]
+  notificationLevel: string
+}
+
 const router = useRouter()
 const $q = useQuasar()
 const drawerOpen = ref($q.screen.gt.sm)
 const newMessage = ref('')
 const isTyping = ref(false)
 const showNotification = ref(false)
-const currentChannelName = ref('') // 👈 toto je dôležité
+const currentChannelName = ref('')
 
 const privateChannels = ref([
   { name: '#private-1', path: '/chat/private1' },
@@ -75,13 +84,59 @@ const publicChannels = ref([
 ])
 
 function goToChannel(ch: { name: string; path: string }) {
-  currentChannelName.value = ch.name // 👈 uložíme názov
+  currentChannelName.value = ch.name
   void router.push(ch.path)
 }
 
 function handleLogout() {
   localStorage.removeItem('userToken')
   void router.push('/')
+}
+
+function handleCreateChannel(data: ChannelData) {
+  // Format channel name
+  const formattedName = data.name.startsWith('#') ? data.name : `#${data.name}`
+  
+  // Check if channel name already exists in both categories
+  const allChannels = [...privateChannels.value, ...publicChannels.value]
+  const nameExists = allChannels.some(ch => ch.name.toLowerCase() === formattedName.toLowerCase())
+  
+  if (nameExists) {
+    $q.notify({
+      type: 'negative',
+      message: `Channel "${formattedName}" already exists!`,
+      position: 'top',
+      timeout: 2500
+    })
+    return
+  }
+  
+  // Generate a path for the new channel
+  const channelPath = `/chat/${data.visibility}-${data.name.toLowerCase().replace(/\s+/g, '-')}`
+  
+  const newChannel = {
+    name: formattedName,
+    path: channelPath
+  }
+  
+  // Add to appropriate category based on visibility
+  if (data.visibility === 'private') {
+    privateChannels.value.push(newChannel)
+  } else {
+    publicChannels.value.push(newChannel)
+  }
+  
+  // Show success notification
+  $q.notify({
+    type: 'positive',
+    message: `Channel "${newChannel.name}" created successfully!`,
+    position: 'top',
+    timeout: 2000
+  })
+  
+  // Navigate to the new channel
+  currentChannelName.value = newChannel.name
+  void router.push(channelPath)
 }
 
 function onEnterPress(e: KeyboardEvent) {
