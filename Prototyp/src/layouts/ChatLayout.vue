@@ -2,7 +2,10 @@
   <q-layout view="hHh Lpr lFf" class="bg-dark text-white">
 
     <!-- HEADER -->
-    <Header v-model:command="command" v-model:drawer-open="drawerOpen" />
+    <Header
+      v-model:drawer-open="drawerOpen"
+      :current-channel="currentChannelName"
+    />
 
     <!-- SIDEBAR -->
     <Sidebar
@@ -37,7 +40,6 @@
       message="Message sent!"
       logo="/pictures/logo.jpg"
     />
-
   </q-layout>
 </template>
 
@@ -55,12 +57,11 @@ defineOptions({ name: 'ChatLayout' })
 
 const router = useRouter()
 const $q = useQuasar()
-const command = ref('')
-const newMessage = ref('')
 const drawerOpen = ref($q.screen.gt.sm)
-const drawerWidth = 300
+const newMessage = ref('')
 const isTyping = ref(false)
 const showNotification = ref(false)
+const currentChannelName = ref('') // 👈 toto je dôležité
 
 const privateChannels = ref([
   { name: '#private-1', path: '/chat/private1' },
@@ -73,8 +74,14 @@ const publicChannels = ref([
   { name: '#public-3', path: '/chat/public3' }
 ])
 
-function goToChannel(ch: { path: string }) {
+function goToChannel(ch: { name: string; path: string }) {
+  currentChannelName.value = ch.name // 👈 uložíme názov
   void router.push(ch.path)
+}
+
+function handleLogout() {
+  localStorage.removeItem('userToken')
+  void router.push('/')
 }
 
 function onEnterPress(e: KeyboardEvent) {
@@ -82,24 +89,12 @@ function onEnterPress(e: KeyboardEvent) {
     e.preventDefault()
     showNotification.value = true
     newMessage.value = ''
-
-    setTimeout(() => {
-      showNotification.value = false
-    }, 2500)
+    setTimeout(() => { showNotification.value = false }, 2500)
   }
 }
 
-function handleLogout() {
-  console.log('Logging out...')
-
-  localStorage.removeItem('userToken')
-
-  void router.push('/')
-}
-
-
 const footerStyle = computed(() => ({
-  left: $q.screen.lt.md ? '0' : `${drawerWidth}px`,
+  left: $q.screen.lt.md ? '0' : '300px',
   right: '0',
   bottom: '10px',
   position: 'fixed' as const
@@ -107,7 +102,7 @@ const footerStyle = computed(() => ({
 
 const typingStatusStyle = computed(() => ({
   position: 'fixed' as const,
-  left: $q.screen.lt.md ? '0' : `${drawerWidth}px`,
+  left: $q.screen.lt.md ? '0' : '300px',
   bottom: '80px',
   right: '0',
   padding: '4px 16px',
@@ -135,6 +130,4 @@ watch(newMessage, (value) => {
 .chat-bg {
   background-color: #1E1E1E;
 }
-
-
 </style>

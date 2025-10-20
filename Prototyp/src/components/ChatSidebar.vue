@@ -15,35 +15,37 @@
 
     <!-- Private Channels -->
     <div class="q-pa-sm sidebar-subtitle">Private Channels</div>
-    <q-list dense>
-      <q-item
-        clickable
-        v-for="ch in privateChannels"
-        :key="ch.name"
-        @click="$emit('goToChannel', ch)"
-        class="sidebar-item"
-      >
-        <q-item-section>{{ ch.name }}</q-item-section>
-      </q-item>
-    </q-list>
+    <div class="channel-list">
+      <div v-for="ch in privateChannels" :key="ch.name" class="channel-wrapper">
+        <q-item
+          clickable
+          @click="selectChannel(ch)"
+          :class="['sidebar-item', { 'active-channel': ch.path === activeChannelPath }]"
+        >
+          <q-item-section>{{ ch.name }}</q-item-section>
+        </q-item>
+        <ManageChannelMenu v-if="ch.path === activeChannelPath" />
+      </div>
+    </div>
 
     <div class="sidebar-divider"></div>
 
     <!-- Public Channels -->
     <div class="q-pa-sm sidebar-subtitle">Public Channels</div>
-    <q-list dense>
-      <q-item
-        clickable
-        v-for="ch in publicChannels"
-        :key="ch.name"
-        @click="$emit('goToChannel', ch)"
-        class="sidebar-item"
-      >
-        <q-item-section>{{ ch.name }}</q-item-section>
-      </q-item>
-    </q-list>
+    <div class="channel-list">
+      <div v-for="ch in publicChannels" :key="ch.name" class="channel-wrapper">
+        <q-item
+          clickable
+          @click="selectChannel(ch)"
+          :class="['sidebar-item', { 'active-channel': ch.path === activeChannelPath }]"
+        >
+          <q-item-section>{{ ch.name }}</q-item-section>
+        </q-item>
+        <ManageChannelMenu v-if="ch.path === activeChannelPath" />
+      </div>
+    </div>
 
-    <!-- 🔻 Logout button (bal alsó sarokban) -->
+    <!-- Logout button -->
     <div class="logout-wrapper">
       <q-btn
         flat
@@ -58,6 +60,9 @@
 </template>
 
 <script lang="ts" setup>
+import { ref } from 'vue'
+import ManageChannelMenu from './ManageChannelMenu.vue'
+
 interface Channel {
   name: string
   path: string
@@ -69,11 +74,18 @@ defineProps<{
   publicChannels: Channel[]
 }>()
 
-defineEmits<{
+const emit = defineEmits<{
   'update:drawerOpen': [value: boolean]
   'goToChannel': [channel: Channel]
   'logout': []
 }>()
+
+const activeChannelPath = ref<string>('')
+
+function selectChannel(ch: Channel) {
+  activeChannelPath.value = ch.path
+  emit('goToChannel', ch)
+}
 </script>
 
 <style>
@@ -87,18 +99,35 @@ defineEmits<{
   color: #FFFFFF;
 }
 
+.channel-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.channel-wrapper {
+  display: flex;
+  flex-direction: column;
+}
+
 .sidebar-item {
   color: #FFFFFF;
+  transition: background-color 0.2s ease, font-weight 0.2s ease;
 }
 
 .sidebar-item:hover {
   background-color: rgba(255, 255, 255, 0.1);
 }
 
+.active-channel {
+  background-color: rgba(255, 255, 255, 0.25);
+  font-weight: bold;
+  border-left: 3px solid #FFFFFF;
+}
+
 .sidebar-divider {
   height: 1px;
   background-color: rgba(255,255,255,0.3);
-  margin: 8px 8px 8px 8px;
+  margin: 8px;
 }
 
 .sidebar-subtitle {
@@ -109,14 +138,16 @@ defineEmits<{
   font-size: 0.85rem;
 }
 
-
 .logout-wrapper {
   position: absolute;
   bottom: 20px;
-  left: 20px;
+  left: 0;
+  right: 0;
+  padding: 0 20px;
 }
 
 .logout-btn {
+  width: 100%;
   background-color: rgba(255, 0, 0, 0.15);
   font-weight: bold;
   text-transform: none;
