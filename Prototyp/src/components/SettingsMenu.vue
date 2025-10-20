@@ -1,51 +1,243 @@
 <template>
   <!-- Gear icon button -->
-  <q-btn flat round dense icon="settings">
+  <q-btn flat round dense icon="settings" @click="showDialog = true">
     <!-- Tooltip when hovering -->
     <q-tooltip anchor="top middle" self="bottom middle">
       Settings
     </q-tooltip>
-
-    <!-- Dropdown menu -->
-    <q-menu transition-show="jump-down" transition-hide="jump-up">
-      <div class="menu-container">
-        <div class="menu-header">Settings</div>
-        <q-separator color="white" />
-        <q-list dense>
-          <q-item clickable v-ripple>
-            <q-item-section>Setting 1</q-item-section>
-          </q-item>
-          <q-item clickable v-ripple>
-            <q-item-section>Setting 2</q-item-section>
-          </q-item>
-          <q-item clickable v-ripple>
-            <q-item-section>Setting 3</q-item-section>
-          </q-item>
-        </q-list>
-      </div>
-    </q-menu>
   </q-btn>
+
+  <!-- Settings Dialog -->
+  <q-dialog v-model="showDialog">
+    <q-card style="min-width: 450px; background-color: #2d4a6b; color: white;">
+      <q-card-section class="row items-center q-pb-none">
+        <div class="text-h6">Settings</div>
+        <q-space />
+        <q-btn icon="close" flat round dense @click="closeDialog" />
+      </q-card-section>
+
+      <q-card-section>
+        <!-- First Name -->
+        <div class="q-mb-md">
+          <label class="text-weight-medium q-mb-xs block">First Name</label>
+          <q-input
+            v-model="firstName"
+            filled
+            dense
+            placeholder="Enter your first name"
+            bg-color="rgba(255, 255, 255, 0.1)"
+            color="white"
+            dark
+          >
+            <template v-slot:prepend>
+              <q-icon name="person" color="white" />
+            </template>
+          </q-input>
+        </div>
+
+        <!-- Last Name -->
+        <div class="q-mb-md">
+          <label class="text-weight-medium q-mb-xs block">Last Name</label>
+          <q-input
+            v-model="lastName"
+            filled
+            dense
+            placeholder="Enter your last name"
+            bg-color="rgba(255, 255, 255, 0.1)"
+            color="white"
+            dark
+          >
+            <template v-slot:prepend>
+              <q-icon name="person" color="white" />
+            </template>
+          </q-input>
+        </div>
+
+        <!-- Nickname -->
+        <div class="q-mb-md">
+          <label class="text-weight-medium q-mb-xs block">Nickname</label>
+          <q-input
+            v-model="nickname"
+            filled
+            dense
+            placeholder="Enter your nickname"
+            bg-color="rgba(255, 255, 255, 0.1)"
+            color="white"
+            dark
+          >
+            <template v-slot:prepend>
+              <q-icon name="badge" color="white" />
+            </template>
+          </q-input>
+        </div>
+
+        <!-- Email -->
+        <div class="q-mb-md">
+          <label class="text-weight-medium q-mb-xs block">Email</label>
+          <q-input
+            v-model="email"
+            filled
+            dense
+            type="email"
+            placeholder="Enter your email"
+            bg-color="rgba(255, 255, 255, 0.1)"
+            color="white"
+            dark
+            :rules="[val => !!val && val.includes('@') || 'Please enter a valid email']"
+          >
+            <template v-slot:prepend>
+              <q-icon name="email" color="white" />
+            </template>
+          </q-input>
+        </div>
+
+        <!-- Password -->
+        <div class="q-mb-md">
+          <label class="text-weight-medium q-mb-xs block">Password</label>
+          <q-input
+            v-model="password"
+            filled
+            dense
+            :type="showPassword ? 'text' : 'password'"
+            placeholder="Enter new password (leave empty to keep current)"
+            bg-color="rgba(255, 255, 255, 0.1)"
+            color="white"
+            dark
+          >
+            <template v-slot:prepend>
+              <q-icon name="lock" color="white" />
+            </template>
+            <template v-slot:append>
+              <q-icon
+                :name="showPassword ? 'visibility' : 'visibility_off'"
+                class="cursor-pointer"
+                color="white"
+                @click="showPassword = !showPassword"
+              />
+            </template>
+          </q-input>
+        </div>
+
+        <!-- Confirm Password -->
+        <div v-if="password" class="q-mb-md">
+          <label class="text-weight-medium q-mb-xs block">Confirm Password</label>
+          <q-input
+            v-model="confirmPassword"
+            filled
+            dense
+            :type="showPassword ? 'text' : 'password'"
+            placeholder="Confirm your new password"
+            bg-color="rgba(255, 255, 255, 0.1)"
+            color="white"
+            dark
+            :rules="[val => val === password || 'Passwords do not match']"
+          >
+            <template v-slot:prepend>
+              <q-icon name="lock" color="white" />
+            </template>
+          </q-input>
+        </div>
+      </q-card-section>
+
+      <q-card-actions align="right" class="q-px-md q-pb-md">
+        <q-btn
+          flat
+          label="Cancel"
+          color="white"
+          @click="closeDialog"
+          class="cancel-btn"
+        />
+        <q-btn
+          unelevated
+          label="Save Changes"
+          color="primary"
+          @click="saveSettings"
+          :disable="!isFormValid"
+          class="save-btn"
+        />
+      </q-card-actions>
+    </q-card>
+  </q-dialog>
 </template>
 
 <script lang="ts" setup>
-/* fully self-contained settings dropdown */
+import { ref, computed } from 'vue'
+
+const showDialog = ref(false)
+const showPassword = ref(false)
+
+// Form fields
+const firstName = ref('John')
+const lastName = ref('Doe')
+const nickname = ref('johndoe')
+const email = ref('john.doe@example.com')
+const password = ref('')
+const confirmPassword = ref('')
+
+const isFormValid = computed(() => {
+  const emailValid = email.value && email.value.includes('@')
+  const passwordValid = !password.value || (password.value === confirmPassword.value && password.value.length >= 6)
+  return emailValid && passwordValid
+})
+
+function closeDialog() {
+  showDialog.value = false
+  // Reset password fields when closing
+  password.value = ''
+  confirmPassword.value = ''
+  showPassword.value = false
+}
+
+function saveSettings() {
+  if (!isFormValid.value) return
+
+  const updatedSettings = {
+    firstName: firstName.value,
+    lastName: lastName.value,
+    nickname: nickname.value,
+    email: email.value,
+    ...(password.value && { password: password.value })
+  }
+
+  console.log('Saving settings:', updatedSettings)
+  
+  // TODO: Send to backend API
+  // await updateUserSettings(updatedSettings)
+
+  closeDialog()
+}
 </script>
 
 <style scoped>
-.menu-container {
-  background: rgba(40, 60, 85, 0.95);
-  color: white;
-  min-width: 200px;
+.block {
+  display: block;
 }
 
-.menu-header {
-  background-color: rgba(30, 45, 65, 0.9);
-  font-weight: 600;
-  text-align: center;
-  padding: 10px 0;
+.cursor-pointer {
+  cursor: pointer;
 }
 
-.q-item:hover {
+.cancel-btn {
   background-color: rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+}
+
+.cancel-btn:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+.save-btn {
+  background-color: #4CAF50;
+  color: white;
+  border-radius: 6px;
+  font-weight: bold;
+}
+
+.save-btn:hover {
+  background-color: #45a049;
+}
+
+.save-btn:disabled {
+  background-color: rgba(76, 175, 80, 0.5);
 }
 </style>
