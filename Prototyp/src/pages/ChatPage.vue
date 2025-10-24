@@ -1,9 +1,10 @@
 <template>
   <q-page class="chat-page">
-    <!-- MÓDOSÍTÁS: messages.value helyett messages -->
     <ChatMessages ref="chatMessagesRef" :messages="messages" />
   </q-page>
 </template>
+
+
 
 <script lang="ts" setup>
 import ChatMessages from 'components/ChatMessages.vue'
@@ -20,9 +21,11 @@ if (!messages) throw new Error('messages not provided!')
 
 const chatMessagesRef = shallowRef<InstanceType<typeof ChatMessages>>()
 
-// 👇 Exportáljuk, hogy a layout elérje
 defineExpose({ chatMessagesRef })
+
 </script>
+
+
 
 <style>
 .chat-page {

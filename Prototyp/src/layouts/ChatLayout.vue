@@ -70,18 +70,70 @@ interface Message {
   id: number
   user: string
   text: string
+  isPing?: boolean
 }
+
 
 const messages = ref<Message[]>([])
 
 // create initial messages for a channel (only 10)
-function createInitialMessages(channelPath: string, count = 10): Message[] {
-  return Array.from({ length: count }, (_, i) => ({
-    id: Date.now() + i,
-    user: `User ${Math.ceil(Math.random() * 5)}`,
-    text: `[${channelPath}] Message ${count - i}` // reversed order if you want newest at end
-  })).reverse() // ensure chronological order (oldest -> newest)
+function createInitialMessages(): Message[] {
+  return [
+    {
+      id: Date.now() + 1,
+      user: 'User 1',
+      text: `INITIAL MESSAGE`,
+    },
+    {
+      id: Date.now() + 2,
+      user: 'User 2',
+      text: `INITIAL MESSAGE`,
+    },
+    {
+      id: Date.now() + 3,
+      user: 'User 3',
+      text: `@username AAAAAAAAAAAAAAA`, // 👈 első ping
+      isPing: true,
+    },
+    {
+      id: Date.now() + 4,
+      user: 'User 4',
+      text: `INITIAL MESSAGE`,
+    },
+    {
+      id: Date.now() + 5,
+      user: 'User 5',
+      text: `@username BBBBBBBBBBBBBB`, // 👈 második ping
+      isPing: true,
+    },
+    {
+      id: Date.now() + 6,
+      user: 'User 6',
+      text: `INITIAL MESSAGE`,
+    },
+    {
+      id: Date.now() + 7,
+      user: 'User 6',
+      text: `INITIAL MESSAGE`,
+    },
+    {
+      id: Date.now() + 8,
+      user: 'User 6',
+      text: `INITIAL MESSAGE`,
+    },
+    {
+      id: Date.now() + 9,
+      user: 'User 6',
+      text: `INITIAL MESSAGE`,
+    },
+    {
+      id: Date.now() + 10,
+      user: 'User 6',
+      text: `INITIAL MESSAGE`,
+    },
+  ]
 }
+
 
 provide('messages', messages)
 
@@ -108,7 +160,7 @@ const publicChannels = ref([
 function goToChannel(ch: { name: string; path: string }) {
   currentChannelName.value = ch.name
   // set only initial chunk for that channel
-  messages.value = createInitialMessages(ch.path, 10)
+  messages.value = createInitialMessages()
   void router.push(ch.path)
 }
 
@@ -175,19 +227,24 @@ async function onEnterPress(e: KeyboardEvent) {
   if (e.key === 'Enter' && newMessage.value.trim() !== '') {
     e.preventDefault()
 
-    messages.value.push({
-    id: Date.now(),
-    user: 'You',
-    text: newMessage.value.trim()
-  })
+    // KÖZVETLENÜL hozzáadjuk az üzenetet a messages tömbhöz
+    const newMsg: Message = {
+      id: Date.now(),
+      user: 'You',
+      text: newMessage.value.trim()
+    }
 
+    messages.value.push(newMsg)
+
+    // Reseteljük az inputot
     newMessage.value = ''
+
+    // Notification
     showNotification.value = true
     setTimeout(() => { showNotification.value = false }, 2500)
 
-    // 👇 várunk egy tick-et, majd a legaljára scrollozunk
+    // Azonnali scrollozás
     await nextTick()
-
     const chatMessagesEl = document.querySelector('.chat-messages')
     if (chatMessagesEl) {
       chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight
