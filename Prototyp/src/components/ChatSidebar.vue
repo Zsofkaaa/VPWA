@@ -8,21 +8,37 @@
     bg-color="#355070"
     class="sidebar"
   >
+    <!-- CHANNELS & Add Channel (fix, nem scrollozódik) -->
+    <div class="sidebar-title-wrapper q-pa-md row items-center justify-between">
+      <div class="text-bold sidebar-title">CHANNELS</div>
+      <q-btn
+        flat
+        dense
+        round
+        icon="add"
+        color="white"
+        @click="showAddChannelDialog = true"
+        class="add-channel-btn"
+        size="sm"
+      />
+    </div>
+
     <!-- Scrollable content wrapper -->
-    <div class="sidebar-content">
-      <!-- CHANNELS & Add Channel -->
-      <div class="q-pa-md row items-center justify-between sidebar-title-wrapper">
-        <div class="text-bold sidebar-title">CHANNELS</div>
-        <q-btn
-          flat
-          dense
-          round
-          icon="add"
-          color="white"
-          @click="showAddChannelDialog = true"
-          class="add-channel-btn"
-          size="sm"
-        />
+    <div class="sidebar-scrollable">
+      <!-- Invites Section -->
+      <div class="sidebar-divider"></div>
+      <div class="q-pa-sm sidebar-subtitle">Invites</div>
+      <div class="channel-list">
+        <div class="channel-wrapper">
+          <q-item
+            clickable
+            @click="openInviteDialog"
+            class="sidebar-item active-invite"
+          >
+            <q-item-section>Channel</q-item-section>
+            <div class="invite-badge"></div>
+          </q-item>
+        </div>
       </div>
 
       <div class="sidebar-divider"></div>
@@ -34,8 +50,7 @@
           <q-item
             clickable
             @click="selectChannel(ch)"
-            :class="['sidebar-item', { 'active-channel': ch.path === activeChannelPath }]"
-          >
+            :class="['sidebar-item', { 'active-channel': ch.path === activeChannelPath }]">
             <q-item-section>{{ ch.name }}</q-item-section>
           </q-item>
           <ManageChannelMenu v-if="ch.path === activeChannelPath" />
@@ -51,8 +66,7 @@
           <q-item
             clickable
             @click="selectChannel(ch)"
-            :class="['sidebar-item', { 'active-channel': ch.path === activeChannelPath }]"
-          >
+            :class="['sidebar-item', { 'active-channel': ch.path === activeChannelPath }]">
             <q-item-section>{{ ch.name }}</q-item-section>
           </q-item>
           <ManageChannelMenu v-if="ch.path === activeChannelPath" />
@@ -81,6 +95,22 @@
       :existing-channels="allChannelNames"
       @create="handleCreateChannel"
     />
+
+    <!-- Invite Dialog -->
+    <q-dialog v-model="inviteDialog" persistent>
+      <q-card style="width: 300px; background-color: #355070; color: white;">
+        <q-card-section class="text-h6 text-center q-pt-md">
+          Join Channel?
+        </q-card-section>
+        <q-card-section class="q-pt-none text-center">
+          You have been invited to <strong>{{ invitedChannel.name }}</strong>
+        </q-card-section>
+        <q-card-actions align="center">
+          <q-btn flat label="Join" color="white" @click="joinChannel" />
+          <q-btn flat label="Cancel" color="white" @click="inviteDialog = false" />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
   </q-drawer>
 </template>
 
@@ -131,6 +161,25 @@ function handleCreateChannel(data: ChannelData) {
   console.log('Creating channel:', data)
   emit('createChannel', data)
 }
+
+/* --- Invite logic --- */
+const inviteDialog = ref(false)
+const inviteAccepted = ref(false)
+const invitedChannel: Channel = { name: 'Channel', path: '/chat/invite-channel' }
+
+function openInviteDialog() {
+  if (!inviteAccepted.value) {
+    inviteDialog.value = true
+  } else {
+    selectChannel(invitedChannel)
+  }
+}
+
+function joinChannel() {
+  inviteAccepted.value = true
+  inviteDialog.value = false
+  selectChannel(invitedChannel)
+}
 </script>
 
 <style>
@@ -142,35 +191,40 @@ function handleCreateChannel(data: ChannelData) {
   flex-direction: column;
 }
 
-.sidebar-content {
-  flex: 1;
-  overflow-y: auto;
-  overflow-x: hidden;
-  padding-bottom: 80px;
-}
-
-/* Custom scrollbar styling */
-.sidebar-content::-webkit-scrollbar {
-  width: 8px;
-}
-
-.sidebar-content::-webkit-scrollbar-track {
-  background: rgba(0, 0, 0, 0.1);
-}
-
-.sidebar-content::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 4px;
-}
-
-.sidebar-content::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.3);
-}
-
+/* HEADER (CHANNELS + + gomb) fix */
 .sidebar-title-wrapper {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  z-index: 10;
+  background-color: #355070;
+  flex-shrink: 0;
+}
+
+/* Scroll csak a csatornalistákon */
+.sidebar-scrollable {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-bottom: 80px; /* hely a logout gombnak */
+}
+
+/* Custom scrollbar styling */
+.sidebar-scrollable::-webkit-scrollbar {
+  width: 8px;
+}
+
+.sidebar-scrollable::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.sidebar-scrollable::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+}
+
+.sidebar-scrollable::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
 }
 
 .add-channel-btn {
@@ -205,6 +259,7 @@ function handleCreateChannel(data: ChannelData) {
 .sidebar-item {
   color: #FFFFFF;
   transition: background-color 0.2s ease, font-weight 0.2s ease;
+  position: relative;
 }
 
 .sidebar-item:hover {
@@ -217,10 +272,25 @@ function handleCreateChannel(data: ChannelData) {
   border-left: 3px solid #FFFFFF;
 }
 
+.active-invite {
+  font-weight: bold;
+}
+
+.invite-badge {
+  width: 10px;
+  height: 10px;
+  background-color: red;
+  border-radius: 50%;
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
 .sidebar-divider {
   height: 1px;
   background-color: rgba(255,255,255,0.3);
-  margin: 8px;
+  margin: 8px 0;
 }
 
 .sidebar-subtitle {

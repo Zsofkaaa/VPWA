@@ -1,90 +1,87 @@
 <template>
-  <div ref="messagesContainer" class="chat-messages">
-    <q-infinite-scroll
-      :offset="100"
-      @load="loadMore"
-      reverse
-      spinner-color="white"
-    />
-    <div
-      v-for="msg in localMessages"
-      :key="msg.id"
-      class="q-mb-md"
-    >
-      <div class="text-bold">{{ msg.user }}</div>
-      <div class="bg-grey-9 q-pa-sm q-mt-xs" style="border-radius: 8px;">
-        {{ msg.text }}
+    <div class="chat-messages">
+      <div
+        v-for="(msg, index) in messages"
+        :key="msg.id + '-' + index"
+        class="q-mb-md"
+      >
+        <div class="text-bold">{{ msg.user }}</div>
+        <div
+          class="q-pa-sm q-mt-xs"
+          :class="index === messages.length - 2 ? 'highlight-message' : 'bg-grey-9'"
+          style="border-radius: 8px;"
+        >
+          {{ msg.text }}
+        </div>
       </div>
+      <div class="footer-blocker"></div>
     </div>
-  </div>
 </template>
 
 <script lang="ts" setup>
-import { ref, watch, nextTick, onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 
-interface Message { id: number; user: string; text: string }
-
-// MÓDOSÍTÁS: sima Message[] típust várunk, nem Ref-et
-const props = defineProps<{ messages: Message[] }>()
-const localMessages = ref<Message[]>([])
-const messagesContainer = ref<HTMLElement | null>(null)
-
-function scrollToBottom() {
-  const el = messagesContainer.value
-  if (el) el.scrollTop = el.scrollHeight
+interface Message {
+  id: number
+  user: string
+  text: string
 }
 
-// MÓDOSÍTÁS: props.messages.value helyett props.messages
-watch(
-  () => props.messages,
-  (newVal) => {
-    localMessages.value = [...newVal]
-  },
-  { immediate: true, deep: true } // deep: true, hogy objektum változásokat is érzékeljen
-)
-
-// Scroll minden új üzenetnél
-watch(
-  () => localMessages.value.length,
-  async () => {
-    await nextTick()
-    scrollToBottom()
-  }
-)
-
-// Infinite scroll: prepend older messages
-function loadMore(index: number, done: (stop?: boolean) => void) {
-  const el = messagesContainer.value
-  const prevScrollHeight = el ? el.scrollHeight : 0
-
-  setTimeout(() => {
-    const older: Message[] = Array.from({ length: 10 }, (_, i) => ({
-      id: Date.now() + Math.floor(Math.random() * 100000) + i,
-      user: `User ${Math.ceil(Math.random() * 5)}`,
-      text: `Older message ${i + 1}`
-    }))
-    localMessages.value = [...older, ...localMessages.value]
-
-    void nextTick().then(() => {
-      if (el) el.scrollTop = el.scrollHeight - prevScrollHeight
-      done()
-    })
-  }, 450)
-}
+const messages = ref<Message[]>([])
 
 onMounted(async () => {
-  await nextTick()
-  scrollToBottom()
+  // Példa: lekér három üzenetet (lehetne fetch is)
+  // Most szimuláljuk mintha API-ból jönne:
+  messages.value = await getMessages()
 })
+
+async function getMessages(): Promise<Message[]> {
+  // Késleltetés szimulálása (mintha hálózaton jönne)
+  await new Promise((resolve) => setTimeout(resolve, 500))
+
+  return [
+    { id: 1, user: 'User 1', text: 'Hello there!' },
+    { id: 2, user: 'User 2', text: 'Hi! How are you?' },
+    { id: 3, user: 'User 3', text: 'All good, working on a project.' },
+    { id: 1, user: 'User 1', text: 'Hello there!' },
+    { id: 2, user: 'User 2', text: 'Hi! How are you?' },
+    { id: 3, user: 'User 3', text: 'All good, working on a project.' },
+    { id: 1, user: 'User 1', text: 'Hello there!' },
+    { id: 2, user: 'User 2', text: 'Hi! How are you?' },
+    { id: 3, user: 'User 3', text: 'All good, working on a project.' },
+    { id: 1, user: 'User 1', text: 'Hello there!' },
+    { id: 2, user: 'User 2', text: 'Hi! How are you?' },
+    { id: 3, user: 'User 3', text: 'All good, working on a project.' },
+    { id: 1, user: 'User 1', text: 'Hello there!' },
+    { id: 2, user: 'User 2', text: 'Hi @nickname! How are you?' },
+    { id: 3, user: 'User 3', text: 'All good, working on a project.' }
+  ]
+}
 </script>
 
 <style scoped>
-.chat-messages {
-  flex: 1;
+.chat-page {
   display: flex;
   flex-direction: column;
-  overflow-y: auto;
+  height: 100%;
+  overflow: hidden; /* megakadályozza, hogy az egész layout scrollozódjon */
+}
+
+.chat-messages {
+  flex: 1;
+  overflow-y: auto; /* CSAK az üzenetek scrollozódnak */
   padding: 16px;
-  padding-bottom: 100px;
+  padding-bottom: 0px; /* hely a footernek 80px volt itt minek?*/
+}
+
+.footer-blocker {
+  height: 80px;
+  background-color: #1E1E1E; /* chat háttérszín */
+  flex-shrink: 0;
+}
+
+.highlight-message {
+  background-color: #a3d5ff; /* világoskék kiemelés */
+  border-radius: 8px;
 }
 </style>
