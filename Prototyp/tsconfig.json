@@ -2,6 +2,7 @@
   "extends": "./.quasar/tsconfig.json",
   "include": [
     "src/**/*",
-    "src/shims-vue.d.ts"
+    "src/shims-vue.d.ts",
+    "quasar.config.ts"
   ]
 }
