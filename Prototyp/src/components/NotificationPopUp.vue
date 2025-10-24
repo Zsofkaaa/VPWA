@@ -13,6 +13,9 @@
 </template>
 
 <script lang="ts" setup>
+
+/*IDE KELL A QUASAR KOMPONENS, VALAMI NOTIFY*/
+
 import { toRefs } from 'vue'
 
 const props = defineProps<{

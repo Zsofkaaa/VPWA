@@ -27,7 +27,7 @@
 
       <div
         v-if="currentChannel"
-        class="text-bold current-channel"
+        class="text-bold current-channel centered"
       >
         {{ currentChannel }}
       </div>
@@ -71,4 +71,12 @@ const $q = useQuasar()
   color: white;
   margin-left: 4px;
 }
+
+.centered {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap; /* Ne törjön több sorra */
+}
+
 </style>

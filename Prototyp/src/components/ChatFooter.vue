@@ -28,9 +28,14 @@ defineEmits<{
 }>()
 </script>
 
-<style scoped>
+<style>
 .chat-footer {
   z-index: 2100;
+  background-color: #1E1E1E;
+  height: 80px;
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
 }
 
 .chat-input {

@@ -8,7 +8,7 @@
       @click.stop="menu = !menu"
       class="manage-btn"
     />
-    
+
     <q-menu
       v-model="menu"
       anchor="bottom left"
@@ -24,9 +24,9 @@
             <q-item-label>Add User</q-item-label>
           </q-item-section>
         </q-item>
-        
+
         <q-separator dark />
-        
+
         <q-item clickable v-ripple @click="removeUser">
           <q-item-section avatar>
             <q-icon name="person_remove" color="white" />
@@ -35,9 +35,9 @@
             <q-item-label>Remove User</q-item-label>
           </q-item-section>
         </q-item>
-        
+
         <q-separator dark />
-        
+
         <q-item clickable v-ripple @click="managePermissions">
           <q-item-section avatar>
             <q-icon name="security" color="white" />
@@ -46,9 +46,9 @@
             <q-item-label>Manage Permissions</q-item-label>
           </q-item-section>
         </q-item>
-        
+
         <q-separator dark />
-        
+
         <q-item clickable v-ripple @click="manageNotifications">
           <q-item-section avatar>
             <q-icon name="notifications" color="white" />
@@ -57,6 +57,29 @@
             <q-item-label>Manage Notifications</q-item-label>
           </q-item-section>
         </q-item>
+
+        <q-separator dark />
+
+        <q-item clickable v-ripple @click="terminateChannel">
+            <q-item-section avatar>
+              <q-icon name="highlight_off" color="white" />
+            </q-item-section>
+            <q-item-section>
+              <q-item-label>Terminate Channel</q-item-label>
+            </q-item-section>
+          </q-item>
+
+          <q-separator dark />
+
+          <!-- Leave Channel -->
+          <q-item clickable v-ripple @click="leaveChannel">
+            <q-item-section avatar>
+              <q-icon name="exit_to_app" color="white" />
+            </q-item-section>
+            <q-item-section>
+              <q-item-label>Leave Channel</q-item-label>
+            </q-item-section>
+          </q-item>
       </q-list>
     </q-menu>
   </div>
@@ -90,6 +113,19 @@ function manageNotifications() {
   console.log('Manage notifications clicked')
   // TODO: Implement notifications management dialog/functionality
 }
+
+function terminateChannel() {
+  menu.value = false
+  console.log('Terminate channel clicked')
+  // TODO: Implement terminate channel functionality
+}
+
+function leaveChannel() {
+  menu.value = false
+  console.log('Leave channel clicked')
+  // TODO: Implement leave channel functionality
+}
+
 </script>
 
 <style scoped>

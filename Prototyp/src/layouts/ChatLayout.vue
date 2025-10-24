@@ -44,8 +44,10 @@
   </q-layout>
 </template>
 
+
+
 <script lang="ts" setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, provide, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useQuasar } from 'quasar'
 import NotificationPopUp from 'components/NotificationPopUp.vue'
@@ -63,6 +65,25 @@ interface ChannelData {
   invitedMembers: string[]
   notificationLevel: string
 }
+
+interface Message {
+  id: number
+  user: string
+  text: string
+}
+
+const messages = ref<Message[]>([])
+
+// create initial messages for a channel (only 10)
+function createInitialMessages(channelPath: string, count = 10): Message[] {
+  return Array.from({ length: count }, (_, i) => ({
+    id: Date.now() + i,
+    user: `User ${Math.ceil(Math.random() * 5)}`,
+    text: `[${channelPath}] Message ${count - i}` // reversed order if you want newest at end
+  })).reverse() // ensure chronological order (oldest -> newest)
+}
+
+provide('messages', messages)
 
 const router = useRouter()
 const $q = useQuasar()
@@ -83,8 +104,11 @@ const publicChannels = ref([
   { name: '#public-3', path: '/chat/public3' }
 ])
 
+// call when user selects a channel
 function goToChannel(ch: { name: string; path: string }) {
   currentChannelName.value = ch.name
+  // set only initial chunk for that channel
+  messages.value = createInitialMessages(ch.path, 10)
   void router.push(ch.path)
 }
 
@@ -96,11 +120,11 @@ function handleLogout() {
 function handleCreateChannel(data: ChannelData) {
   // Format channel name
   const formattedName = data.name.startsWith('#') ? data.name : `#${data.name}`
-  
+
   // Check if channel name already exists in both categories
   const allChannels = [...privateChannels.value, ...publicChannels.value]
   const nameExists = allChannels.some(ch => ch.name.toLowerCase() === formattedName.toLowerCase())
-  
+
   if (nameExists) {
     $q.notify({
       type: 'negative',
@@ -110,22 +134,22 @@ function handleCreateChannel(data: ChannelData) {
     })
     return
   }
-  
+
   // Generate a path for the new channel
   const channelPath = `/chat/${data.visibility}-${data.name.toLowerCase().replace(/\s+/g, '-')}`
-  
+
   const newChannel = {
     name: formattedName,
     path: channelPath
   }
-  
+
   // Add to appropriate category based on visibility
   if (data.visibility === 'private') {
     privateChannels.value.push(newChannel)
   } else {
     publicChannels.value.push(newChannel)
   }
-  
+
   // Show success notification
   $q.notify({
     type: 'positive',
@@ -133,25 +157,48 @@ function handleCreateChannel(data: ChannelData) {
     position: 'top',
     timeout: 2000
   })
-  
+
   // Navigate to the new channel
   currentChannelName.value = newChannel.name
   void router.push(channelPath)
 }
 
-function onEnterPress(e: KeyboardEvent) {
+watch(currentChannelName, async () => {
+  await nextTick()
+  const chatMessagesEl = document.querySelector('.chat-messages')
+  if (chatMessagesEl) {
+    chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight
+  }
+})
+
+async function onEnterPress(e: KeyboardEvent) {
   if (e.key === 'Enter' && newMessage.value.trim() !== '') {
     e.preventDefault()
-    showNotification.value = true
+
+    messages.value.push({
+    id: Date.now(),
+    user: 'You',
+    text: newMessage.value.trim()
+  })
+
     newMessage.value = ''
+    showNotification.value = true
     setTimeout(() => { showNotification.value = false }, 2500)
+
+    // 👇 várunk egy tick-et, majd a legaljára scrollozunk
+    await nextTick()
+
+    const chatMessagesEl = document.querySelector('.chat-messages')
+    if (chatMessagesEl) {
+      chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight
+    }
   }
 }
 
 const footerStyle = computed(() => ({
   left: $q.screen.lt.md ? '0' : '300px',
   right: '0',
-  bottom: '10px',
+  bottom: '0',
   position: 'fixed' as const
 }))
 
@@ -179,6 +226,7 @@ watch(newMessage, (value) => {
     isTyping.value = false
   }
 })
+
 </script>
 
 <style>
