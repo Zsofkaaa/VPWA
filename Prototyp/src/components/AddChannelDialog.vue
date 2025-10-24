@@ -1,13 +1,19 @@
 <template>
-  <q-dialog :model-value="visible" @update:model-value="$emit('update:visible', $event)">
-    <q-card style="min-width: 400px; background-color: #2d4a6b; color: white;">
-      <q-card-section class="row items-center q-pb-none">
+  <q-dialog 
+    :model-value="visible" 
+    @update:model-value="$emit('update:visible', $event)"
+    maximized 
+    transition-show="slide-up" 
+    transition-hide="slide-down"
+  >
+    <q-card style="background-color: #2d4a6b; color: white; display: flex; flex-direction: column; height: 100%;">
+      <q-card-section class="row items-center q-pb-none" style="flex: 0 0 auto;">
         <div class="text-h6">Create New Channel</div>
         <q-space />
         <q-btn icon="close" flat round dense @click="closeDialog" />
       </q-card-section>
 
-      <q-card-section>
+      <q-card-section class="q-pa-md" style="flex: 1 1 auto; overflow-y: auto;">
         <!-- Channel Name -->
         <div class="q-mb-md">
           <label class="text-weight-medium q-mb-xs block">Channel Name</label>
@@ -81,7 +87,7 @@
         </div>
       </q-card-section>
 
-      <q-card-actions align="right" class="q-px-md q-pb-md">
+      <q-card-actions align="right" class="q-px-md q-pb-md sticky-footer" style="flex: 0 0 auto;">
         <q-btn
           flat
           label="Cancel"
@@ -183,6 +189,11 @@ watch(() => emit, () => {
 <style scoped>
 .block {
   display: block;
+}
+
+.sticky-footer {
+  background-color: #2d4a6b;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .cancel-btn {

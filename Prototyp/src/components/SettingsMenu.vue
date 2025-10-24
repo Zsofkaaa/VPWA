@@ -1,6 +1,12 @@
 <template>
   <!-- Gear icon button -->
-  <q-btn flat round dense icon="settings" @click="showDialog = true">
+  <q-btn 
+    flat 
+    dense 
+    icon="settings" 
+    :round="showDialog"
+    @click="showDialog = true"
+  >
     <!-- Tooltip when hovering -->
     <q-tooltip anchor="top middle" self="bottom middle">
       Settings
@@ -8,15 +14,15 @@
   </q-btn>
 
   <!-- Settings Dialog -->
-  <q-dialog v-model="showDialog">
-    <q-card style="min-width: 450px; background-color: #2d4a6b; color: white;">
-      <q-card-section class="row items-center q-pb-none">
+  <q-dialog v-model="showDialog" maximized transition-show="slide-up" transition-hide="slide-down">
+    <q-card style="background-color: #2d4a6b; color: white; display: flex; flex-direction: column; height: 100%;">
+      <q-card-section class="row items-center q-pb-none" style="flex: 0 0 auto;">
         <div class="text-h6">Settings</div>
         <q-space />
         <q-btn icon="close" flat round dense @click="closeDialog" />
       </q-card-section>
 
-      <q-card-section>
+      <q-card-section class="q-pa-md scroll-area" style="flex: 1 1 auto; overflow-y: auto;">
         <!-- First Name -->
         <div class="q-mb-md">
           <label class="text-weight-medium q-mb-xs block">First Name</label>
@@ -139,7 +145,7 @@
         </div>
       </q-card-section>
 
-      <q-card-actions align="right" class="q-px-md q-pb-md">
+      <q-card-actions align="right" class="q-px-md q-pb-md sticky-footer" style="flex: 0 0 auto;">
         <q-btn
           flat
           label="Cancel"
@@ -215,6 +221,11 @@ function saveSettings() {
 
 .cursor-pointer {
   cursor: pointer;
+}
+
+.sticky-footer {
+  background-color: #2d4a6b;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .cancel-btn {

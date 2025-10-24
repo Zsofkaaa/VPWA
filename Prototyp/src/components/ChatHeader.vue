@@ -4,8 +4,8 @@
     class="row items-center justify-between q-px-lg q-py-sm text-white"
     style="background-color: #283C55; height: 60px; z-index: 2000;"
   >
-    <!-- Left: Logo or hamburger -->
-    <div class="row items-center" style="width: 200px;">
+    <!-- Left: Logo or hamburger + Channel Name -->
+    <div class="row items-center no-wrap" style="flex: 1; min-width: 0;">
       <q-btn
         v-if="$q.screen.lt.md"
         dense
@@ -23,60 +23,40 @@
         class="rounded-borders"
         style="height: 40px;"
       />
+
+      <!-- Channel name on mobile (left side, next to hamburger) -->
+      <div
+        v-if="currentChannel && $q.screen.lt.md"
+        class="text-bold current-channel"
+      >
+        {{ currentChannel }}
+      </div>
     </div>
 
-    <!-- Center: Current Channel (clickable) -->
+    <!-- Center: Current Channel (desktop only) -->
     <div
-      v-if="currentChannel"
-      class="text-bold current-channel cursor-pointer centered"
-      @click="showMembers = true"
+      v-if="currentChannel && !$q.screen.lt.md"
+      class="text-bold current-channel centered"
     >
       {{ currentChannel }}
     </div>
 
-    <!-- Right: Status + Settings + Info -->
-    <div class="row items-center justify-end" style="width: 200px;">
-      <UserStatus class="q-mr-sm" />
+    <!-- Right: Members Button + Status + Settings + Info -->
+    <div class="row items-center justify-end q-gutter-sm no-wrap" style="flex: 0 0 auto;">
+      <MembersMenu v-if="currentChannel" :current-channel="currentChannel" />
+      <UserStatus />
       <SettingsMenu />
-      <InfoBox class="q-ml-sm" />
+      <InfoBox />
     </div>
-
-    <!-- Members Popup -->
-    <q-dialog v-model="showMembers" persistent>
-      <q-card
-        style="width: 320px; max-height: 420px; background-color: #355070; color: white;"
-      >
-        <q-card-section class="text-h6 text-center q-pt-md">
-          Members of {{ currentChannel }}
-        </q-card-section>
-
-        <q-separator color="white" />
-
-        <!-- Scrollable list only -->
-        <div style="max-height: 300px; overflow-y: auto;">
-          <q-list bordered>
-            <q-item v-for="member in members" :key="member" clickable>
-              <q-item-section>{{ member }}</q-item-section>
-            </q-item>
-          </q-list>
-        </div>
-
-        <q-separator color="white" />
-
-        <q-card-actions align="center" class="q-pb-sm">
-          <q-btn flat label="Close" color="white" @click="showMembers = false" />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
   </q-header>
 </template>
 
 <script lang="ts" setup>
-import { ref } from 'vue'
 import { useQuasar } from 'quasar'
 import SettingsMenu from './SettingsMenu.vue'
 import InfoBox from './InfoBox.vue'
 import UserStatus from './UserStatus.vue'
+import MembersMenu from './MembersMenu.vue'
 
 defineProps<{
   drawerOpen: boolean
@@ -88,15 +68,6 @@ defineEmits<{
 }>()
 
 const $q = useQuasar()
-const showMembers = ref(false)
-
-// 20 príkladových členov
-const members = [
-  'Alice', 'Bob', 'Charlie', 'Diana', 'Edward',
-  'Fiona', 'George', 'Hannah', 'Ian', 'Julia',
-  'Kevin', 'Laura', 'Michael', 'Nina', 'Oscar',
-  'Paula', 'Quentin', 'Rachel', 'Steve', 'Tina'
-]
 </script>
 
 <style scoped>
@@ -108,18 +79,20 @@ const members = [
   font-size: 1.25rem;
   font-weight: 700;
   color: white;
-  margin-left: 4px;
-  transition: opacity 0.2s;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.current-channel:hover {
-  opacity: 0.8;
-}
-
+/* Középre nagy képernyőn */
 .centered {
   position: absolute;
   left: 50%;
   transform: translateX(-50%);
-  white-space: nowrap;
+}
+
+/* no-wrap class to prevent wrapping */
+.no-wrap {
+  flex-wrap: nowrap !important;
 }
 </style>
