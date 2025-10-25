@@ -1,5 +1,7 @@
 <template>
+  <!-- Kontajner pre tlačidlo odhlásenia -->
   <div class="logout-container">
+    <!-- Tlačidlo na odhlásenie -->
     <q-btn
       flat
       color="red"
@@ -12,14 +14,17 @@
 </template>
 
 <script lang="ts" setup>
+// Definícia udalosti 'logout', ktorú komponent vysiela po kliknutí
 const emit = defineEmits<{ logout: [] }>()
 
+// Funkcia na odhlásenie používateľa
 function onLogout() {
   emit('logout')
 }
 </script>
 
 <style scoped>
+/* Umiestnenie kontajnera s tlačidlom v ľavom dolnom rohu */
 .logout-container {
   position: fixed;
   bottom: 10px;
@@ -27,6 +32,7 @@ function onLogout() {
   z-index: 2200;
 }
 
+/* Štýl tlačidla odhlásenia */
 .logout-btn {
   font-weight: bold;
   text-transform: none;
@@ -35,6 +41,7 @@ function onLogout() {
   transition: background-color 0.2s ease;
 }
 
+/* Efekt pri prechode kurzorom na tlačidlo */
 .logout-btn:hover {
   background-color: rgba(255, 0, 0, 0.3);
 }

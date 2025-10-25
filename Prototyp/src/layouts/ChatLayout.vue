@@ -146,12 +146,12 @@ const showNotification = ref(false)
 const currentChannelName = ref('')
 
 const privateChannels = ref([
-  { name: '#private-1', path: '/chat/private1' },
+  { name: '#private-1 (Admin)', path: '/chat/private1' },
   { name: '#private-2', path: '/chat/private2' }
 ])
 
 const publicChannels = ref([
-  { name: '#public-1', path: '/chat/public1' },
+  { name: '#public-1 (Admin)', path: '/chat/public1' },
   { name: '#public-2', path: '/chat/public2' },
   { name: '#public-3', path: '/chat/public3' }
 ])

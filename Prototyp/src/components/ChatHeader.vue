@@ -1,24 +1,17 @@
 <template>
-  <!--
-  q-px-lg = large horizontal padding (left & right)
-  q-py-sm = small vertical padding (top & bottom)
-  -->
+  <!-- Hlavný header s paddingom -->
   <q-header elevated class="row items-center justify-between q-px-lg q-py-sm text-white">
     
-    <!-- Left: Logo or hamburger + Channel Name -->
+    <!-- Ľavá časť: Logo / menu + názov kanála -->
     <div class="row items-center no-wrap" style="flex: 1; min-width: 0;">
-      <!--     
-      no-wrap = prevents flex items from wrapping to the next line. All child elements stay in one horizontal row.
-      flex: 1 = tells the element to expand and take up all available horizontal space within the flex container.
-      min-width: 0 = allows the element to shrink below its content size. Needed in flex layouts to prevent overflow issues.
-      v-if="$q.screen.lt.md" = show only on small screens
-      -->
+      <!-- Tlačidlo menu na mobilných obrazovkách -->
       <q-btn
         v-if="$q.screen.lt.md"
         dense flat round icon="menu" class="q-mr-sm"
         @click="$emit('update:drawerOpen', !drawerOpen)"
       />
-
+      
+      <!-- Logo na desktop -->
       <img
         v-if="!$q.screen.lt.md"
         src="/pictures/logo.jpg"
@@ -27,7 +20,7 @@
         style="height: 40px;"
       />
 
-      <!-- Channel name on mobile (left side, next to hamburger) -->
+      <!-- Názov aktuálneho kanála na mobile -->
       <div
         v-if="currentChannel && $q.screen.lt.md"
         class="text-bold current-channel"
@@ -36,7 +29,7 @@
       </div>
     </div>
 
-    <!-- Center: Current Channel (desktop only) -->
+    <!-- Stredná časť: názov kanála na desktop -->
     <div
       v-if="currentChannel && !$q.screen.lt.md"
       class="text-bold current-channel centered"
@@ -44,11 +37,7 @@
       {{ currentChannel }}
     </div>
 
-    <!-- Right: Members Button + Status + Settings + Info 
-     
-    q-gutter-sm = adds small spacing between each child element
-    flex: 0 0 auto = element does not grow or shrink; keeps its natural size
-    -->
+    <!-- Pravá časť: členovia, status, nastavenia, info -->
     <div class="row items-center justify-end q-gutter-sm no-wrap" style="flex: 0 0 auto;">
       <MembersMenu v-if="currentChannel" :current-channel="currentChannel" />
       <UserStatus />
@@ -65,30 +54,35 @@ import InfoBox from './InfoBox.vue'
 import UserStatus from './UserStatus.vue'
 import MembersMenu from './MembersMenu.vue'
 
+// Props: vstupné vlastnosti komponentu
 defineProps<{
-  drawerOpen: boolean
-  currentChannel?: string
+  drawerOpen: boolean // povinná vlastnosť
+  currentChannel?: string // nepovinná vlastnosť
 }>()
 
+// Emits: udalosti, ktoré komponent vysiela
 defineEmits<{
   'update:drawerOpen': [value: boolean]
 }>()
+
 
 const $q = useQuasar()
 </script>
 
 <style scoped>
-
+/* Hlavný header */
 .q-header {
   background-color: #283C55; 
   height: 60px; 
-  z-index: 2000; /* z-index = controls the stacking order of elements. Higher values appear on top of lower ones. */
+  z-index: 2000; /* poradie prekrytia elementov */
 }
 
+/* Zaoblené rohy pre logo */
 .rounded-borders {
   border-radius: 8px;
 }
 
+/* Aktuálny kanál – text */
 .current-channel {
   font-size: 1.25rem;
   font-weight: 700;
@@ -98,12 +92,14 @@ const $q = useQuasar()
   text-overflow: ellipsis; /* adds "..." at the end of the truncated text */
 }
 
+/* Centrálne zobrazenie textu */
 .centered {
   position: absolute; /* takes the element out of normal flow and positions it absolutely */
   left: 50%; /* moves the element’s left edge to the horizontal center of its parent */
   transform: translateX(-50%); /* shifts it left by half of its own width to truly center it */
 }
 
+/* Flex elementy sa nezalamujú */
 .no-wrap {
   flex-wrap: nowrap !important;
 }
