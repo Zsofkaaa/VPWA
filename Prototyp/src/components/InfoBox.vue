@@ -1,18 +1,44 @@
+<!-- 
+  ============================================================================
+  COMPONENT: InfoBox.vue
+  ============================================================================
+  
+  PURPOSE:
+  A small "info" button that shows a list of available chat commands when clicked.
+  
+  WHAT IT DISPLAYS:
+  - An info icon button in the header
+  - When clicked: A dropdown showing 8 different chat commands
+  
+  HOW IT WORKS:
+  - User clicks the info button
+  - A popup appears below the button showing all commands
+  - The popup stays open until user clicks outside it
+  - The popup won't close if you click inside it (intentional)
+  
+  AVAILABLE COMMANDS SHOWN:
+  1. /join channelName [private] - Create a private channel
+  2. /join channelName - Join a public channel when channel exists, create if not
+  3. /invite nickName - Invite someone to a channel
+  4. /revoke nickName - Remove someone's access from private channel
+  5. /kick nickName - Remove someone from a channel
+  6. /quit - Close a channel
+  7. /cancel - Leave channel, or if admin terminate channel
+  8. /list - List all members
+  
+  ============================================================================
+-->
+
 <template>
   <!-- Info icon button -->
-  <q-btn flat round dense class="text-white info-btn">
-    <q-icon name="info" />
+  <q-btn flat round dense icon="info" class="text-white info-btn">
+    <!-- Tooltip when hovering -->
+    <q-tooltip anchor="top middle" self="bottom middle">
+      Commands
+    </q-tooltip>
 
     <!-- Popover that stays open when clicked -->
-    <q-menu
-      v-model="open"
-      :auto-close="false"
-      anchor="bottom middle"
-      self="top middle"
-      transition-show="jump-down"
-      transition-hide="jump-up"
-      class="info-box-menu"
-    >
+    <q-menu :auto-close="false" anchor="bottom middle" self="top middle" transition-show="jump-down" transition-hide="jump-up">
       <div class="info-box-container" @click.stop>
         <div class="info-line">/join channelName [private]</div>
         <div class="info-line">/join channelName</div>
@@ -27,14 +53,8 @@
   </q-btn>
 </template>
 
-<script lang="ts" setup>
-import { ref } from 'vue'
-
-const open = ref(false)
-</script>
-
 <style scoped>
-.info-btn {
+.q-btn {
   background-color: transparent; 
   width: 36px;
   height: 36px;
@@ -44,26 +64,19 @@ const open = ref(false)
   justify-content: center;
 }
 
-.info-btn:hover {
-  background-color: rgba(255, 255, 255, 0.1); 
-}
-
-.info-box-menu {
+.q-menu {
   background: transparent;
   min-width: 220px;
 }
 
 .info-box-container {
-  background: rgba(40, 60, 85, 0.95);
+  background: rgb(109, 89, 122);
   color: white;
   padding: 10px;
-  box-shadow: 0 6px 20px rgba(0,0,0,0.6);
-  user-select: none;
 }
 
 .info-line {
   padding: 4px 0;
   font-size: 0.95rem;
-  pointer-events: none; /* sorok ne legyenek klikkelhetők */
 }
 </style>

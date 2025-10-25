@@ -1,41 +1,62 @@
+<!-- 
+  ============================================================================
+  COMPONENT: SettingsMenu.vue
+  ============================================================================
+  
+  PURPOSE:
+  A user profile settings form where users can update their personal information.
+  
+  WHAT IT DISPLAYS:
+  - A gear icon button in the header
+  - When clicked: A full-screen form with editable fields
+  
+  USER CAN EDIT:
+  1. First Name
+  2. Last Name
+  3. Nickname
+  4. Email
+  5. Password (optional change)
+  
+  HOW IT WORKS:
+  1. User clicks the gear icon
+  2. Full-screen form slides up from bottom
+  3. User edits their information
+  4. "Save Changes" button is disabled if data is invalid
+  5. User clicks "Save" or "Cancel"
+  6. Form slides back down and closes
+  
+  VALIDATION RULES:
+  - Email must contain "@" symbol
+  - If changing password: must match confirmation and be 6+ characters
+  - All fields are validated before saving is allowed
+  
+  ============================================================================
+-->
+
 <template>
   <!-- Gear icon button -->
-  <q-btn 
-    flat 
-    dense 
-    icon="settings" 
-    :round="showDialog"
-    @click="showDialog = true"
-  >
+  <q-btn flat dense round icon="settings" @click="showDialog = true">
     <!-- Tooltip when hovering -->
     <q-tooltip anchor="top middle" self="bottom middle">
-      Settings
+      Edit profile
     </q-tooltip>
   </q-btn>
 
   <!-- Settings Dialog -->
   <q-dialog v-model="showDialog" maximized transition-show="slide-up" transition-hide="slide-down">
-    <q-card style="background-color: #2d4a6b; color: white; display: flex; flex-direction: column; height: 100%;">
-      <q-card-section class="row items-center q-pb-none" style="flex: 0 0 auto;">
-        <div class="text-h6">Settings</div>
-        <q-space />
+    <q-card>
+      <q-card-section class="row items-center" style="flex: 0 0 auto;">
+        <div class="text-h6">Edit Profile</div>
+        <q-space /> <!-- white space betwenn title and close icon -->
         <q-btn icon="close" flat round dense @click="closeDialog" />
       </q-card-section>
 
-      <q-card-section class="q-pa-md scroll-area" style="flex: 1 1 auto; overflow-y: auto;">
+      <q-card-section class="scroll-area" style="flex: 1 1 auto; overflow-y: auto;">
         <!-- First Name -->
-        <div class="q-mb-md">
+        <div class="q-mb-md"> <!-- q-mb-md = adds a medium bottom margin to the element -->
           <label class="text-weight-medium q-mb-xs block">First Name</label>
-          <q-input
-            v-model="firstName"
-            filled
-            dense
-            placeholder="Enter your first name"
-            bg-color="rgba(255, 255, 255, 0.1)"
-            color="white"
-            dark
-          >
-            <template v-slot:prepend>
+          <q-input v-model="firstName" filled dense placeholder="Enter your first name" color="white" dark> <!--         - v-model="firstName" binds the input to the firstName variable -->
+            <template v-slot:prepend> <!-- v-slot:prepend = defines content to be inserted at the "prepend" slot of a Quasar input or component -->
               <q-icon name="person" color="white" />
             </template>
           </q-input>
@@ -44,15 +65,7 @@
         <!-- Last Name -->
         <div class="q-mb-md">
           <label class="text-weight-medium q-mb-xs block">Last Name</label>
-          <q-input
-            v-model="lastName"
-            filled
-            dense
-            placeholder="Enter your last name"
-            bg-color="rgba(255, 255, 255, 0.1)"
-            color="white"
-            dark
-          >
+          <q-input v-model="lastName" filled dense placeholder="Enter your last name" color="white" dark>
             <template v-slot:prepend>
               <q-icon name="person" color="white" />
             </template>
@@ -62,15 +75,7 @@
         <!-- Nickname -->
         <div class="q-mb-md">
           <label class="text-weight-medium q-mb-xs block">Nickname</label>
-          <q-input
-            v-model="nickname"
-            filled
-            dense
-            placeholder="Enter your nickname"
-            bg-color="rgba(255, 255, 255, 0.1)"
-            color="white"
-            dark
-          >
+          <q-input v-model="nickname" filled dense placeholder="Enter your nickname" color="white" dark>
             <template v-slot:prepend>
               <q-icon name="badge" color="white" />
             </template>
@@ -80,16 +85,12 @@
         <!-- Email -->
         <div class="q-mb-md">
           <label class="text-weight-medium q-mb-xs block">Email</label>
-          <q-input
-            v-model="email"
-            filled
-            dense
-            type="email"
-            placeholder="Enter your email"
-            bg-color="rgba(255, 255, 255, 0.1)"
-            color="white"
-            dark
-            :rules="[val => !!val && val.includes('@') || 'Please enter a valid email']"
+          <q-input v-model="email" filled dense type="email" placeholder="Enter your email" color="white" dark
+            :rules="[
+              val => !!val || 'Email is required',
+              val => /^[^\s@]{3,}@[^\s@]{3,}\.[^\s@]{2,}$/.test(val) || 'Please enter a valid email'
+            ]"
+
           >
             <template v-slot:prepend>
               <q-icon name="email" color="white" />
@@ -100,13 +101,9 @@
         <!-- Password -->
         <div class="q-mb-md">
           <label class="text-weight-medium q-mb-xs block">Password</label>
-          <q-input
-            v-model="password"
-            filled
-            dense
+          <q-input v-model="password" filled dense
             :type="showPassword ? 'text' : 'password'"
             placeholder="Enter new password (leave empty to keep current)"
-            bg-color="rgba(255, 255, 255, 0.1)"
             color="white"
             dark
           >
@@ -127,13 +124,9 @@
         <!-- Confirm Password -->
         <div v-if="password" class="q-mb-md">
           <label class="text-weight-medium q-mb-xs block">Confirm Password</label>
-          <q-input
-            v-model="confirmPassword"
-            filled
-            dense
+          <q-input v-model="confirmPassword" filled dense
             :type="showPassword ? 'text' : 'password'"
             placeholder="Confirm your new password"
-            bg-color="rgba(255, 255, 255, 0.1)"
             color="white"
             dark
             :rules="[val => val === password || 'Passwords do not match']"
@@ -146,21 +139,8 @@
       </q-card-section>
 
       <q-card-actions align="right" class="q-px-md q-pb-md sticky-footer" style="flex: 0 0 auto;">
-        <q-btn
-          flat
-          label="Cancel"
-          color="white"
-          @click="closeDialog"
-          class="cancel-btn"
-        />
-        <q-btn
-          unelevated
-          label="Save Changes"
-          color="primary"
-          @click="saveSettings"
-          :disable="!isFormValid"
-          class="save-btn"
-        />
+        <q-btn flat label="Cancel" @click="closeDialog" class="cancel-btn" />
+        <q-btn label="Save Changes" @click="saveSettings" :disable="!isFormValid" class="save-btn" />
       </q-card-actions>
     </q-card>
   </q-dialog>
@@ -173,6 +153,10 @@ const showDialog = ref(false)
 const showPassword = ref(false)
 
 // Form fields
+/* 
+These variables store the current state of the component
+"ref" makes them reactive - when they change, the UI updates automatically
+*/
 const firstName = ref('John')
 const lastName = ref('Doe')
 const nickname = ref('johndoe')
@@ -181,7 +165,7 @@ const password = ref('')
 const confirmPassword = ref('')
 
 const isFormValid = computed(() => {
-  const emailValid = email.value && email.value.includes('@')
+  const emailValid = email.value
   const passwordValid = !password.value || (password.value === confirmPassword.value && password.value.length >= 6)
   return emailValid && passwordValid
 })
@@ -203,6 +187,8 @@ function saveSettings() {
     nickname: nickname.value,
     email: email.value,
     ...(password.value && { password: password.value })
+      // if password.value exists (not empty), spread it into the object
+      // otherwise, do not add the password field
   }
 
   console.log('Saving settings:', updatedSettings)
@@ -215,17 +201,16 @@ function saveSettings() {
 </script>
 
 <style scoped>
-.block {
-  display: block;
-}
-
-.cursor-pointer {
-  cursor: pointer;
+.q-card {
+  background-color: rgb(109, 89, 122); 
+  color: white; 
+  display: flex; 
+  flex-direction: column; 
+  height: 100%;
 }
 
 .sticky-footer {
-  background-color: #2d4a6b;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  background-color: rgb(76, 59, 88);
 }
 
 .cancel-btn {
@@ -238,17 +223,17 @@ function saveSettings() {
 }
 
 .save-btn {
-  background-color: #4CAF50;
+  background-color: rgb(145, 95, 120);
   color: white;
   border-radius: 6px;
   font-weight: bold;
 }
 
 .save-btn:hover {
-  background-color: #45a049;
+  background-color: rgba(145, 95, 120, 0.6);
 }
 
 .save-btn:disabled {
-  background-color: rgba(76, 175, 80, 0.5);
+  background-color: rgb(162, 122, 142);
 }
 </style>
