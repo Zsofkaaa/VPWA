@@ -38,8 +38,9 @@ Table Channel {
 }
 
 Table Channel_History {
-  channel_id integer [primary key]
-  last_fetched_message_id integer [primary key]
+  id [primary key]
+  channel_id integer
+  last_fetched_message_id integer
   has_more varchar
 }
 

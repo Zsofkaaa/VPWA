@@ -4,10 +4,10 @@
   q-py-sm = small vertical padding (top & bottom)
   -->
   <q-header elevated class="row items-center justify-between q-px-lg q-py-sm text-white">
-    
+
     <!-- Left: Logo or hamburger + Channel Name -->
     <div class="row items-center no-wrap" style="flex: 1; min-width: 0;">
-      <!--     
+      <!--
       no-wrap = prevents flex items from wrapping to the next line. All child elements stay in one horizontal row.
       flex: 1 = tells the element to expand and take up all available horizontal space within the flex container.
       min-width: 0 = allows the element to shrink below its content size. Needed in flex layouts to prevent overflow issues.
@@ -27,7 +27,7 @@
         style="height: 40px;"
       />
 
-      <!-- Channel name on mobile (left side, next to hamburger) -->
+      <!-- Channel name on mobile (left side, next to menu) -->
       <div
         v-if="currentChannel && $q.screen.lt.md"
         class="text-bold current-channel"
@@ -44,8 +44,8 @@
       {{ currentChannel }}
     </div>
 
-    <!-- Right: Members Button + Status + Settings + Info 
-     
+    <!-- Right: Members Button + Status + Settings + Info
+
     q-gutter-sm = adds small spacing between each child element
     flex: 0 0 auto = element does not grow or shrink; keeps its natural size
     -->
@@ -57,6 +57,8 @@
     </div>
   </q-header>
 </template>
+
+
 
 <script lang="ts" setup>
 import { useQuasar } from 'quasar'
@@ -77,11 +79,13 @@ defineEmits<{
 const $q = useQuasar()
 </script>
 
+
+
 <style scoped>
 
 .q-header {
-  background-color: #283C55; 
-  height: 60px; 
+  background-color: #283C55;
+  height: 60px;
   z-index: 2000; /* z-index = controls the stacking order of elements. Higher values appear on top of lower ones. */
 }
 

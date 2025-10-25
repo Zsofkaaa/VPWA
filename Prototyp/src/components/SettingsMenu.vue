@@ -1,38 +1,3 @@
-<!-- 
-  ============================================================================
-  COMPONENT: SettingsMenu.vue
-  ============================================================================
-  
-  PURPOSE:
-  A user profile settings form where users can update their personal information.
-  
-  WHAT IT DISPLAYS:
-  - A gear icon button in the header
-  - When clicked: A full-screen form with editable fields
-  
-  USER CAN EDIT:
-  1. First Name
-  2. Last Name
-  3. Nickname
-  4. Email
-  5. Password (optional change)
-  
-  HOW IT WORKS:
-  1. User clicks the gear icon
-  2. Full-screen form slides up from bottom
-  3. User edits their information
-  4. "Save Changes" button is disabled if data is invalid
-  5. User clicks "Save" or "Cancel"
-  6. Form slides back down and closes
-  
-  VALIDATION RULES:
-  - Email must contain "@" symbol
-  - If changing password: must match confirmation and be 6+ characters
-  - All fields are validated before saving is allowed
-  
-  ============================================================================
--->
-
 <template>
   <!-- Gear icon button -->
   <q-btn flat dense round icon="settings" @click="showDialog = true">
@@ -153,7 +118,7 @@ const showDialog = ref(false)
 const showPassword = ref(false)
 
 // Form fields
-/* 
+/*
 These variables store the current state of the component
 "ref" makes them reactive - when they change, the UI updates automatically
 */
@@ -192,7 +157,7 @@ function saveSettings() {
   }
 
   console.log('Saving settings:', updatedSettings)
-  
+
   // TODO: Send to backend API
   // await updateUserSettings(updatedSettings)
 
@@ -202,10 +167,10 @@ function saveSettings() {
 
 <style scoped>
 .q-card {
-  background-color: #355070; 
-  color: white; 
-  display: flex; 
-  flex-direction: column; 
+  background-color: #355070;
+  color: white;
+  display: flex;
+  flex-direction: column;
   height: 100%;
 }
 

@@ -1,20 +1,22 @@
 <template>
+
+  <!-- HLAVNÝ CHAT LAYOUT (ZÁKLADNÁ ŠTRUKTÚRA STRÁNKY) -->
   <q-layout view="hHh Lpr lFf" class="bg-dark text-white">
 
     <!-- HEADER -->
     <Header
-      v-model:drawer-open="drawerOpen"
-      :current-channel="currentChannelName"
+    v-model:drawer-open="drawerOpen"
+    :current-channel="currentChannelName"
     />
 
     <!-- SIDEBAR -->
     <Sidebar
-      v-model:drawer-open="drawerOpen"
-      :private-channels="privateChannels"
-      :public-channels="publicChannels"
-      @go-to-channel="goToChannel"
-      @logout="handleLogout"
-      @create-channel="handleCreateChannel"
+    v-model:drawer-open="drawerOpen"
+    :private-channels="privateChannels"
+    :public-channels="publicChannels"
+    @go-to-channel="goToChannel"
+    @logout="handleLogout"
+    @create-channel="handleCreateChannel"
     />
 
     <!-- MAIN CONTENT -->
@@ -22,26 +24,29 @@
       <router-view />
     </q-page-container>
 
-    <!-- Typing status -->
+    <!-- TYPING STATUS -->
     <TypingStatus
-      v-if="isTyping"
-      :typing-status-style="typingStatusStyle"
+    v-if="isTyping"
+    :typing-status-style="typingStatusStyle"
     />
 
+    <!-- FOOTER -->
     <ChatFooter
-      v-model:new-message="newMessage"
-      :footer-style="footerStyle"
-      @enter-press="onEnterPress"
+    v-model:new-message="newMessage"
+    :footer-style="footerStyle"
+    @enter-press="onEnterPress"
     />
 
-    <!-- Notification Popup -->
+    <!-- NOTIFICATION POPUP -->
     <NotificationPopUp
-      :visible="showNotification"
-      sender="User 1"
-      message="Message sent!"
-      logo="/pictures/logo.jpg"
+    :visible="showNotification"
+    sender="User 1"
+    message="Message sent!"
+    logo="/pictures/logo.jpg"
     />
+
   </q-layout>
+
 </template>
 
 
@@ -56,8 +61,10 @@ import Sidebar from 'components/ChatSidebar.vue'
 import ChatFooter from 'components/ChatFooter.vue'
 import TypingStatus from 'components/TypingStatus.vue'
 
+/* NASTAVENIE MENA KOMPONENTU */
 defineOptions({ name: 'ChatLayout' })
 
+/* ROZHRANIA PRE TYPY DÁT */
 interface ChannelData {
   name: string
   visibility: 'private' | 'public'
@@ -66,6 +73,7 @@ interface ChannelData {
   notificationLevel: string
 }
 
+/* ROZHRANIE PRE SPRÁVY */
 interface Message {
   id: number
   user: string
@@ -73,10 +81,52 @@ interface Message {
   isPing?: boolean
 }
 
+/* ZÁKLADNÉ INŠTANCIE */
+const router = useRouter()
+const $q = useQuasar()
 
+/* REAKTÍVNE DÁTA PRE SPRÁVY */
 const messages = ref<Message[]>([])
 
-// create initial messages for a channel (only 10)
+/* STAVY A PREMENNÉ */
+const drawerOpen = ref($q.screen.gt.sm)
+const newMessage = ref('')
+const isTyping = ref(false)
+const showNotification = ref(false)
+const currentChannelName = ref('')
+
+/* ZOZNAMY KANÁLOV */
+const privateChannels = ref([
+  { name: '#private-1 (Admin)', path: '/chat/private1' },
+  { name: '#private-2', path: '/chat/private2' }
+])
+const publicChannels = ref([
+  { name: '#public-1 (Admin)', path: '/chat/public1' },
+  { name: '#public-2', path: '/chat/public2' },
+  { name: '#public-3', path: '/chat/public3' }
+])
+
+/* ŠTÝL PRE FOOTER – POZÍCIA DOLNÉHO PANELU */
+const footerStyle = computed(() => ({
+  left: $q.screen.lt.md ? '0' : '300px',
+  right: '0',
+  bottom: '0',
+  position: 'fixed' as const
+}))
+
+/* ŠTÝL PRE STATUS PÍSANIA – NAD FOOTEROM */
+const typingStatusStyle = computed(() => ({
+  position: 'fixed' as const,
+  left: $q.screen.lt.md ? '0' : '300px',
+  bottom: '80px',
+  right: '0',
+  padding: '4px 16px',
+  color: 'white',
+  fontStyle: 'italic',
+  zIndex: 2150
+}))
+
+/* FUNKCIA NA VYTVORENIE ZAČIATOČNÝCH SPRÁV (10) */
 function createInitialMessages(): Message[] {
   return [
     {
@@ -92,7 +142,7 @@ function createInitialMessages(): Message[] {
     {
       id: Date.now() + 3,
       user: 'User 3',
-      text: `@username AAAAAAAAAAAAAAA`, // 👈 első ping
+      text: `@username AAAAAAAAAAAAAAA`,
       isPing: true,
     },
     {
@@ -103,7 +153,7 @@ function createInitialMessages(): Message[] {
     {
       id: Date.now() + 5,
       user: 'User 5',
-      text: `@username BBBBBBBBBBBBBB`, // 👈 második ping
+      text: `@username BBBBBBBBBBBBBB`,
       isPing: true,
     },
     {
@@ -134,46 +184,25 @@ function createInitialMessages(): Message[] {
   ]
 }
 
-
-provide('messages', messages)
-
-const router = useRouter()
-const $q = useQuasar()
-const drawerOpen = ref($q.screen.gt.sm)
-const newMessage = ref('')
-const isTyping = ref(false)
-const showNotification = ref(false)
-const currentChannelName = ref('')
-
-const privateChannels = ref([
-  { name: '#private-1', path: '/chat/private1' },
-  { name: '#private-2', path: '/chat/private2' }
-])
-
-const publicChannels = ref([
-  { name: '#public-1', path: '/chat/public1' },
-  { name: '#public-2', path: '/chat/public2' },
-  { name: '#public-3', path: '/chat/public3' }
-])
-
-// call when user selects a channel
+/* FUNKCIA NA ZMENU KANÁLU */
 function goToChannel(ch: { name: string; path: string }) {
   currentChannelName.value = ch.name
-  // set only initial chunk for that channel
   messages.value = createInitialMessages()
   void router.push(ch.path)
 }
 
+/* FUNKCIA NA ODHLÁSENIE UŽÍVATEĽA */
 function handleLogout() {
   localStorage.removeItem('userToken')
   void router.push('/')
 }
 
+/* FUNKCIA NA VYTVORENIE NOVÉHO KANÁLU */
 function handleCreateChannel(data: ChannelData) {
-  // Format channel name
+  // Formátovanie channel name
   const formattedName = data.name.startsWith('#') ? data.name : `#${data.name}`
 
-  // Check if channel name already exists in both categories
+  // Kontrola, či názov kanála už existuje v oboch kategóriách
   const allChannels = [...privateChannels.value, ...publicChannels.value]
   const nameExists = allChannels.some(ch => ch.name.toLowerCase() === formattedName.toLowerCase())
 
@@ -187,7 +216,7 @@ function handleCreateChannel(data: ChannelData) {
     return
   }
 
-  // Generate a path for the new channel
+  // Generovanie pathu pre nový channel
   const channelPath = `/chat/${data.visibility}-${data.name.toLowerCase().replace(/\s+/g, '-')}`
 
   const newChannel = {
@@ -195,14 +224,14 @@ function handleCreateChannel(data: ChannelData) {
     path: channelPath
   }
 
-  // Add to appropriate category based on visibility
+  // Pridanie do kategórie na základe visibility
   if (data.visibility === 'private') {
     privateChannels.value.push(newChannel)
   } else {
     publicChannels.value.push(newChannel)
   }
 
-  // Show success notification
+  // Zobraziť oznámenie o úspechu
   $q.notify({
     type: 'positive',
     message: `Channel "${newChannel.name}" created successfully!`,
@@ -210,24 +239,16 @@ function handleCreateChannel(data: ChannelData) {
     timeout: 2000
   })
 
-  // Navigate to the new channel
+  // Navigácia do nového channela
   currentChannelName.value = newChannel.name
   void router.push(channelPath)
 }
 
-watch(currentChannelName, async () => {
-  await nextTick()
-  const chatMessagesEl = document.querySelector('.chat-messages')
-  if (chatMessagesEl) {
-    chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight
-  }
-})
-
+/* FUNKCIA NA ODOSLANIE SPRÁVY */
 async function onEnterPress(e: KeyboardEvent) {
   if (e.key === 'Enter' && newMessage.value.trim() !== '') {
     e.preventDefault()
 
-    // KÖZVETLENÜL hozzáadjuk az üzenetet a messages tömbhöz
     const newMsg: Message = {
       id: Date.now(),
       user: 'You',
@@ -236,14 +257,14 @@ async function onEnterPress(e: KeyboardEvent) {
 
     messages.value.push(newMsg)
 
-    // Reseteljük az inputot
+    // Reset input
     newMessage.value = ''
 
     // Notification
     showNotification.value = true
     setTimeout(() => { showNotification.value = false }, 2500)
 
-    // Azonnali scrollozás
+    // Scrolling
     await nextTick()
     const chatMessagesEl = document.querySelector('.chat-messages')
     if (chatMessagesEl) {
@@ -252,26 +273,8 @@ async function onEnterPress(e: KeyboardEvent) {
   }
 }
 
-const footerStyle = computed(() => ({
-  left: $q.screen.lt.md ? '0' : '300px',
-  right: '0',
-  bottom: '0',
-  position: 'fixed' as const
-}))
-
-const typingStatusStyle = computed(() => ({
-  position: 'fixed' as const,
-  left: $q.screen.lt.md ? '0' : '300px',
-  bottom: '80px',
-  right: '0',
-  padding: '4px 16px',
-  color: 'white',
-  fontStyle: 'italic',
-  zIndex: 2150
-}))
-
+/* LOGIKA PRE DETEKCIU PÍSANIA SPRÁV */
 let typingTimeout: NodeJS.Timeout | null = null
-
 watch(newMessage, (value) => {
   if (value !== '') {
     isTyping.value = true
@@ -284,10 +287,27 @@ watch(newMessage, (value) => {
   }
 })
 
+/* AUTOMATICKÉ SCROLLOVANIE PO ZMENE KANÁLU */
+watch(currentChannelName, async () => {
+  await nextTick()
+  const chatMessagesEl = document.querySelector('.chat-messages')
+  if (chatMessagesEl) {
+    chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight
+  }
+})
+
+/* SPRÁVY DOSTUPNÉ PRE VŠETKY DIEŤA KOMPONENTY */
+provide('messages', messages)
+
 </script>
 
+
+
 <style>
+
+/* HLAVNÝ šTÝL */
 .chat-bg {
   background-color: #1E1E1E;
 }
+
 </style>
