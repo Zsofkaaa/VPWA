@@ -1,17 +1,18 @@
 <template>
+  <!-- Hlavná stránka autentifikácie -->
   <q-page class="auth-wrapper">
-    <!-- left strip -->
+    <!-- Ľavý pruh (vizuálny efekt) -->
     <div class="left-strip"></div>
 
-    <!-- auth card directly inside wrapper -->
+    <!-- Karta s prihlasovacím / registračným formulárom -->
     <q-card class="auth-card">
-      <!-- HERO TEXT -->
       <h1 class="hero">{{ mode === 'login' ? 'WELCOME!' : 'REGISTRATION' }}</h1>
-      <!-- SUBTITLE -->
       <p class="lead">{{ mode === 'login' ? 'LOGIN HERE' : 'Create your account' }}</p>
 
+      <!-- Formulár, zabraňuje default submit -->
       <q-form @submit.prevent="onSubmit">
-        <!-- LOGIN FORM -->
+        
+        <!-- PRIHLÁSENIE -->
         <div v-if="mode === 'login'" class="form-column">
           <q-input dense filled v-model="login.email" placeholder="Full Username or Email" class="pill-input" />
           <q-input dense filled v-model="login.password" placeholder="Password" type="password" class="pill-input" />
@@ -20,7 +21,7 @@
           </div>
         </div>
 
-        <!-- REGISTRATION FORM -->
+        <!-- REGISTRÁCIA -->
         <div v-else class="form-grid">
           <q-input dense filled v-model="reg.firstName" placeholder="First name" class="pill-input" />
           <q-input dense filled v-model="reg.lastName" placeholder="Last name" class="pill-input" />
@@ -34,7 +35,7 @@
         </div>
       </q-form>
 
-      <!-- SWITCH LOGIN/REGISTER LINK -->
+      <!-- Odkaz pre prepínanie medzi login a register -->
       <div class="switch-link">
         <a @click.prevent="toggleMode">
           {{ mode === 'login' ? "DON'T HAVE AN ACCOUNT? CREATE YOUR ACCOUNT HERE" : 'ALREADY HAVE AN ACCOUNT? LOGIN HERE' }}
@@ -50,19 +51,19 @@ import { useRouter } from 'vue-router';
 
 const router = useRouter();
 
-// MODE TOGGLE: either 'login' or 'register'
+// Aktuálny režim: login alebo register
 const mode = ref<'login' | 'register'>('login');
 
-// FORM MODELS
+// Formulárové modely
 const login = ref({ email: '', password: '' });
 const reg = ref({ firstName: '', lastName: '', nickname: '', email: '', password: '', password2: '' });
 
-// Toggle between login and register
+// Prepínanie režimu login/register
 function toggleMode() {
   mode.value = mode.value === 'login' ? 'register' : 'login';
 }
 
-// LOGIN VALIDATION
+// VALIDÁCIA PRIHLÁSENIA
 function validateLogin() {
   if (!login.value.email || !login.value.password) {
     alert('Please fill email and password');
@@ -71,7 +72,7 @@ function validateLogin() {
   return true;
 }
 
-// EMAIL VALIDATION FUNCTION
+// VALIDÁCIA EMAILU
 function validateEmail(email: string): boolean {
   // regex explanation:
   // ^             -> start
@@ -85,7 +86,7 @@ function validateEmail(email: string): boolean {
   return emailRegex.test(email);
 }
 
-// REGISTER VALIDATION
+// VALIDÁCIA REGISTRÁCIE
 function validateRegister() {
   if (!reg.value.firstName || !reg.value.lastName || !reg.value.nickname || !reg.value.email || !reg.value.password) {
     alert('Please fill required fields'); // alert if required fields are missing
@@ -104,29 +105,25 @@ function validateRegister() {
   return true;
 }
 
-// LOGIN HANDLER
+// FUNKCIA PRIHLÁSENIE
 async function onLogin() {
   if (!validateLogin()) return;
   console.log('LOGIN', login.value);
   alert('Pretend we logged in');
-
-  // Wait for navigation to complete before continuing (redirects to main chat page)
- await router.push('/chat/1'); // this redirects to '/chat/1'
-  // without sync and await ESLint error
+  await router.push('/chat/1');
 }
 
-// REGISTER HANDLER
+// FUNKCIA REGISTRÁCIA
 function onRegister() {
   if (!validateRegister()) return;
   console.log('REGISTER', reg.value);
   alert('Pretend we registered');
-
-  // Redirect to login page after successful registration
-  mode.value = 'login';  // switch back to login form
+ 
+  mode.value = 'login';
   alert('Registration successful! Please log in.');
 }
 
-// SUBMIT HANDLER: calls login or register depending on mode
+// SUBMIT FORMULÁRA (volá login alebo register podľa režimu)
 async function onSubmit() {
   if (mode.value === 'login') {
     await onLogin();
@@ -140,7 +137,8 @@ async function onSubmit() {
 @import url('https://fonts.googleapis.com/css2?family=Alfa+Slab+One&family=Montserrat:wght@400;700&display=swap');
 
 .auth-wrapper {
-  position: relative; /* positions relative to parent if top/left used */
+  /* Hlavný wrapper stránky autentifikácie */
+  position: relative; 
   display: flex;
   align-items: center;
   justify-content: center;
@@ -150,6 +148,7 @@ async function onSubmit() {
   background: #e6eaee;
 }
 
+/* Ľavý farebný pruh */
 .left-strip {
   position: absolute;
   top: 0;
@@ -157,9 +156,10 @@ async function onSubmit() {
   bottom: 0;
   width: 35%;
   background: #243746;
-  z-index: 1; /* under auth-card */
+  z-index: 1;
 }
 
+/* Karta formulára */
 .auth-card {
   width: 820px;
   max-width: 92%;
@@ -172,6 +172,7 @@ async function onSubmit() {
   font-size: 1rem; /* sets base for child scaling if needed */
 }
 
+/* Nadpis */
 .hero {
   font-family: 'Alfa Slab One', serif;
   font-size: min(9vw, 72px); /* max 72px, scales down smoothly */
@@ -181,15 +182,17 @@ async function onSubmit() {
   margin: 6px 0;
 }
 
+/* Podnadpis */
 .lead {
   font-family: 'Montserrat', sans-serif;
   font-weight: 700;
   text-align: center;
 }
 
+/* Štýl vstupov */
 .pill-input {
   width: 54ch;
-  max-width: 80%; /* prevent overflow on small screens */
+  max-width: 80%; 
   border-radius: 22px;
   background: #e0e0e0;
   box-shadow: -6px 6px 0 rgba(0,0,0,0.12);
@@ -208,24 +211,26 @@ async function onSubmit() {
 /* REGISTRATION FORM */
 .form-grid {
   display: flex;
-  flex-wrap: wrap; /* wraps if not enough space */
+  flex-wrap: wrap;
   justify-content: center;
   gap: 12px 16px;
   margin: 0 auto;
 }
 
 .form-grid > .pill-input {
-  max-width: 48%; /* two columns */
-  box-sizing: border-box; /* includes padding/border in width */
+  max-width: 48%; 
+  box-sizing: border-box; 
 }
 
+/* Riadok tlačidiel */
 .actions-row {
   display: flex;
-  justify-content: flex-end; /* align button to right */
+  justify-content: flex-end;
   width: 98%;
   margin-top: 6px;
 }
 
+/* Tlačidlá login/register */
 .action-btn {
   background: #1f364a;
   color: #fff;
@@ -234,6 +239,7 @@ async function onSubmit() {
   box-shadow: -6px 6px 0 rgba(0,0,0,0.12);
 }
 
+/* Link pre prepínanie medzi login a register */
 .switch-link {
   margin-top: 18px;
   text-align: right;
@@ -246,7 +252,7 @@ async function onSubmit() {
   text-decoration: underline;
 }
 
-/* RESPONSIVE */
+/* RESPONZÍVNE ÚPRAVY */
 @media (max-width: 700px) {
   .form-grid > .pill-input { max-width: 90%; }
   .actions-row { justify-content: center; }

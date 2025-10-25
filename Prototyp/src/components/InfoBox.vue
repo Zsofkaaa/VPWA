@@ -1,12 +1,12 @@
 <template>
-  <!-- Info icon button -->
+  <!-- Tlačidlo s ikonou informácií -->
   <q-btn flat round dense icon="info" class="text-white info-btn">
-    <!-- Tooltip when hovering -->
+    <!-- Tooltip po prejdení kurzorom -->
     <q-tooltip anchor="top middle" self="bottom middle">
       Commands
     </q-tooltip>
 
-    <!-- Popover that stays open when clicked -->
+    <!-- Menu s príkazmi (otvorí sa po kliknutí, nezatvára sa automaticky) -->
     <q-menu :auto-close="false" anchor="bottom middle" self="top middle" transition-show="jump-down" transition-hide="jump-up">
       <div class="info-box-container" @click.stop>
         <div class="info-line">/join channelName [private]</div>
@@ -23,6 +23,7 @@
 </template>
 
 <style scoped>
+/* Štýl tlačidla s ikonou */
 .q-btn {
   background-color: transparent; 
   width: 36px;
@@ -33,17 +34,20 @@
   justify-content: center;
 }
 
+/* Štýl menu (transparentné pozadie) */
 .q-menu {
   background: transparent;
   min-width: 220px;
 }
 
+/* Kontajner s príkazmi */
 .info-box-container {
   background: #355070;
   color: white;
   padding: 10px;
 }
 
+/* Každý riadok s príkazom */
 .info-line {
   padding: 4px 0;
   font-size: 0.95rem;
