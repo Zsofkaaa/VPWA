@@ -1,34 +1,3 @@
-<!-- 
-  ============================================================================
-  COMPONENT: InfoBox.vue
-  ============================================================================
-  
-  PURPOSE:
-  A small "info" button that shows a list of available chat commands when clicked.
-  
-  WHAT IT DISPLAYS:
-  - An info icon button in the header
-  - When clicked: A dropdown showing 8 different chat commands
-  
-  HOW IT WORKS:
-  - User clicks the info button
-  - A popup appears below the button showing all commands
-  - The popup stays open until user clicks outside it
-  - The popup won't close if you click inside it (intentional)
-  
-  AVAILABLE COMMANDS SHOWN:
-  1. /join channelName [private] - Create a private channel
-  2. /join channelName - Join a public channel when channel exists, create if not
-  3. /invite nickName - Invite someone to a channel
-  4. /revoke nickName - Remove someone's access from private channel
-  5. /kick nickName - Remove someone from a channel
-  6. /quit - Close a channel
-  7. /cancel - Leave channel, or if admin terminate channel
-  8. /list - List all members
-  
-  ============================================================================
--->
-
 <template>
   <!-- Info icon button -->
   <q-btn flat round dense icon="info" class="text-white info-btn">
@@ -70,7 +39,7 @@
 }
 
 .info-box-container {
-  background: rgb(109, 89, 122);
+  background: #355070;
   color: white;
   padding: 10px;
 }

@@ -202,7 +202,7 @@ function saveSettings() {
 
 <style scoped>
 .q-card {
-  background-color: rgb(109, 89, 122); 
+  background-color: #355070; 
   color: white; 
   display: flex; 
   flex-direction: column; 
@@ -210,7 +210,7 @@ function saveSettings() {
 }
 
 .sticky-footer {
-  background-color: rgb(76, 59, 88);
+  background-color: #283C55;
 }
 
 .cancel-btn {
@@ -223,17 +223,17 @@ function saveSettings() {
 }
 
 .save-btn {
-  background-color: rgb(145, 95, 120);
+  background-color: #355070;
   color: white;
   border-radius: 6px;
   font-weight: bold;
 }
 
 .save-btn:hover {
-  background-color: rgba(145, 95, 120, 0.6);
+  background-color: rgba(255, 255, 255, 0.2);
 }
 
 .save-btn:disabled {
-  background-color: rgb(162, 122, 142);
+  background-color: rgb(78, 143, 235);
 }
 </style>

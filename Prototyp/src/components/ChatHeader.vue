@@ -1,23 +1,3 @@
-<!-- 
-  ============================================================================
-  COMPONENT: ChatHeader.vue
-  ============================================================================
-  
-  PURPOSE:
-  This is the top navigation bar of the chat application.
-  
-  WHAT IT DISPLAYS:
-  - Desktop: Logo on left, channel name in center, buttons (members, status, settings, info) on right
-  - Mobile: Hamburger menu + channel name on left, buttons (members, status, settings, info) on right
-  
-  HOW IT WORKS:
-  - Receives data from parent: which channel is active, if drawer is open
-  - Sends signals to parent: when user clicks hamburger menu
-  - Uses Quasar's responsive system to change layout based on screen size
-  
-  ============================================================================
--->
-  
 <template>
   <!--
   q-px-lg = large horizontal padding (left & right)
