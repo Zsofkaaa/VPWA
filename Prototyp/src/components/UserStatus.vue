@@ -1,15 +1,12 @@
 <template>
   <div class="user-status">
     <!-- Tlačidlo zobrazujúce aktuálny status používateľa -->
-    <q-btn
-      flat
-      round
-      dense
-      icon="person"
-      :color="statusColor"
-      @click="cycleStatus"
-      :title="`Status: ${currentStatus.toUpperCase()}`"
-    />
+    <q-btn flat round dense icon="person" :color="statusColor" @click="cycleStatus">
+      <!-- Tooltip (zobrazí sa pri prechode myšou) -->
+      <q-tooltip v-if="$q.screen.gt.sm" anchor="top middle" self="bottom middle">
+        {{currentStatus.toUpperCase()}}
+      </q-tooltip>
+    </q-btn>  
   </div>
 </template>
 

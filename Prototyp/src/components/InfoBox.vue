@@ -2,7 +2,7 @@
   <!-- Tlačidlo s ikonou informácií -->
   <q-btn flat round dense icon="info" class="text-white info-btn">
     <!-- Tooltip po prejdení kurzorom -->
-    <q-tooltip anchor="top middle" self="bottom middle">
+    <q-tooltip v-if="$q.screen.gt.sm" anchor="top middle" self="bottom middle">
       Commands
     </q-tooltip>
 

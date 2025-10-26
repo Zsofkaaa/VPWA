@@ -1,15 +1,12 @@
 <template>
   <div>
     <!-- Tlačidlo na zobrazenie zoznamu členov -->
-    <q-btn
-      dense
-      flat
-      :round="showMembers"
-      icon="people"
-      class="text-white"
-      @click="showMembers = true"
-      title="Show Members"
-    />
+    <q-btn dense flat round icon="people" class="text-white" @click="showMembers = true">
+      <!-- Tooltip (zobrazí sa pri prechode myšou) -->
+      <q-tooltip v-if="$q.screen.gt.sm" anchor="top middle" self="bottom middle">
+        List Members
+      </q-tooltip>
+    </q-btn>
 
     <!-- Dialógové okno so zoznamom členov -->
     <q-dialog v-model="showMembers" persistent>

@@ -2,7 +2,7 @@
   <!-- Tlačidlo s ikonou úprav profilu -->
   <q-btn flat dense round icon="manage_accounts" @click="showDialog = true">
     <!-- Tooltip (zobrazí sa pri prechode myšou) -->
-    <q-tooltip anchor="top middle" self="bottom middle">
+    <q-tooltip v-if="$q.screen.gt.sm" anchor="top middle" self="bottom middle">
       Edit profile
     </q-tooltip>
   </q-btn>

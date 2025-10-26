@@ -13,16 +13,12 @@
     <!-- CHANNELS & Add Channel -->
     <div class="sidebar-title-wrapper q-pa-md row items-center justify-between">
       <div class="text-bold sidebar-title">CHANNELS</div>
-      <q-btn
-      flat
-      dense
-      round
-      icon="add"
-      color="white"
-      @click="showAddChannelDialog = true"
-      class="add-channel-btn"
-      size="sm"
-      />
+      <q-btn flat dense round icon="add" color="white" @click="showAddChannelDialog = true" class="add-channel-btn" size="sm">
+        <!-- Tooltip (zobrazí sa pri prechode myšou) -->
+        <q-tooltip v-if="$q.screen.gt.sm" anchor="top middle" self="bottom middle">
+          Add Channel
+        </q-tooltip>
+      </q-btn>
     </div>
 
     <!-- SCROLLOVATEĽNÁ OBLASŤ SIDEBARU -->
