@@ -53,7 +53,7 @@
 
 <script lang="ts" setup>
 import { ref, computed, watch, provide, nextTick } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { useQuasar } from 'quasar'
 import NotificationPopUp from 'components/NotificationPopUp.vue'
 import Header from 'components/ChatHeader.vue'
@@ -83,6 +83,7 @@ interface Message {
 
 /* ZÁKLADNÉ INŠTANCIE */
 const router = useRouter()
+const route = useRoute()
 const $q = useQuasar()
 
 /* REAKTÍVNE DÁTA PRE SPRÁVY */
@@ -295,6 +296,43 @@ watch(currentChannelName, async () => {
     chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight
   }
 })
+
+/* WATCH PRE SIDEBAR */
+watch(
+  () => $q.screen.name,
+  (newSize, oldSize) => {
+    // Ak zmením malý view na velký view
+    if ((oldSize === 'xs' || oldSize === 'sm') && (newSize === 'md' || newSize === 'lg' || newSize === 'xl')) {
+      // Zatváram sidebar manuálne
+      drawerOpen.value = false
+
+      // Po krátkom čakaní ho opäť otvoríme, aby Quasar mohol znovu zostaviť layout
+      setTimeout(() => {
+        drawerOpen.value = true
+      }, 150)
+    }
+  }
+)
+
+/* SLEDOVANIE ROUTE: KEĎ SA MENÍ KANÁL ALEBO VSTÚPIME PRIAMO CEZ ROUTE */
+watch(
+  () => route.path,
+  (newPath) => {
+    // Nájdi channel podľa path
+    const allChannels = [...privateChannels.value, ...publicChannels.value]
+    const found = allChannels.find(ch => ch.path === newPath)
+
+    if (found) {
+      currentChannelName.value = found.name
+      messages.value = createInitialMessages()
+    } else {
+      // Ak route neexistuje v našom zozname
+      currentChannelName.value = ''
+      messages.value = []
+    }
+  },
+  { immediate: true }   //spustí sa aj pri prvom načítaní
+)
 
 /* SPRÁVY DOSTUPNÉ PRE VŠETKY DIEŤA KOMPONENTY */
 provide('messages', messages)

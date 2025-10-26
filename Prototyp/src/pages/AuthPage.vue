@@ -11,7 +11,7 @@
 
       <!-- Formulár, zabraňuje default submit -->
       <q-form @submit.prevent="onSubmit">
-        
+
         <!-- PRIHLÁSENIE -->
         <div v-if="mode === 'login'" class="form-column">
           <q-input dense filled v-model="login.email" placeholder="Full Username or Email" class="pill-input" />
@@ -110,7 +110,7 @@ async function onLogin() {
   if (!validateLogin()) return;
   console.log('LOGIN', login.value);
   alert('Pretend we logged in');
-  await router.push('/chat/1');
+  await router.push('/chat/private1');
 }
 
 // FUNKCIA REGISTRÁCIA
@@ -118,7 +118,7 @@ function onRegister() {
   if (!validateRegister()) return;
   console.log('REGISTER', reg.value);
   alert('Pretend we registered');
- 
+
   mode.value = 'login';
   alert('Registration successful! Please log in.');
 }
@@ -138,7 +138,7 @@ async function onSubmit() {
 
 .auth-wrapper {
   /* Hlavný wrapper stránky autentifikácie */
-  position: relative; 
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -192,7 +192,7 @@ async function onSubmit() {
 /* Štýl vstupov */
 .pill-input {
   width: 54ch;
-  max-width: 80%; 
+  max-width: 80%;
   border-radius: 22px;
   background: #e0e0e0;
   box-shadow: -6px 6px 0 rgba(0,0,0,0.12);
@@ -218,8 +218,8 @@ async function onSubmit() {
 }
 
 .form-grid > .pill-input {
-  max-width: 48%; 
-  box-sizing: border-box; 
+  max-width: 48%;
+  box-sizing: border-box;
 }
 
 /* Riadok tlačidiel */
