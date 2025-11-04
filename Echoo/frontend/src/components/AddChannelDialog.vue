@@ -29,7 +29,7 @@
             bg-color="rgba(255, 255, 255, 0.1)"
             color="white"
             dark
-            :rules="[val => !!val || 'Channel name is required']"
+            :rules="[(val: string) => !!val || 'Channel name is required']"
           >
             <template v-slot:prepend>
               <q-icon name="tag" color="white" />
@@ -117,6 +117,17 @@
 
 <script lang="ts" setup>
 import { ref, watch } from 'vue'
+
+/*
+import axios from 'axios'
+
+// Opció: külön instance az API-hoz, baseURL beállítva
+const api = axios.create({
+  baseURL: 'http://127.0.0.1:3333', // backend URL
+  timeout: 10000,
+  withCredentials: true // ha auth cookie kell
+})
+*/
 
 // Stav formulára
 const channelName = ref('')
