@@ -13,7 +13,8 @@
     "format": "prettier --write .",
     "typecheck": "tsc --noEmit",
     "create:db": "ts-node scripts/create_db.ts",
-    "reset:db": "ts-node scripts/reset_db.ts"
+    "reset:db": "ts-node scripts/reset_db.ts",
+    "drop:db": "ts-node scripts/drop_db.ts"
   },
   "imports": {
     "#controllers/*": "./app/controllers/*.js",

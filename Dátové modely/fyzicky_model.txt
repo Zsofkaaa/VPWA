@@ -2,16 +2,21 @@ Table Commands {
   id integer [primary key]
   name varchar
   description varchar
+  created_at timestamp
+  updated_at timestamp
 }
 
 Table User_Commands {
-  user_id integer [primary key]
-  command_id integer [primary key]
-  message_id integer [primary key]
+  id integer [primary key]
+  user_id integer
+  command_id integer
+  message_id integer
   object varchar
+  created_at timestamp
+  updated_at timestamp
 }
 
-Table User {
+Table Users {
   id integer [primary key]
   first_name varchar
   last_name varchar
@@ -19,14 +24,19 @@ Table User {
   email varchar
   password varchar
   status varchar
+  created_at timestamp
+  updated_at timestamp
 }
 
 Table User_Channel {
-  user_id integer [primary key]
-  channel_id integer [primary key]
+  id int [primary key]
+  user_id integer
+  channel_id integer
   role varchar
   notification_settings varchar
   kick_count integer
+  created_at timestamp
+  updated_at timestamp
 }
 
 Table Channel {
@@ -35,6 +45,8 @@ Table Channel {
   type varchar
   created_by integer [not null]
   last_active_at timestamp
+  created_at timestamp
+  updated_at timestamp
 }
 
 Table Channel_History {
@@ -42,6 +54,8 @@ Table Channel_History {
   channel_id integer
   last_fetched_message_id integer
   has_more varchar
+  created_at timestamp
+  updated_at timestamp
 }
 
 Table Message {
@@ -50,6 +64,8 @@ Table Message {
   sender_id integer [not null]
   content varchar
   sent_at timestamp
+  created_at timestamp
+  updated_at timestamp
 }
 
 
