@@ -50,7 +50,7 @@ Table Channel {
 }
 
 Table Channel_History {
-  id [primary key]
+  id integer [primary key]
   channel_id integer
   last_fetched_message_id integer
   has_more varchar
@@ -71,12 +71,12 @@ Table Message {
 
 
 Ref: User_Commands.command_id > Commands.id
-Ref: User_Commands.user_id > User.id
+Ref: User_Commands.user_id > Users.id
 Ref: User_Commands.message_id - Message.id
-Ref: Message.sender_id > User.id
+Ref: Message.sender_id > Users.id
 Ref: Message.channel_id > Channel.id
 Ref: Channel_History.last_fetched_message_id - Message.id
 Ref: Channel_History.channel_id - Channel.id
-Ref: Channel.created_by > User.id
-Ref: User_Channel.user_id > User.id
+Ref: Channel.created_by > Users.id
+Ref: User_Channel.user_id > Users.id
 Ref: User_Channel.channel_id > Channel.id
