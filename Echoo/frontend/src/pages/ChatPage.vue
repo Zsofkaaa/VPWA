@@ -14,7 +14,8 @@
 
 <script lang="ts" setup>
 import ChatMessages from 'components/ChatMessages.vue'
-import { inject, type Ref, shallowRef } from 'vue'
+import { inject, type Ref, shallowRef} from 'vue'
+
 
 /* ROZHRANIE PRE SPRÁVY */
 interface Message {
