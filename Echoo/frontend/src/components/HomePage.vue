@@ -5,10 +5,10 @@
       <div class="logo-section">
         <img
             v-if="!$q.screen.lt.md"
-            src="/pictures/logo.jpg"
+            src="/pictures/logo_transparent.png"
             alt="Logo"
             class="rounded-borders"
-            style="height: 120px;"
+            style="height: 150px;"
         />
       </div>
 
@@ -16,7 +16,7 @@
       <div class="text-section">
         <h1 class="welcome-title">Welcome to Echoo</h1>
         <p class="welcome-subtitle">
-          Select a channel from the sidebar to start chatting
+          <strong>Select</strong> a channel from the sidebar to start chatting or <strong>Create</strong> your own channel!
         </p>
       </div>
     </div>
@@ -29,12 +29,10 @@
 <style scoped>
 
 .homepage-container {
-  height: 100%;
+  height: 80vh;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 2rem;
-  background: linear-gradient(135deg, #1e1e1e 0%, #2d2d2d 100%);
 }
 
 .welcome-content {
