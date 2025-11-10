@@ -52,6 +52,9 @@
 
 
 <script lang="ts" setup>
+
+// KELL A SCROLLING ÉS A NOTIFICATION LOGIKA, MEG A PING LOGIKA IS
+
 import { ref, computed, watch, provide, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useQuasar } from 'quasar'
@@ -96,17 +99,6 @@ const isTyping = ref(false)
 const showNotification = ref(false)
 const currentChannelName = ref('')
 
-/* ZOZNAMY KANÁLOV */
-const privateChannels = ref([
-  { name: '#private-1 (Admin)', path: '/chat/private1' },
-  { name: '#private-2', path: '/chat/private2' }
-])
-const publicChannels = ref([
-  { name: '#public-1 (Admin)', path: '/chat/public1' },
-  { name: '#public-2', path: '/chat/public2' },
-  { name: '#public-3', path: '/chat/public3' }
-])
-
 /* ŠTÝL PRE FOOTER – POZÍCIA DOLNÉHO PANELU */
 const footerStyle = computed(() => ({
   left: $q.screen.lt.md ? '0' : '300px',
@@ -127,72 +119,13 @@ const typingStatusStyle = computed(() => ({
   zIndex: 2150
 }))
 
-/* FUNKCIA NA VYTVORENIE ZAČIATOČNÝCH SPRÁV (10) */
-function createInitialMessages(): Message[] {
-  return [
-    {
-      id: Date.now() + 1,
-      user: 'User 1',
-      text: `INITIAL MESSAGE`,
-    },
-    {
-      id: Date.now() + 2,
-      user: 'User 2',
-      text: `INITIAL MESSAGE`,
-    },
-    {
-      id: Date.now() + 3,
-      user: 'User 3',
-      text: `@username AAAAAAAAAAAAAAA`,
-      isPing: true,
-    },
-    {
-      id: Date.now() + 4,
-      user: 'User 4',
-      text: `INITIAL MESSAGE`,
-    },
-    {
-      id: Date.now() + 5,
-      user: 'User 5',
-      text: `@username BBBBBBBBBBBBBB`,
-      isPing: true,
-    },
-    {
-      id: Date.now() + 6,
-      user: 'User 6',
-      text: `INITIAL MESSAGE`,
-    },
-    {
-      id: Date.now() + 7,
-      user: 'User 6',
-      text: `INITIAL MESSAGE`,
-    },
-    {
-      id: Date.now() + 8,
-      user: 'User 6',
-      text: `INITIAL MESSAGE`,
-    },
-    {
-      id: Date.now() + 9,
-      user: 'User 6',
-      text: `INITIAL MESSAGE`,
-    },
-    {
-      id: Date.now() + 10,
-      user: 'User 6',
-      text: `INITIAL MESSAGE`,
-    },
-  ]
-}
-
 /* FUNKCIA NA ZMENU KANÁLU */
 function goToChannel(ch: { name: string; path: string }) {
   currentChannelName.value = ch.name
-  messages.value = createInitialMessages()
   void router.push(ch.path)
 }
 
-/* FUNKCIA NA ODHLÁSENIE UŽÍVATEĽA */
+/* FUNKCIA NA ODHLÁSENIE POUŽÍVATEĽA */
 function handleLogout() {
   localStorage.removeItem('userToken')
   void router.push('/')
@@ -260,17 +193,6 @@ async function onEnterPress(e: KeyboardEvent) {
 
     // Reset input
     newMessage.value = ''
-
-    // Notification
-    showNotification.value = true
-    setTimeout(() => { showNotification.value = false }, 2500)
-
-    // Scrolling
-    await nextTick()
-    const chatMessagesEl = document.querySelector('.chat-messages')
-    if (chatMessagesEl) {
-      chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight
-    }
   }
 }
 
@@ -324,7 +246,6 @@ watch(
 
     if (found) {
       currentChannelName.value = found.name
-      messages.value = createInitialMessages()
     } else {
       // Ak route neexistuje v našom zozname
       currentChannelName.value = ''

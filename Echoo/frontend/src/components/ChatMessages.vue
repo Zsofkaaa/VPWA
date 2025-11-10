@@ -40,7 +40,10 @@
 
 
 <script lang="ts" setup>
-import { ref, watch, nextTick, onMounted } from 'vue'
+
+// KELL A SCROLL TO BOTTOM
+
+import { ref, watch, nextTick } from 'vue'
 
 /* ROZHRANIE PRE SPRÁVU */
 interface Message {
@@ -58,16 +61,6 @@ const localMessages = ref<Message[]>([])
 
 /* REFERENCIA NA KONTAJNER, KDE SA ZOBRAZUJÚ SPRÁVY */
 const messagesContainer = ref<HTMLElement | null>(null)
-
-/* FUNKCIA NA SCROLLOVANIE NA SPODOK KONVERZÁCIE */
-function scrollToBottom() {
-  const el = messagesContainer.value
-  if (el) {
-    setTimeout(() => {
-      el.scrollTop = el.scrollHeight
-    }, 0)
-  }
-}
 
 /* FUNKCIA NA FORMÁTOVANIE SPRÁVY (PING) */
 function formatMessage(text: string, isPing?: boolean): string {
@@ -103,24 +96,9 @@ watch(
   () => props.messages,
   (newVal) => {
     localMessages.value = [...newVal]
-    scrollToBottom()
   },
   { immediate: true, deep: true }
 )
-
-/* SLEDUJE ZMENY V DĹŽKE LOKÁLNYCH SPRÁV A SCROLLUJE NA SPODOK */
-watch(
-  () => localMessages.value.length,
-  async () => {
-    await nextTick()
-    scrollToBottom()
-  }
-)
-
-/* PO NAČÍTANÍ KOMPONENTU SA AUTOMATICKY SCROLUJE NA SPODOK */
-onMounted(() => {
-  scrollToBottom()
-})
 
 </script>
 

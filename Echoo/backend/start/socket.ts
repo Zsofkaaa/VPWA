@@ -1,11 +1,10 @@
 import { Server } from 'socket.io'
 import http from 'node:http'
 
-// Külön HTTP server a Socket.IO-hoz
 const httpServer = http.createServer()
 const io = new Server(httpServer, {
   cors: {
-    origin: '*', // vagy pl. 'http://localhost:8080' ha szigorítani akarod
+    origin: '*', // alebo frontend url
   },
 })
 
