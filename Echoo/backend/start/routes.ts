@@ -8,9 +8,21 @@
 */
 
 import router from '@adonisjs/core/services/router'
+import Channel from '#models/channel'
 
+// Alap route
 router.get('/', async () => {
   return {
     hello: 'world',
+  }
+})
+
+// API route a csatornák lekérésére
+router.get('/channels', async () => {
+  try {
+    const channels = await Channel.query().orderBy('id', 'asc')
+    return channels
+  } catch (error) {
+    return { error: 'Unable to fetch channels', details: error.message }
   }
 })

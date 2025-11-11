@@ -55,7 +55,7 @@
 
 // KELL A SCROLLING ÉS A NOTIFICATION LOGIKA, MEG A PING LOGIKA IS
 
-import { ref, computed, watch, provide, nextTick } from 'vue'
+import { ref, computed, watch, provide, nextTick, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useQuasar } from 'quasar'
 import NotificationPopUp from 'components/NotificationPopUp.vue'
@@ -63,6 +63,7 @@ import Header from 'components/ChatHeader.vue'
 import Sidebar from 'components/ChatSidebar.vue'
 import ChatFooter from 'components/ChatFooter.vue'
 import TypingStatus from 'components/TypingStatus.vue'
+import axios from 'axios'
 
 /* NASTAVENIE MENA KOMPONENTU */
 defineOptions({ name: 'ChatLayout' })
@@ -83,6 +84,17 @@ interface Message {
   text: string
   isPing?: boolean
 }
+
+interface Channel {
+  id: number
+  name: string
+  type: 'private' | 'public'
+  createdBy: number
+  lastActiveAt: string
+}
+
+const privateChannels = ref<{ name: string; path: string }[]>([])
+const publicChannels = ref<{ name: string; path: string }[]>([])
 
 /* ZÁKLADNÉ INŠTANCIE */
 const router = useRouter()
@@ -179,7 +191,7 @@ function handleCreateChannel(data: ChannelData) {
 }
 
 /* FUNKCIA NA ODOSLANIE SPRÁVY */
-async function onEnterPress(e: KeyboardEvent) {
+function onEnterPress(e: KeyboardEvent) {
   if (e.key === 'Enter' && newMessage.value.trim() !== '') {
     e.preventDefault()
 
@@ -254,6 +266,23 @@ watch(
   },
   { immediate: true }   //spustí sa aj pri prvom načítaní
 )
+
+onMounted(async () => {
+  try {
+    const response = await axios.get<Channel[]>('http://localhost:3333/channels') // itt adunk típus annotációt
+    const channels = response.data
+
+    privateChannels.value = channels
+      .filter((ch) => ch.type === 'private')
+      .map((ch) => ({ name: ch.name, path: `/chat/${ch.type}-${ch.name.replace(/\s+/g, '-')}` }))
+
+    publicChannels.value = channels
+      .filter((ch) => ch.type === 'public')
+      .map((ch) => ({ name: ch.name, path: `/chat/${ch.type}-${ch.name.replace(/\s+/g, '-')}` }))
+  } catch (err) {
+    console.error('Failed to load channels', err)
+  }
+})
 
 /* SPRÁVY DOSTUPNÉ PRE VŠETKY DIEŤA KOMPONENTY */
 provide('messages', messages)

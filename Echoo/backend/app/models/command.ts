@@ -1,6 +1,6 @@
 import { BaseModel, column, hasMany } from '@adonisjs/lucid/orm'
 import type { HasMany } from '@adonisjs/lucid/types/relations'
-import UserCommand from './user_command.js'
+import UserCommand from './user_message_command.js'
 import { DateTime } from 'luxon'
 
 export default class Command extends BaseModel {

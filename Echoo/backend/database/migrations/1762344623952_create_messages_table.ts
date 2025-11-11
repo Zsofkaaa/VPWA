@@ -6,7 +6,12 @@ export default class extends BaseSchema {
   async up() {
     this.schema.createTable(this.tableName, (table) => {
       table.increments('id')
-      table.integer('channel_id').unsigned().references('id').inTable('channels').onDelete('CASCADE')
+      table
+        .integer('channel_id')
+        .unsigned()
+        .references('id')
+        .inTable('channels')
+        .onDelete('CASCADE')
       table.integer('sender_id').unsigned().references('id').inTable('users').onDelete('CASCADE')
       table.text('content')
       table.timestamp('sent_at', { useTz: true }).defaultTo(this.now())

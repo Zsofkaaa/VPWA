@@ -2,8 +2,7 @@ import { BaseModel, column, hasMany, manyToMany } from '@adonisjs/lucid/orm'
 import type { HasMany, ManyToMany } from '@adonisjs/lucid/types/relations'
 import Message from './message.js'
 import Channel from './channel.js'
-//import UserChannel from './user_channel.js'
-import UserCommand from './user_command.js'
+import UserCommand from './user_message_command.js'
 import { DateTime } from 'luxon'
 
 export default class User extends BaseModel {

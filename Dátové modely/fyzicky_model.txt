@@ -6,16 +6,6 @@ Table Commands {
   updated_at timestamp
 }
 
-Table User_Commands {
-  id integer [primary key]
-  user_id integer
-  command_id integer
-  message_id integer
-  object varchar
-  created_at timestamp
-  updated_at timestamp
-}
-
 Table Users {
   id integer [primary key]
   first_name varchar
@@ -63,16 +53,38 @@ Table Message {
   channel_id integer [not null]
   sender_id integer [not null]
   content varchar
+  has_ping bool
+  has_command bool
   sent_at timestamp
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table Message_Mentions {
+  id integer [primary key]
+  mentioned_user_id integer [not null]
+  message_id integer [not null]
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table User_Message_Commands {
+  id integer [primary key]
+  message_id integer [not null]
+  command_id integer [not null]
+  user_id integer [not null]
+  args varchar
   created_at timestamp
   updated_at timestamp
 }
 
 
 
-Ref: User_Commands.command_id > Commands.id
-Ref: User_Commands.user_id > Users.id
-Ref: User_Commands.message_id - Message.id
+Ref: Users.id < User_Message_Commands.user_id
+Ref: Commands.id < User_Message_Commands.command_id
+Ref: Message.id - User_Message_Commands.message_id
+Ref: Message_Mentions.message_id > Message.id
+Ref: Message_Mentions.mentioned_user_id > Users.id
 Ref: Message.sender_id > Users.id
 Ref: Message.channel_id > Channel.id
 Ref: Channel_History.last_fetched_message_id - Message.id
@@ -80,3 +92,4 @@ Ref: Channel_History.channel_id - Channel.id
 Ref: Channel.created_by > Users.id
 Ref: User_Channel.user_id > Users.id
 Ref: User_Channel.channel_id > Channel.id
+

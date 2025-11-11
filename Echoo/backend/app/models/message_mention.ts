@@ -1,25 +1,18 @@
 import { BaseModel, column, belongsTo } from '@adonisjs/lucid/orm'
 import type { BelongsTo } from '@adonisjs/lucid/types/relations'
-import User from './user.js'
-import Command from './command.js'
 import Message from './message.js'
+import User from './user.js'
 import { DateTime } from 'luxon'
 
-export default class UserCommand extends BaseModel {
+export default class MessageMention extends BaseModel {
   @column({ isPrimary: true })
   declare id: number
-
-  @column()
-  declare userId: number
-
-  @column()
-  declare commandId: number
 
   @column()
   declare messageId: number
 
   @column()
-  declare object: string
+  declare mentionedUserId: number
 
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime
@@ -27,12 +20,10 @@ export default class UserCommand extends BaseModel {
   @column.dateTime({ autoCreate: true, autoUpdate: true })
   declare updatedAt: DateTime
 
-  @belongsTo(() => User)
-  declare user: BelongsTo<typeof User>
-
-  @belongsTo(() => Command)
-  declare command: BelongsTo<typeof Command>
-
+  // 👇 Kapcsolatok
   @belongsTo(() => Message)
   declare message: BelongsTo<typeof Message>
+
+  @belongsTo(() => User, { foreignKey: 'mentionedUserId' })
+  declare mentionedUser: BelongsTo<typeof User>
 }

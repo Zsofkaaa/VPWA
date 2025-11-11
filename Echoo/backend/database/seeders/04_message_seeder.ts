@@ -65,7 +65,8 @@ export default class MessageSeeder extends BaseSeeder {
       {
         channelId: 1,
         senderId: 2,
-        content: 'Definitely! The ORM is really nice too. Much better than raw SQL queries everywhere',
+        content:
+          'Definitely! The ORM is really nice too. Much better than raw SQL queries everywhere',
         sentAt: baseTime.plus({ minutes: 11 }),
       },
       {
@@ -89,7 +90,8 @@ export default class MessageSeeder extends BaseSeeder {
       {
         channelId: 1,
         senderId: 2,
-        content: 'Smart choice. Security is not something to DIY unless you really know what youre doing',
+        content:
+          'Smart choice. Security is not something to DIY unless you really know what youre doing',
         sentAt: baseTime.plus({ minutes: 16 }),
       },
       {
@@ -101,7 +103,8 @@ export default class MessageSeeder extends BaseSeeder {
       {
         channelId: 1,
         senderId: 2,
-        content: 'Building a dashboard for data visualization. Lots of charts and real-time updates',
+        content:
+          'Building a dashboard for data visualization. Lots of charts and real-time updates',
         sentAt: baseTime.plus({ minutes: 19 }),
       },
       {
@@ -143,13 +146,15 @@ export default class MessageSeeder extends BaseSeeder {
       {
         channelId: 1,
         senderId: 1,
-        content: 'That should be fine. If you scale up you might want to look into Redis for pub/sub',
+        content:
+          'That should be fine. If you scale up you might want to look into Redis for pub/sub',
         sentAt: baseTime.plus({ minutes: 28 }),
       },
       {
         channelId: 1,
         senderId: 2,
-        content: 'Yeah Ive been reading about that. Redis Pub/Sub with Socket.io seems like the standard approach',
+        content:
+          'Yeah Ive been reading about that. Redis Pub/Sub with Socket.io seems like the standard approach',
         sentAt: baseTime.plus({ minutes: 30 }),
       },
       {
@@ -217,7 +222,8 @@ export default class MessageSeeder extends BaseSeeder {
       {
         channelId: 2,
         senderId: 1,
-        content: 'The session middleware was configured with a 15 minute timeout, but the frontend was polling every 20 minutes',
+        content:
+          'The session middleware was configured with a 15 minute timeout, but the frontend was polling every 20 minutes',
         sentAt: baseTime.plus({ minutes: 49 }),
       },
       {

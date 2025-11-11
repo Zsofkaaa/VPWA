@@ -3,10 +3,10 @@
   <!-- HLAVNÁ SEKCIA PRE ZOBRAZENIE SPRÁV -->
   <div ref="messagesContainer" class="chat-messages">
 
-    <!-- INFINITE SCROLL -->
+    <!-- INFINITE SCROLL
+         @load="loadMore" -->
     <q-infinite-scroll
     :offset="100"
-    @load="loadMore"
     reverse
     spinner-color="white"
     >
@@ -43,7 +43,8 @@
 
 // KELL A SCROLL TO BOTTOM
 
-import { ref, watch, nextTick } from 'vue'
+import { ref, watch } from 'vue'
+//import { nextTick } from 'vue'
 
 /* ROZHRANIE PRE SPRÁVU */
 interface Message {
@@ -69,6 +70,7 @@ function formatMessage(text: string, isPing?: boolean): string {
 }
 
 /* FUNKCIA NAČÍTAVAJÚCA STARŠIE SPRÁVY PRI SCROLLOVANÍ HORE */
+/*
 function loadMore(index: number, done: (stop?: boolean) => void) {
   const el = messagesContainer.value
   const prevScrollHeight = el ? el.scrollHeight : 0
@@ -90,6 +92,7 @@ function loadMore(index: number, done: (stop?: boolean) => void) {
     })
   }, 450)
 }
+*/
 
 /* SLEDUJE ZMENY V PROPS.MESSAGES A AKTUALIZUJE LOKÁLNE SPRÁVY */
 watch(

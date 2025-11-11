@@ -1,29 +1,29 @@
+import { createServer } from 'node:http'
 import { Server } from 'socket.io'
-import http from 'node:http'
 
-const httpServer = http.createServer()
-const io = new Server(httpServer, {
-  cors: {
-    origin: '*', // alebo frontend url
-  },
-})
+// Ha az Adonis CLI (ace) fut, akkor ne indítsd el a socket szervert
+const isAceCommand = process.argv.some((arg) => arg.includes('ace'))
 
-io.on('connection', (socket) => {
-  console.log('✅ User connected:', socket.id)
-
-  socket.on('message', (data: string) => {
-    console.log('💬 Message:', data)
-    socket.broadcast.emit('message', data)
+if (!isAceCommand) {
+  const httpServer = createServer()
+  const io = new Server(httpServer, {
+    cors: { origin: '*' },
   })
 
-  socket.on('disconnect', () => {
-    console.log('❌ User disconnected:', socket.id)
+  io.on('connection', (socket) => {
+    console.log('✅ Socket connected:', socket.id)
+
+    socket.on('message', (data) => {
+      console.log('💬 Message received:', data)
+      socket.broadcast.emit('message', data)
+    })
+
+    socket.on('disconnect', () => {
+      console.log('❌ Socket disconnected:', socket.id)
+    })
   })
-})
 
-// Indítás
-httpServer.listen(3334, () => {
-  console.log('WebSocket server running on port 3334')
-})
-
-export default io
+  httpServer.listen(3334, () => {
+    console.log('🚀 WebSocket server running on port 3334')
+  })
+}
