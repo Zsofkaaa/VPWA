@@ -15,7 +15,7 @@ const routes: RouteRecordRaw[] = [
     path: '/chat',
     component: () => import('layouts/ChatLayout.vue'),
     children: [
-      { path: '', redirect: '/chat/private1' },
+      { path: '', component: () => import('pages/HomePage.vue') },
       { path: ':id', component: () => import('pages/ChatPage.vue') },
     ]
   },

@@ -112,7 +112,7 @@ async function onLogin() {
   if (!validateLogin()) return;
   console.log('LOGIN', login.value);
   alert('Pretend we logged in');
-  await router.push('/chat/private1');
+  await router.push('/chat');
 }
 
 // FUNKCIA REGISTRÁCIA
