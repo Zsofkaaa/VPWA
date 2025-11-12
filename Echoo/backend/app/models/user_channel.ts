@@ -5,33 +5,18 @@ import Channel from './channel.js'
 import { DateTime } from 'luxon'
 
 export default class UserChannel extends BaseModel {
-  @column({ isPrimary: true })
-  declare id: number
+  @column({ isPrimary: true }) declare id: number
+  @column() declare userId: number | null
+  @column() declare channelId: number | null
+  @column() declare role: string
+  @column() declare notificationSettings: string
+  @column() declare kickCount: number
+  @column.dateTime({ autoCreate: true }) declare createdAt: DateTime
+  @column.dateTime({ autoCreate: true, autoUpdate: true }) declare updatedAt: DateTime
 
-  @column()
-  declare userId: number
-
-  @column()
-  declare channelId: number
-
-  @column()
-  declare role: string
-
-  @column()
-  declare notificationSettings: string
-
-  @column()
-  declare kickCount: number
-
-  @column.dateTime({ autoCreate: true })
-  declare createdAt: DateTime
-
-  @column.dateTime({ autoCreate: true, autoUpdate: true })
-  declare updatedAt: DateTime
-
-  @belongsTo(() => User)
+  @belongsTo(() => User, { foreignKey: 'user_id' })
   declare user: BelongsTo<typeof User>
 
-  @belongsTo(() => Channel)
+  @belongsTo(() => Channel, { foreignKey: 'channel_id' })
   declare channel: BelongsTo<typeof Channel>
 }
