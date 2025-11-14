@@ -5,27 +5,16 @@ import Channel from './channel.js'
 import Message from './message.js'
 
 export default class ChannelHistory extends BaseModel {
-  @column({ isPrimary: true })
-  declare id: number
+  @column({ isPrimary: true }) declare id: number
+  @column() declare channelId: number
+  @column() declare lastFetchedMessageId: number
+  @column() declare hasMore: string
+  @column.dateTime({ autoCreate: true }) declare createdAt: DateTime
+  @column.dateTime({ autoCreate: true, autoUpdate: true }) declare updatedAt: DateTime
 
-  @column()
-  declare channelId: number
-
-  @column()
-  declare lastFetchedMessageId: number
-
-  @column()
-  declare hasMore: string
-
-  @column.dateTime({ autoCreate: true })
-  declare createdAt: DateTime
-
-  @column.dateTime({ autoCreate: true, autoUpdate: true })
-  declare updatedAt: DateTime
-
-  @belongsTo(() => Channel)
+  @belongsTo(() => Channel, { foreignKey: 'channel_id' })
   declare channel: BelongsTo<typeof Channel>
 
-  @belongsTo(() => Message, { foreignKey: 'last_fetched_message_id' })
-  declare lastMessage: BelongsTo<typeof Message>
+  @belongsTo(() => Message, { localKey: 'last_fetched_message_id', foreignKey: 'id' })
+  declare lastFetchedMessage: BelongsTo<typeof Message>
 }
