@@ -6,7 +6,10 @@ const routes: RouteRecordRaw[] = [
     path: '/',
     component: () => import('layouts/AuthLayout.vue'),
     children: [
-      { path: '', component: () => import('pages/AuthPage.vue') }
+      { path: '', 
+        component: () => import('pages/AuthPage.vue'),
+        meta: { requiresGuest: true } // Iba pre neprihlásených
+       }
     ]
   },
 

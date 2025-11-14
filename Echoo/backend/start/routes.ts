@@ -9,6 +9,7 @@
 
 import router from '@adonisjs/core/services/router'
 import Channel from '#models/channel'
+const AuthController = () => import('#controllers/auth_controller')
 
 // Alap route
 router.get('/', async () => {
@@ -26,3 +27,6 @@ router.get('/channels', async () => {
     return { error: 'Unable to fetch channels', details: error.message }
   }
 })
+
+router.post('/auth/login', [AuthController, 'login'])
+router.post('/auth/register', [AuthController, 'register'])

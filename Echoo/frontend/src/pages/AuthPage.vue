@@ -9,28 +9,33 @@
       <h1 class="hero">{{ mode === 'login' ? 'WELCOME!' : 'REGISTRATION' }}</h1>
       <p class="lead">{{ mode === 'login' ? 'LOGIN HERE' : 'Create your account' }}</p>
 
+      <!-- Chybová správa -->
+      <q-banner v-if="authError" class="bg-negative text-white q-mb-md" rounded>
+        {{ authError }}
+      </q-banner>
+
       <!-- Formulár, zabraňuje default submit -->
       <q-form @submit.prevent="onSubmit">
 
         <!-- PRIHLÁSENIE -->
         <div v-if="mode === 'login'" class="form-column">
-          <q-input dense filled v-model="login.email" placeholder="Full Username or Email" class="pill-input" />
-          <q-input dense filled v-model="login.password" placeholder="Password" type="password" class="pill-input" />
+          <q-input dense filled v-model="login.email" placeholder="Full Username or Email" class="pill-input" :disable="authLoading" />
+          <q-input dense filled v-model="login.password" placeholder="Password" type="password" class="pill-input" :disable="authLoading" />
           <div class="row actions-row">
-            <q-btn unelevated class="action-btn" label="Login" @click.prevent="onLogin" />
+            <q-btn unelevated class="action-btn" label="Login" @click.prevent="onLogin" :loading="authLoading" :disable="authLoading" />
           </div>
         </div>
 
         <!-- REGISTRÁCIA -->
         <div v-else class="form-grid">
-          <q-input dense filled v-model="reg.firstName" placeholder="First name" class="pill-input" />
-          <q-input dense filled v-model="reg.lastName" placeholder="Last name" class="pill-input" />
-          <q-input dense filled v-model="reg.nickname" placeholder="Nick name" class="pill-input" />
-          <q-input dense filled v-model="reg.email" placeholder="Email" class="pill-input" />
-          <q-input dense filled v-model="reg.password" placeholder="Password" type="password" class="pill-input" />
-          <q-input dense filled v-model="reg.password2" placeholder="Password again" type="password" class="pill-input" />
+          <q-input dense filled v-model="reg.firstName" placeholder="First name" class="pill-input" :disable="authLoading" />
+          <q-input dense filled v-model="reg.lastName" placeholder="Last name" class="pill-input" :disable="authLoading" />
+          <q-input dense filled v-model="reg.nickname" placeholder="Nick name" class="pill-input" :disable="authLoading" />
+          <q-input dense filled v-model="reg.email" placeholder="Email" class="pill-input" :disable="authLoading" />
+          <q-input dense filled v-model="reg.password" placeholder="Password" type="password" class="pill-input" :disable="authLoading" />
+          <q-input dense filled v-model="reg.password2" placeholder="Password again" type="password" class="pill-input" :disable="authLoading" />
           <div class="row actions-row">
-            <q-btn unelevated class="action-btn" label="Register now!" @click.prevent="onRegister" />
+            <q-btn unelevated class="action-btn" label="Register now!" @click.prevent="onRegister" :loading="authLoading" :disable="authLoading" />
           </div>
         </div>
       </q-form>
@@ -50,87 +55,131 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
-
+import { useAuth } from '../composables/useAuth';
+import { useQuasar } from 'quasar';
 const router = useRouter();
+const $q = useQuasar();
+const { login: authLogin, register: authRegister, loading: authLoading, error: authError } = useAuth();
 
-// Aktuálny režim: login alebo register
 const mode = ref<'login' | 'register'>('login');
 
-// Formulárové modely
 const login = ref({ email: '', password: '' });
-const reg = ref({ firstName: '', lastName: '', nickname: '', email: '', password: '', password2: '' });
+const reg = ref({ 
+  firstName: '', 
+  lastName: '', 
+  nickname: '', 
+  email: '', 
+  password: '', 
+  password2: '' 
+});
 
-// Prepínanie režimu login/register
 function toggleMode() {
   mode.value = mode.value === 'login' ? 'register' : 'login';
+  authError.value = null; // Vyčistenie chybovej správy
 }
 
-// VALIDÁCIA PRIHLÁSENIA
 function validateLogin() {
   if (!login.value.email || !login.value.password) {
-    alert('Please fill email and password');
+    $q.notify({
+      type: 'negative',
+      message: 'Please fill email and password'
+    });
     return false;
   }
   return true;
 }
 
-// VALIDÁCIA EMAILU
 function validateEmail(email: string): boolean {
-  // regex explanation:
-  // ^             -> start
-  // [^\s@]{3,}    -> at least 3 characters before @, no space or @
-  // @             -> must have @
-  // [^\s@]{3,}    -> at least 3 characters domain before dot
-  // \.            -> must have a dot
-  // [^\s@]{2,}    -> at least 2 characters TLD
-  // $             -> end
   const emailRegex = /^[^\s@]{3,}@[^\s@]{3,}\.[^\s@]{2,}$/;
   return emailRegex.test(email);
 }
 
-// VALIDÁCIA REGISTRÁCIE
 function validateRegister() {
-  if (!reg.value.firstName || !reg.value.lastName || !reg.value.nickname || !reg.value.email || !reg.value.password) {
-    alert('Please fill required fields'); // alert if required fields are missing
+  if (!reg.value.firstName || !reg.value.lastName || !reg.value.nickname || 
+      !reg.value.email || !reg.value.password) {
+    $q.notify({
+      type: 'negative',
+      message: 'Please fill all required fields'
+    });
     return false;
   }
 
   if (!validateEmail(reg.value.email)) {
-    alert('Invalid email format'); // alert if email format invalid
+    $q.notify({
+      type: 'negative',
+      message: 'Invalid email format'
+    });
+    return false;
+  }
+
+  if (reg.value.password.length < 8) {
+    $q.notify({
+      type: 'negative',
+      message: 'Password must be at least 8 characters long'
+    });
     return false;
   }
 
   if (reg.value.password !== reg.value.password2) {
-    alert("Passwords don't match"); // alert if passwords mismatch
+    $q.notify({
+      type: 'negative',
+      message: "Passwords don't match"
+    });
     return false;
   }
   return true;
 }
 
-// FUNKCIA PRIHLÁSENIE
 async function onLogin() {
   if (!validateLogin()) return;
-  console.log('LOGIN', login.value);
-  alert('Pretend we logged in');
-  await router.push('/chat');
+  
+  const success = await authLogin(login.value);
+  
+  if (success) {
+    $q.notify({
+      type: 'positive',
+      message: 'Login successful!'
+    });
+    await router.push('/chat');
+  }
 }
 
-// FUNKCIA REGISTRÁCIA
-function onRegister() {
+async function onRegister() {
   if (!validateRegister()) return;
-  console.log('REGISTER', reg.value);
-  alert('Pretend we registered');
-
-  mode.value = 'login';
-  alert('Registration successful! Please log in.');
+  
+  const registerData = {
+    firstName: reg.value.firstName,
+    lastName: reg.value.lastName,
+    nickname: reg.value.nickname,
+    email: reg.value.email,
+    password: reg.value.password
+  };
+  
+  const success = await authRegister(registerData);
+  
+  if (success) {
+    $q.notify({
+      type: 'positive',
+      message: 'Registration successful! Please log in.'
+    });
+    mode.value = 'login';
+    // Vyčistenie formulára
+    reg.value = { 
+      firstName: '', 
+      lastName: '', 
+      nickname: '', 
+      email: '', 
+      password: '', 
+      password2: '' 
+    };
+  }
 }
 
-// SUBMIT FORMULÁRA (volá login alebo register podľa režimu)
 async function onSubmit() {
   if (mode.value === 'login') {
     await onLogin();
   } else {
-    onRegister();
+    await onRegister();
   }
 }
 </script>
