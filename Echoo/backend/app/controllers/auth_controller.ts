@@ -9,52 +9,73 @@ export default class AuthController {
     const user = await User.findBy('email', email)
     if (!user) {
       // NE használj .unauthorized(), csak sima response
-      return response.status(400).json({ 
-        message: 'Invalid email or password' 
+      return response.status(400).json({
+        message: 'Invalid email or password',
       })
     }
 
     const isValid = await hash.verify(user.password, password)
-    
+
     if (!isValid) {
-      return response.status(400).json({ 
-        message: 'Invalid email or password' 
+      return response.status(400).json({
+        message: 'Invalid email or password',
       })
     }
 
     const token = await User.accessTokens.create(user)
-    
-    return response.json({ 
+
+    return response.json({
       type: 'bearer',
       token: token.value!.release(),
-      user 
+      user,
     })
   }
 
   public async register({ request, response }: HttpContext) {
     const { firstName, lastName, nickname, email, password } = request.only([
-      'firstName', 'lastName', 'nickname', 'email', 'password'
+      'firstName',
+      'lastName',
+      'nickname',
+      'email',
+      'password',
     ])
-    
+
     try {
-      const user = await User.create({ 
-        firstName, 
-        lastName, 
+      // Ellenőrizd hogy létezik-e már az email
+      const existingEmail = await User.findBy('email', email)
+      if (existingEmail) {
+        return response.status(400).json({
+          message: 'This email is already registered',
+        })
+      }
+
+      // Ellenőrizd hogy létezik-e már a nickname
+      const existingNickname = await User.findBy('nick_name', nickname)
+      if (existingNickname) {
+        return response.status(400).json({
+          message: 'This nickname is already taken',
+        })
+      }
+
+      const user = await User.create({
+        firstName,
+        lastName,
         nickName: nickname,
-        email, 
-        password 
+        email,
+        password,
       })
-      
+
       const token = await User.accessTokens.create(user)
-      
-      return response.created({ 
+
+      return response.created({
         type: 'bearer',
         token: token.value!.release(),
-        user 
+        user,
       })
     } catch (error) {
-      return response.status(400).json({ 
-        message: error.message || 'Registration failed' 
+      console.error('Registration error:', error)
+      return response.status(400).json({
+        message: 'Registration failed. Please try again.',
       })
     }
   }
