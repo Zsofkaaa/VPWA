@@ -10,6 +10,7 @@
 import router from '@adonisjs/core/services/router'
 import Channel from '#models/channel'
 const MessagesController = () => import('#controllers/messages_controller')
+const AuthController = () => import('#controllers/auth_controller')
 
 router.get('/', async () => {
   return {
@@ -43,3 +44,5 @@ router.post('/channels/:id/messages', async ({ auth, params, request }) => {
 
   return controllerInstance.store({ auth, params, request })
 })
+router.post('/auth/login', [AuthController, 'login'])
+router.post('/auth/register', [AuthController, 'register'])

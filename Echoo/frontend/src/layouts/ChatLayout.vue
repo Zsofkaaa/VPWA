@@ -58,6 +58,7 @@
 import { ref, computed, watch, provide, nextTick, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useQuasar } from 'quasar'
+import { useAuth } from '../composables/useAuth'
 import NotificationPopUp from 'components/NotificationPopUp.vue'
 import Header from 'components/ChatHeader.vue'
 import Sidebar from 'components/ChatSidebar.vue'
@@ -109,6 +110,7 @@ const publicChannels = ref<{ id: number; name: string; path: string }[]>([])
 const router = useRouter()
 const route = useRoute()
 const $q = useQuasar()
+const { logout } = useAuth() // ← POUŽIJ useAuth
 
 /* REAKTÍVNE DÁTA PRE SPRÁVY */
 const messages = ref<Message[]>([])
@@ -187,9 +189,9 @@ function goToChannel(ch: { name: string; path?: string }) {
 }
 
 /* FUNKCIA NA ODHLÁSENIE POUŽÍVATEĽA */
-function handleLogout() {
-  localStorage.removeItem('userToken')
-  void router.push('/')
+async function handleLogout() {
+  await logout()
+  await router.push('/auth')
 }
 
 /* FUNKCIA NA VYTVORENIE NOVÉHO KANÁLU */
