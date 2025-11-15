@@ -1,6 +1,5 @@
 // src/composables/useAuth.ts
 import { ref } from 'vue'
-import { useRouter } from 'vue-router'
 import { api } from 'boot/axios'
 
 interface LoginCredentials {
@@ -42,7 +41,6 @@ function isAxiosError(error: unknown): error is { response?: { data?: ErrorRespo
 }
 
 export function useAuth() {
-  const router = useRouter()
   const loading = ref(false)
   const error = ref<string | null>(null)
 
@@ -120,7 +118,7 @@ export function useAuth() {
       localStorage.removeItem('auth_token')
       localStorage.removeItem('user')
       delete api.defaults.headers.common['Authorization']
-      await router.push('/auth')
+      // NE navigálj itt - a router guard fogja csinálni automatikusan
     }
   }
 
