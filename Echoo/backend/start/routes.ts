@@ -9,6 +9,7 @@
 
 import router from '@adonisjs/core/services/router'
 import Channel from '#models/channel'
+import { middleware } from '#start/kernel'
 const MessagesController = () => import('#controllers/messages_controller')
 const AuthController = () => import('#controllers/auth_controller')
 
@@ -36,13 +37,15 @@ router.get('/channels/:id/messages', async (ctx) => {
   return controllerInstance.index({ params: { id: Number(ctx.params.id) } })
 })
 
-// POST új üzenet létrehozásához
-router.post('/channels/:id/messages', async ({ auth, params, request }) => {
-  const module = await MessagesController()
-  const ControllerClass = module.default
-  const controllerInstance = new ControllerClass()
+router
+  .post('/channels/:id/messages', async ({ auth, params, request }) => {
+    const module = await MessagesController()
+    const ControllerClass = module.default
+    const controllerInstance = new ControllerClass()
 
-  return controllerInstance.store({ auth, params, request })
-})
+    return controllerInstance.store({ auth, params, request })
+  })
+  .middleware([middleware.auth()])
+
 router.post('/auth/login', [AuthController, 'login'])
 router.post('/auth/register', [AuthController, 'register'])

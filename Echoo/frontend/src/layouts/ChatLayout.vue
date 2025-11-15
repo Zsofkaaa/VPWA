@@ -81,6 +81,7 @@ interface ChannelData {
 /* ROZHRANIE PRE SPRÁVY */
 interface Message {
   id: number
+  userId: number
   user: string
   text: string
   isPing?: boolean | undefined
@@ -97,6 +98,7 @@ interface Channel {
 // Add interface for the API response
 interface MessageResponse {
   id: number
+  userId: number
   text: string
   user: string
   hasPing?: boolean
@@ -121,6 +123,8 @@ const newMessage = ref('')
 const isTyping = ref(false)
 const showNotification = ref(false)
 const currentChannelName = ref('')
+
+const currentUserId = ref<number | null>(null)
 
 /* ŠTÝL PRE FOOTER – POZÍCIA DOLNÉHO PANELU */
 const footerStyle = computed(() => ({
@@ -257,15 +261,22 @@ async function onEnterPress(e: KeyboardEvent) {
       if (!channel) return
 
       // POST request a backendre with proper typing
+      const token = localStorage.getItem('auth_token') // helyesen!
       const res = await axios.post<MessageResponse>(
         `http://localhost:3333/channels/${channel.id}/messages`,
-        { content }
+        { content },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
       )
 
       // Hozzáadjuk a visszakapott üzenetet a chathez
       messages.value.push({
         id: res.data.id,
-        user: res.data.user, // vagy name
+        userId: res.data.userId,
+        user: res.data.user,
         text: res.data.text,
         isPing: res.data.hasPing
       })
@@ -370,8 +381,17 @@ onMounted(async () => {
   }
 })
 
+onMounted(() => {
+  const savedUser = localStorage.getItem("user")
+  if (savedUser) {
+    const user = JSON.parse(savedUser)
+    currentUserId.value = user.id
+  }
+})
+
 /* SPRÁVY DOSTUPNÉ PRE VŠETKY DIEŤA KOMPONENTY */
 provide('messages', messages)
+provide("currentUserId", currentUserId)
 
 </script>
 

@@ -57,6 +57,9 @@
 <script lang="ts" setup>
 import { ref } from 'vue'
 
+import { useQuasar } from 'quasar'
+const $q = useQuasar()
+
 // Stav určujúci, či je dialóg otvorený
 const showMembers = ref(false)
 

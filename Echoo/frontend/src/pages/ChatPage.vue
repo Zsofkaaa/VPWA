@@ -21,7 +21,9 @@ import { inject, type Ref, shallowRef} from 'vue'
 interface Message {
   id: number
   user: string
+  userId: number
   text: string
+  isPing?: boolean
 }
 
 /* INJEKCIA SPRÁV Z PARENT KOMPONENTU */

@@ -134,6 +134,8 @@
 
 <script lang="ts" setup>
 import { ref, computed } from 'vue'
+import { useQuasar } from 'quasar'
+const $q = useQuasar()
 
 // Stav dialógu
 const showDialog = ref(false)

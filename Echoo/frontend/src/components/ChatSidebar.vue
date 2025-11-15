@@ -127,7 +127,8 @@
 import { ref, computed } from 'vue'
 import ManageChannelMenu from './ManageChannelMenu.vue'
 import AddChannelDialog from './AddChannelDialog.vue'
-
+import { useQuasar } from 'quasar'
+const $q = useQuasar()
 
 /* ROZHRANIA PRE DÁTA O KANÁLOCH */
 interface Channel {
