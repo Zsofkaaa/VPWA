@@ -14,9 +14,9 @@ export default class UserChannel extends BaseModel {
   @column.dateTime({ autoCreate: true }) declare createdAt: DateTime
   @column.dateTime({ autoCreate: true, autoUpdate: true }) declare updatedAt: DateTime
 
-  @belongsTo(() => User, { foreignKey: 'user_id' })
+  @belongsTo(() => User, { foreignKey: 'userId' })
   declare user: BelongsTo<typeof User>
 
-  @belongsTo(() => Channel, { foreignKey: 'channel_id' })
+  @belongsTo(() => Channel, { foreignKey: 'channelId' })
   declare channel: BelongsTo<typeof Channel>
 }

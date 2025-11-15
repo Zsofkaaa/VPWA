@@ -9,15 +9,14 @@
 
 import router from '@adonisjs/core/services/router'
 import Channel from '#models/channel'
+const MessagesController = () => import('#controllers/messages_controller')
 
-// Alap route
 router.get('/', async () => {
   return {
     hello: 'world',
   }
 })
 
-// API route a csatornák lekérésére
 router.get('/channels', async () => {
   try {
     const channels = await Channel.query().orderBy('id', 'asc')
@@ -25,4 +24,22 @@ router.get('/channels', async () => {
   } catch (error) {
     return { error: 'Unable to fetch channels', details: error.message }
   }
+})
+
+//router.get('/channels/:id/messages', [MessagesController, 'index'])
+
+router.get('/channels/:id/messages', async (ctx) => {
+  const module = await MessagesController()
+  const ControllerClass = module.default
+  const controllerInstance = new ControllerClass()
+  return controllerInstance.index({ params: { id: Number(ctx.params.id) } })
+})
+
+// POST új üzenet létrehozásához
+router.post('/channels/:id/messages', async ({ auth, params, request }) => {
+  const module = await MessagesController()
+  const ControllerClass = module.default
+  const controllerInstance = new ControllerClass()
+
+  return controllerInstance.store({ auth, params, request })
 })

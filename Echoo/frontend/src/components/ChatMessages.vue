@@ -43,7 +43,7 @@
 
 // KELL A SCROLL TO BOTTOM
 
-import { ref, watch } from 'vue'
+import { nextTick, ref, watch } from 'vue'
 //import { nextTick } from 'vue'
 
 /* ROZHRANIE PRE SPRÁVU */
@@ -67,6 +67,14 @@ const messagesContainer = ref<HTMLElement | null>(null)
 function formatMessage(text: string, isPing?: boolean): string {
   if (!isPing) return text;
   return text.replace(/(@\w+)/g, '<span class="ping-highlight">$1</span>');
+}
+
+// AUTOMATIC SCROLL TO BOTTOM
+function scrollToBottom() {
+  const el = messagesContainer.value
+  if (!el) return
+
+  el.scrollTop = el.scrollHeight
 }
 
 /* FUNKCIA NAČÍTAVAJÚCA STARŠIE SPRÁVY PRI SCROLLOVANÍ HORE */
@@ -97,8 +105,21 @@ function loadMore(index: number, done: (stop?: boolean) => void) {
 /* SLEDUJE ZMENY V PROPS.MESSAGES A AKTUALIZUJE LOKÁLNE SPRÁVY */
 watch(
   () => props.messages,
-  (newVal) => {
+  async (newVal) => {
+    const wasAtBottom = (() => {
+      const el = messagesContainer.value
+      if (!el) return true
+      return el.scrollTop + el.clientHeight >= el.scrollHeight - 50
+    })()
+
     localMessages.value = [...newVal]
+
+    await nextTick()
+
+    // csak akkor görgessünk le, ha a user nem scrollozott fel
+    if (wasAtBottom) {
+      scrollToBottom()
+    }
   },
   { immediate: true, deep: true }
 )

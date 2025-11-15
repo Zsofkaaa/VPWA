@@ -10,6 +10,6 @@ export default class Command extends BaseModel {
   @column.dateTime({ autoCreate: true }) declare createdAt: DateTime
   @column.dateTime({ autoCreate: true, autoUpdate: true }) declare updatedAt: DateTime
 
-  @hasMany(() => UserMessageCommand, { foreignKey: 'command_id' })
+  @hasMany(() => UserMessageCommand, { foreignKey: 'commandId' })
   declare userMessageCommands: HasMany<typeof UserMessageCommand>
 }

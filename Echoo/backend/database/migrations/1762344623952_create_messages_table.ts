@@ -14,6 +14,8 @@ export default class extends BaseSchema {
         .onDelete('CASCADE')
       table.integer('sender_id').unsigned().references('id').inTable('users').onDelete('CASCADE')
       table.text('content')
+      table.boolean('has_ping').notNullable().defaultTo(false)
+      table.boolean('has_command').notNullable().defaultTo(false)
       table.timestamp('sent_at', { useTz: true }).defaultTo(this.now())
       table.timestamp('created_at')
       table.timestamp('updated_at')

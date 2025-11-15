@@ -82,7 +82,7 @@ interface Message {
   id: number
   user: string
   text: string
-  isPing?: boolean
+  isPing?: boolean | undefined
 }
 
 interface Channel {
@@ -93,8 +93,17 @@ interface Channel {
   lastActiveAt: string
 }
 
-const privateChannels = ref<{ name: string; path: string }[]>([])
-const publicChannels = ref<{ name: string; path: string }[]>([])
+// Add interface for the API response
+interface MessageResponse {
+  id: number
+  text: string
+  user: string
+  hasPing?: boolean
+  // Add other response properties if needed
+}
+
+const privateChannels = ref<{ id: number; name: string; path: string }[]>([])
+const publicChannels = ref<{ id: number; name: string; path: string }[]>([])
 
 /* ZÁKLADNÉ INŠTANCIE */
 const router = useRouter()
@@ -131,10 +140,50 @@ const typingStatusStyle = computed(() => ({
   zIndex: 2150
 }))
 
+async function loadMessages(channelPath: string) {
+  const channelName = channelPath.split('/chat/')[1]
+
+  // Add validation for channelName
+  if (!channelName) {
+    console.warn('Invalid channel path:', channelPath)
+    messages.value = []
+    return
+  }
+
+  const channel = [...privateChannels.value, ...publicChannels.value]
+    .find((c) => c.path.includes(channelName))
+
+  if (!channel) {
+    messages.value = []
+    return
+  }
+
+  try {
+    const res = await axios.get<Channel[]>('http://localhost:3333/channels')
+    const channelsData: Channel[] = res.data
+
+    const channelDb = channelsData.find(c => c.name === channel.name)
+    if (!channelDb) return
+
+    const msgRes = await axios.get<Message[]>(
+      `http://localhost:3333/channels/${channelDb.id}/messages`
+    )
+
+    messages.value = msgRes.data.reverse()
+  } catch (e) {
+    console.error("Failed to load messages", e)
+  }
+}
+
 /* FUNKCIA NA ZMENU KANÁLU */
-function goToChannel(ch: { name: string; path: string }) {
+function goToChannel(ch: { name: string; path?: string }) {
   currentChannelName.value = ch.name
-  void router.push(ch.path)
+
+  if (ch.path) {
+    void router.push(ch.path)
+  } else {
+    console.warn(`Channel path is undefined for "${ch.name}"`)
+  }
 }
 
 /* FUNKCIA NA ODHLÁSENIE POUŽÍVATEĽA */
@@ -166,6 +215,8 @@ function handleCreateChannel(data: ChannelData) {
   const channelPath = `/chat/${data.visibility}-${data.name.toLowerCase().replace(/\s+/g, '-')}`
 
   const newChannel = {
+    id: Date.now(),       // EZ HELYETT KI KELL MAJD VALAMIT TALÁLNI
+    // Ha később a backend visszaadja a tényleges id-t a channel létrehozáskor, akkor frissítENI KELL ÚGYIS
     name: formattedName,
     path: channelPath
   }
@@ -191,20 +242,44 @@ function handleCreateChannel(data: ChannelData) {
 }
 
 /* FUNKCIA NA ODOSLANIE SPRÁVY */
-function onEnterPress(e: KeyboardEvent) {
+async function onEnterPress(e: KeyboardEvent) {
   if (e.key === 'Enter' && newMessage.value.trim() !== '') {
     e.preventDefault()
 
-    const newMsg: Message = {
-      id: Date.now(),
-      user: 'You',
-      text: newMessage.value.trim()
+    const content = newMessage.value.trim()
+
+    try {
+      // Feltételezzük, hogy currentChannelName alapján megvan a channelId
+      const allChannels = [...privateChannels.value, ...publicChannels.value]
+      const channel = allChannels.find(ch => ch.name === currentChannelName.value)
+      if (!channel) return
+
+      // POST request a backendre with proper typing
+      const res = await axios.post<MessageResponse>(
+        `http://localhost:3333/channels/${channel.id}/messages`,
+        { content }
+      )
+
+      // Hozzáadjuk a visszakapott üzenetet a chathez
+      messages.value.push({
+        id: res.data.id,
+        user: res.data.user, // vagy name
+        text: res.data.text,
+        isPing: res.data.hasPing
+      })
+
+      // Reset input
+      newMessage.value = ''
+
+    } catch (err) {
+      console.error('Failed to send message', err)
+      $q.notify({
+        type: 'negative',
+        message: 'Message could not be sent!',
+        position: 'top',
+        timeout: 2000
+      })
     }
-
-    messages.value.push(newMsg)
-
-    // Reset input
-    newMessage.value = ''
   }
 }
 
@@ -251,34 +326,43 @@ watch(
 /* SLEDOVANIE ROUTE: KEĎ SA MENÍ KANÁL ALEBO VSTÚPIME PRIAMO CEZ ROUTE */
 watch(
   () => route.path,
-  (newPath) => {
-    // Nájdi channel podľa path
+  async (newPath) => {
     const allChannels = [...privateChannels.value, ...publicChannels.value]
     const found = allChannels.find(ch => ch.path === newPath)
 
     if (found) {
       currentChannelName.value = found.name
+
+      await loadMessages(newPath)
+
     } else {
-      // Ak route neexistuje v našom zozname
       currentChannelName.value = ''
       messages.value = []
     }
   },
-  { immediate: true }   //spustí sa aj pri prvom načítaní
+  { immediate: true }
 )
 
 onMounted(async () => {
   try {
-    const response = await axios.get<Channel[]>('http://localhost:3333/channels') // itt adunk típus annotációt
-    const channels = response.data
+    const response = await axios.get<Channel[]>('http://localhost:3333/channels')
+    const channels: Channel[] = response.data
 
     privateChannels.value = channels
-      .filter((ch) => ch.type === 'private')
-      .map((ch) => ({ name: ch.name, path: `/chat/${ch.type}-${ch.name.replace(/\s+/g, '-')}` }))
+      .filter(ch => ch.type === 'private')
+      .map(ch => ({
+        id: ch.id,
+        name: ch.name,
+        path: `/chat/${ch.type}-${ch.name.replace(/\s+/g, '-')}`
+      }))
 
     publicChannels.value = channels
-      .filter((ch) => ch.type === 'public')
-      .map((ch) => ({ name: ch.name, path: `/chat/${ch.type}-${ch.name.replace(/\s+/g, '-')}` }))
+      .filter(ch => ch.type === 'public')
+      .map(ch => ({
+        id: ch.id,
+        name: ch.name,
+        path: `/chat/${ch.type}-${ch.name.replace(/\s+/g, '-')}`
+      }))
   } catch (err) {
     console.error('Failed to load channels', err)
   }
