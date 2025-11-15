@@ -8,31 +8,27 @@ export default class AuthController {
 
     const user = await User.findBy('email', email)
     if (!user) {
-      return response.unauthorized({ error: 'Invalid credentials' })
+      // NE használj .unauthorized(), csak sima response
+      return response.status(400).json({ 
+        message: 'Invalid email or password' 
+      })
     }
 
-    // Add logging to debug
-    console.log('Login attempt:', { email, providedPassword: password })
-    console.log('Stored hash:', user.password)
-
     const isValid = await hash.verify(user.password, password)
-    console.log('Password valid:', isValid)
-
+    
     if (!isValid) {
-      return response.unauthorized({ error: 'Invalid credentials' })
+      return response.status(400).json({ 
+        message: 'Invalid email or password' 
+      })
     }
 
     const token = await User.accessTokens.create(user)
-
-    const responseData = { 
+    
+    return response.json({ 
       type: 'bearer',
       token: token.value!.release(),
-      user,
-    }
-
-    console.log('Sending response:', responseData)
-
-    return responseData
+      user 
+    })
   }
 
   public async register({ request, response }: HttpContext) {
@@ -41,18 +37,13 @@ export default class AuthController {
     ])
     
     try {
-      // Log what we're creating
-      console.log('Creating user:', { firstName, lastName, nickname, email })
-      
       const user = await User.create({ 
         firstName, 
         lastName, 
         nickName: nickname,
         email, 
-        password // Will be auto-hashed by beforeSave hook
+        password 
       })
-      
-      console.log('User created with hashed password')
       
       const token = await User.accessTokens.create(user)
       
@@ -62,8 +53,9 @@ export default class AuthController {
         user 
       })
     } catch (error) {
-      console.error('Registration error:', error)
-      return response.badRequest({ error: error.message })
+      return response.status(400).json({ 
+        message: error.message || 'Registration failed' 
+      })
     }
   }
 }

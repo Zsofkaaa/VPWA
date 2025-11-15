@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/prefer-promise-reject-errors */
 import { boot } from 'quasar/wrappers'
 import axios from 'axios'
 
@@ -30,8 +31,7 @@ api.interceptors.request.use(
     }
     return config
   },
-  (error) => Promise.reject(new Error(error))
-
+  (error) => Promise.reject(error) // ← JAVÍTVA: ne new Error(error)
 )
 
 api.interceptors.response.use(
@@ -44,7 +44,7 @@ api.interceptors.response.use(
         window.location.href = '/auth'
       }
     }
-    return Promise.reject(new Error(error))
+    return Promise.reject(error) // ← JAVÍTVA: ne new Error(error)
   }
 )
 

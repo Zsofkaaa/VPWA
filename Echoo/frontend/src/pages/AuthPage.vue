@@ -10,7 +10,7 @@
       <p class="lead">{{ mode === 'login' ? 'LOGIN HERE' : 'Create your account' }}</p>
 
       <!-- Chybová správa -->
-      <q-banner v-if="authError" class="bg-negative text-white q-mb-md" rounded>
+      <q-banner v-if="authError" class="error-banner">
         {{ authError }}
       </q-banner>
 
@@ -19,7 +19,7 @@
 
         <!-- PRIHLÁSENIE -->
         <div v-if="mode === 'login'" class="form-column">
-          <q-input dense filled v-model="login.email" placeholder="Full Username or Email" class="pill-input" :disabled="authLoading" />
+          <q-input dense filled v-model="login.email" placeholder="Email" class="pill-input" :disabled="authLoading" />
           <q-input dense filled v-model="login.password" placeholder="Password" type="password" class="pill-input" :disabled="authLoading" />
           <div class="row actions-row">
             <q-btn unelevated class="action-btn" label="Login" @click.prevent="onLogin" :loading="authLoading" :disabled="authLoading" />
@@ -56,7 +56,7 @@
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuth } from '../composables/useAuth';
-import { useQuasar } from 'quasar';
+import { Notify, useQuasar } from 'quasar';
 const router = useRouter();
 const $q = useQuasar();
 const { login: authLogin, register: authRegister, loading: authLoading, error: authError } = useAuth();
@@ -136,12 +136,13 @@ async function onLogin() {
   const success = await authLogin(login.value);
   
   if (success) {
-    $q.notify({
+    Notify.create({
       type: 'positive',
       message: 'Login successful!'
     });
     await router.push('/chat');
   }
+  // NE mutass error notification-t, mert már a banner mutatja
 }
 
 async function onRegister() {
@@ -158,13 +159,13 @@ async function onRegister() {
   const success = await authRegister(registerData);
   
   if (success) {
-    $q.notify({
+    Notify.create({
       type: 'positive',
       message: 'Registration successful!'
     });
-    // Directly redirect to chat - no need to switch to login
     await router.push('/chat');
   }
+  // NE mutass error notification-t, mert már a banner mutatja
 }
 
 async function onSubmit() {
@@ -295,6 +296,17 @@ async function onSubmit() {
   color: #ffffffa9;
   cursor: pointer;
   text-decoration: underline;
+}
+
+.error-banner {
+  background: #ff0000ca !important;
+  color: #ffffff !important;
+  margin-bottom: 12px;
+  padding: 8px 0px;
+  border-radius: 22px !important;
+  font-weight: 500;
+  font-size: 13px;
+  text-align: center;
 }
 
 /* RESPONZÍVNE ÚPRAVY */
