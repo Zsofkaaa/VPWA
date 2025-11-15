@@ -19,23 +19,23 @@
 
         <!-- PRIHLÁSENIE -->
         <div v-if="mode === 'login'" class="form-column">
-          <q-input dense filled v-model="login.email" placeholder="Full Username or Email" class="pill-input" :disable="authLoading" />
-          <q-input dense filled v-model="login.password" placeholder="Password" type="password" class="pill-input" :disable="authLoading" />
+          <q-input dense filled v-model="login.email" placeholder="Full Username or Email" class="pill-input" :disabled="authLoading" />
+          <q-input dense filled v-model="login.password" placeholder="Password" type="password" class="pill-input" :disabled="authLoading" />
           <div class="row actions-row">
-            <q-btn unelevated class="action-btn" label="Login" @click.prevent="onLogin" :loading="authLoading" :disable="authLoading" />
+            <q-btn unelevated class="action-btn" label="Login" @click.prevent="onLogin" :loading="authLoading" :disabled="authLoading" />
           </div>
         </div>
 
         <!-- REGISTRÁCIA -->
         <div v-else class="form-grid">
-          <q-input dense filled v-model="reg.firstName" placeholder="First name" class="pill-input" :disable="authLoading" />
-          <q-input dense filled v-model="reg.lastName" placeholder="Last name" class="pill-input" :disable="authLoading" />
-          <q-input dense filled v-model="reg.nickname" placeholder="Nick name" class="pill-input" :disable="authLoading" />
-          <q-input dense filled v-model="reg.email" placeholder="Email" class="pill-input" :disable="authLoading" />
-          <q-input dense filled v-model="reg.password" placeholder="Password" type="password" class="pill-input" :disable="authLoading" />
-          <q-input dense filled v-model="reg.password2" placeholder="Password again" type="password" class="pill-input" :disable="authLoading" />
+          <q-input dense filled v-model="reg.firstName" placeholder="First name" class="pill-input" :disabled="authLoading" />
+          <q-input dense filled v-model="reg.lastName" placeholder="Last name" class="pill-input" :disabled="authLoading" />
+          <q-input dense filled v-model="reg.nickname" placeholder="Nick name" class="pill-input" :disabled="authLoading" />
+          <q-input dense filled v-model="reg.email" placeholder="Email" class="pill-input" :disabled="authLoading" />
+          <q-input dense filled v-model="reg.password" placeholder="Password" type="password" class="pill-input" :disabled="authLoading" />
+          <q-input dense filled v-model="reg.password2" placeholder="Password again" type="password" class="pill-input" :disabled="authLoading" />
           <div class="row actions-row">
-            <q-btn unelevated class="action-btn" label="Register now!" @click.prevent="onRegister" :loading="authLoading" :disable="authLoading" />
+            <q-btn unelevated class="action-btn" label="Register now!" @click.prevent="onRegister" :loading="authLoading" :disabled="authLoading" />
           </div>
         </div>
       </q-form>
@@ -160,18 +160,10 @@ async function onRegister() {
   if (success) {
     $q.notify({
       type: 'positive',
-      message: 'Registration successful! Please log in.'
+      message: 'Registration successful!'
     });
-    mode.value = 'login';
-    // Vyčistenie formulára
-    reg.value = { 
-      firstName: '', 
-      lastName: '', 
-      nickname: '', 
-      email: '', 
-      password: '', 
-      password2: '' 
-    };
+    // Directly redirect to chat - no need to switch to login
+    await router.push('/chat');
   }
 }
 

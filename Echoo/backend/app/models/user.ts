@@ -1,4 +1,4 @@
-import { BaseModel, column, hasMany, manyToMany } from '@adonisjs/lucid/orm'
+import { BaseModel, beforeSave, column, hasMany, manyToMany } from '@adonisjs/lucid/orm'
 import type { HasMany, ManyToMany } from '@adonisjs/lucid/types/relations'
 import Message from './message.js'
 import Channel from './channel.js'
@@ -6,6 +6,8 @@ import UserMessageCommand from './user_message_command.js'
 import MessageMention from './message_mention.js'
 import UserChannel from './user_channel.js'
 import { DateTime } from 'luxon'
+import hash from '@adonisjs/core/services/hash'
+import { DbAccessTokensProvider } from '@adonisjs/auth/access_tokens'
 
 export default class User extends BaseModel {
   @column({ isPrimary: true }) declare id: number
@@ -17,6 +19,16 @@ export default class User extends BaseModel {
   @column() declare status: string
   @column.dateTime({ autoCreate: true }) declare createdAt: DateTime
   @column.dateTime({ autoCreate: true, autoUpdate: true }) declare updatedAt: DateTime
+
+  static accessTokens = DbAccessTokensProvider.forModel(User)
+
+  @beforeSave()
+  static async hashPassword(user: User) {
+    if (user.$dirty.password) {
+      console.log('Hashing password for user:', user.email)
+      user.password = await hash.make(user.password)
+    }
+  }
 
   @hasMany(() => UserMessageCommand, { foreignKey: 'user_id' })
   declare userMessageCommands: HasMany<typeof UserMessageCommand>

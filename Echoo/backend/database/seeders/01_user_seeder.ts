@@ -10,7 +10,7 @@ export default class UserSeeder extends BaseSeeder {
         lastName: 'Kovacs',
         nickName: 'adamk',
         email: 'adam@example.com',
-        password: await Hash.make('password123'),
+        password: 'password123',
         status: 'active',
       },
       {
@@ -18,7 +18,7 @@ export default class UserSeeder extends BaseSeeder {
         lastName: 'Nagy',
         nickName: 'belus',
         email: 'bela@example.com',
-        password: await Hash.make('password123'),
+        password: 'password123',
         status: 'active',
       },
       {
@@ -26,7 +26,7 @@ export default class UserSeeder extends BaseSeeder {
         lastName: 'Toth',
         nickName: 'cecilia',
         email: 'cecilia@example.com',
-        password: await Hash.make('password123'),
+        password: 'password123',
         status: 'inactive',
       },
     ])

@@ -42,24 +42,32 @@ export function useAuth() {
     error.value = null
 
     try {
+      console.log('Sending login request...') // ← ÚJ
       const response = await api.post<AuthResponse>('/auth/login', data)
+      console.log('Login response:', response.data) // ← ÚJ
+      
       const { token, user } = response.data
+
+      console.log('Token:', token) // ← ÚJ
+      console.log('User:', user) // ← ÚJ
 
       localStorage.setItem('auth_token', token)
       localStorage.setItem('user', JSON.stringify(user))
 
+      console.log('Login successful, returning true') // ← ÚJ
       return true
     } catch (err: unknown) {
-        if (typeof err === 'object' && err && 'response' in err) {
-            const errorResponse = err as { response?: { data?: { message?: string } } }
-            error.value = errorResponse.response?.data?.message || 'Login failed'
-        } else if (err instanceof Error) {
-            error.value = err.message
-        } else {
-            error.value = 'Unexpected error occurred'
-        }
-        console.error('Login error:', err)
-        return false
+      console.error('Login error details:', err) // ← MÓDOSÍTOTT
+      
+      if (typeof err === 'object' && err && 'response' in err) {
+        const errorResponse = err as { response?: { data?: { error?: string } } }
+        error.value = errorResponse.response?.data?.error || 'Login failed'
+      } else if (err instanceof Error) {
+        error.value = err.message
+      } else {
+        error.value = 'Unexpected error occurred'
+      }
+      return false
     } finally {
       loading.value = false
     }
@@ -67,12 +75,19 @@ export function useAuth() {
 
   /** Registrácia používateľa */
   async function register(data: RegisterData): Promise<boolean> {
-    loading.value = true
-    error.value = null
+  loading.value = true
+  error.value = null
 
-    try {
-      await api.post('/auth/register', data)
-      return true
+  try {
+    const response = await api.post<AuthResponse>('/auth/register', data)
+    const { token, user } = response.data
+
+    // Store token and user immediately
+    localStorage.setItem('auth_token', token)
+    localStorage.setItem('user', JSON.stringify(user))
+
+    return true
+
     } catch (err: unknown) {
         if (typeof err === 'object' && err && 'response' in err) {
             const errorResponse = err as { response?: { data?: { message?: string } } }

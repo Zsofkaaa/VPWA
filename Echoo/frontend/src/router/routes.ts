@@ -1,22 +1,33 @@
 import type { RouteRecordRaw } from 'vue-router'
 
 const routes: RouteRecordRaw[] = [
-  // AUTH a root route-on
+  // AUTH route
   {
-    path: '/',
+    path: '/auth',
     component: () => import('layouts/AuthLayout.vue'),
     children: [
-      { path: '', 
+      { 
+        path: '', 
         component: () => import('pages/AuthPage.vue'),
-        meta: { requiresGuest: true } // Iba pre neprihlásených
-       }
+        meta: { requiresGuest: true }
+      }
     ]
+  },
+
+  // ROOT - redirect to appropriate page
+  {
+    path: '/',
+    redirect: () => {
+      const token = localStorage.getItem('auth_token')
+      return token ? '/chat' : '/auth'
+    }
   },
 
   // CHAT
   {
     path: '/chat',
     component: () => import('layouts/ChatLayout.vue'),
+    meta: { requiresAuth: true },
     children: [
       { path: '', component: () => import('pages/HomePage.vue') },
       { path: ':id', component: () => import('pages/ChatPage.vue') },
