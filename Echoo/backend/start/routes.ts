@@ -78,3 +78,10 @@ router
 router
   .put('/user/update', async (ctx) => userController.update(ctx))
   .middleware([middleware.auth()])
+
+router.get('/channels/:id/members', async (ctx) => {
+  const module = await UserChannelController()
+  const ControllerClass = module.default
+  const controllerInstance = new ControllerClass()
+  return controllerInstance.members(ctx)
+})

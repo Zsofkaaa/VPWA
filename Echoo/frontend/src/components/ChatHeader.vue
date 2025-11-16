@@ -39,7 +39,11 @@
 
     <!-- Pravá časť: členovia, status, nastavenia, info -->
     <div class="row items-center justify-end q-gutter-sm no-wrap" style="flex: 0 0 auto;">
-      <MembersMenu v-if="currentChannel" :current-channel="currentChannel" />
+      <MembersMenu
+          v-if="currentChannel && currentChannelId != null"
+          :current-channel="currentChannel"
+          :channel-id="currentChannelId"
+        />
       <UserStatus />
       <SettingsMenu />
       <InfoBox />
@@ -58,8 +62,9 @@ import MembersMenu from './MembersMenu.vue'
 
 // Props: vstupné vlastnosti komponentu
 defineProps<{
-  drawerOpen: boolean // povinná vlastnosť
-  currentChannel?: string // nepovinná vlastnosť
+  drawerOpen: boolean
+  currentChannel?: string
+  currentChannelId?: number | null
 }>()
 
 // Emits: udalosti, ktoré komponent vysiela

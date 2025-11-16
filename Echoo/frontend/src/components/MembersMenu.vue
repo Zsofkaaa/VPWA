@@ -26,16 +26,15 @@
             <div class="column q-gutter-sm">
               <q-btn
                 v-for="member in members"
-                :key="member"
+                :key="member.id"
                 flat
                 rounded
                 color="white"
                 text-color="#283C55"
-                @click="onMemberClick(member)"
                 class="member-btn"
                 align="left"
               >
-                {{ member }}
+                {{ member.nickName }}
               </q-btn>
             </div>
           </div>
@@ -55,31 +54,41 @@
 
 
 <script lang="ts" setup>
-import { ref } from 'vue'
-
+import { ref, watch } from 'vue'
+import axios from 'axios'
 import { useQuasar } from 'quasar'
+
 const $q = useQuasar()
 
 // Stav určujúci, či je dialóg otvorený
 const showMembers = ref(false)
 
 // Statický zoznam členov (ukážkové dáta)
-const members = [
-  'Sophia Martinez', 'Liam Chen', 'Emma Rodriguez', 'Noah Williams', 'Olivia Johnson',
-  'Ethan Brown', 'Ava Davis', 'Mason Garcia', 'Isabella Miller', 'Lucas Anderson',
-  'Mia Thompson', 'Aiden Wilson', 'Charlotte Moore', 'Jackson Taylor', 'Amelia Thomas',
-  'Logan Hernandez', 'Harper Lee', 'Sebastian White', 'Evelyn Harris', 'Alexander Clark'
-]
+const members = ref<{ id: number; nickName: string }[]>([])
 
 // Vstupný parameter s názvom aktuálneho kanála
-defineProps<{
+const props = defineProps<{
   currentChannel?: string
+  channelId?: number | null
 }>()
 
-// Funkcia pri kliknutí na člena, možná doimplementácia - kick/ban user na kliknutie
-function onMemberClick(member: string) {
-  console.log('Clicked member:', member)
-}
+//const token = localStorage.getItem('auth_token')
+const API_URL = 'http://localhost:3333'
+
+// Ha megnyílik a dialog, fetch-eljük a tagokat
+watch(showMembers, async (val) => {
+  if (val && props.channelId) {
+    try {
+      const res = await axios.get<{ id: number; nickName: string }[]>(
+        `${API_URL}/channels/${props.channelId}/members`
+      )
+      members.value = res.data
+    } catch (err) {
+      console.error('Failed to fetch members', err)
+    }
+  }
+})
+
 </script>
 
 

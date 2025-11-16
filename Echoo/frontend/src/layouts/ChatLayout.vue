@@ -5,8 +5,9 @@
 
     <!-- HEADER -->
     <Header
-    v-model:drawer-open="drawerOpen"
-    :current-channel="currentChannelName"
+      v-model:drawer-open="drawerOpen"
+      :current-channel="currentChannelName"
+      :current-channel-id="currentChannelId"
     />
 
     <!-- SIDEBAR -->
@@ -130,6 +131,7 @@ const showNotification = ref(false)
 const currentChannelName = ref('')
 
 const currentUserId = ref<number | null>(null)
+const currentChannelId = ref<number | null>(null)
 
 /* ŠTÝL PRE FOOTER – POZÍCIA DOLNÉHO PANELU */
 const footerStyle = computed(() => ({
@@ -393,11 +395,11 @@ watch(
 
     if (found) {
       currentChannelName.value = found.name
-
+      currentChannelId.value = found.id  // ← itt beállítjuk az ID-t
       await loadMessages(newPath)
-
     } else {
       currentChannelName.value = ''
+      currentChannelId.value = null
       messages.value = []
     }
   },
