@@ -118,26 +118,24 @@
 
 
 <script lang="ts" setup>
-import { ref, watch } from 'vue'
+import { ref, watch, onMounted } from 'vue'
+import axios from 'axios'
 
 // Stav formulára
 const channelName = ref('')
 const type = ref<'private' | 'public'>('public')
 const invitedMembers = ref<number[]>([])
 const notificationSettings = ref<'all' | 'mentions' | 'muted'>('all')
+const availableMembers = ref<{ label: string, value: number }[]>([])
+const currentUserId = ref<number | null>(null) // a saját user ID
+const API_URL = 'http://localhost:3333'
+const token = localStorage.getItem('auth_token')
 
 // Možnosti viditeľnosti
 const visibilityOptions = [
   { label: 'Public', value: 'public', icon: 'public' },
   { label: 'Private', value: 'private', icon: 'lock' }
 ]
-
-// Dostupní členovia
-const availableMembers = ref([
-  { label: 'John Doe', value: 1 },
-  { label: 'Jane Smith', value: 2 },
-  { label: 'Bob Johnson', value: 3 },
-])
 
 // Možnosti notifikácií
 const notificationOptions = [
@@ -164,6 +162,17 @@ interface ChannelData {
   type: 'private' | 'public'
   invitedMembers: number[]
   notificationSettings: string
+}
+
+interface MeResponse {
+  id: number
+  name: string | null
+  nickName: string | null
+}
+
+interface User {
+  id: number
+  nickName: string
 }
 
 // Zatvorenie dialógu a reset formulára
@@ -194,8 +203,39 @@ function resetForm() {
 }
 
 // Reset formulára pri zmene emit (alebo zatvorení)
-watch(() => emit, () => {
-  resetForm()
+watch(() => emit, () => { resetForm() })
+
+// Load users on mount
+onMounted(async () => {
+  try {
+    // 1️⃣ get current user (/me)
+    const authResponse = await axios.get<MeResponse>(`${API_URL}/me`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+
+    currentUserId.value = authResponse.data.id
+    console.log('Current user id:', currentUserId.value)
+
+    // 2️⃣ get all users (/users)
+    const response = await axios.get<User[]>(`${API_URL}/users`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+
+    console.log('Users from backend:', response.data)
+
+    // 3️⃣ fill available members except current user
+    availableMembers.value = response.data
+      .filter(user => user.id !== currentUserId.value)
+      .map(user => ({
+        label: user.nickName,
+        value: user.id
+      }))
+
+    console.log('Available members:', availableMembers.value)
+
+  } catch (error) {
+    console.error('Failed to load users', error)
+  }
 })
 
 </script>

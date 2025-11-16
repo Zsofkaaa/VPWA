@@ -15,6 +15,9 @@ const AuthController = () => import('#controllers/auth_controller')
 const ChannelsController = () => import('#controllers/channels_controller')
 const UserChannelController = () => import('#controllers/user_channel_controller')
 
+import UserControllerClass from '#controllers/user_controller'
+const userController = new UserControllerClass()
+
 router.get('/', async () => {
   return {
     hello: 'world',
@@ -57,5 +60,17 @@ router
     const module = await UserChannelController()
     const controllerInstance = new module.default()
     return controllerInstance.store({ request, auth })
+  })
+  .middleware([middleware.auth()])
+
+router
+  .get('/users', async (ctx) => {
+    return userController.index(ctx)
+  })
+  .middleware([middleware.auth()])
+
+router
+  .get('/me', async (ctx) => {
+    return userController.me(ctx)
   })
   .middleware([middleware.auth()])
