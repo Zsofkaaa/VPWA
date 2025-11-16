@@ -74,3 +74,7 @@ router
     return userController.me(ctx)
   })
   .middleware([middleware.auth()])
+
+router
+  .put('/user/update', async (ctx) => userController.update(ctx))
+  .middleware([middleware.auth()])

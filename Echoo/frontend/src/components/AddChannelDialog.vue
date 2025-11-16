@@ -242,7 +242,7 @@ onMounted(async () => {
 
 
 
-<style scoped>
+<style>
 .block {
   display: block; /* zaberá celú šírku a zalomí riadok */
 }
@@ -281,4 +281,11 @@ onMounted(async () => {
 .create-btn:disabled {
   background-color: rgba(76, 175, 80, 0.5);
 }
+
+/* QSelect chips (invited members) - better contrast */
+.q-field--dark .q-chip {
+  background-color: #1e3b5c !important;
+  color: #ffffff !important;
+}
+
 </style>
