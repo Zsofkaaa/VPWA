@@ -72,10 +72,15 @@ defineOptions({ name: 'ChatLayout' })
 /* ROZHRANIA PRE TYPY DÁT */
 interface ChannelData {
   name: string
-  visibility: 'private' | 'public'
-  description: string
-  invitedMembers: string[]
-  notificationLevel: string
+  type: 'private' | 'public'
+  invitedMembers: number[]
+  notificationSettings: string
+}
+
+interface ChannelResponse {
+  id: number
+  name: string
+  type: 'private' | 'public'
 }
 
 /* ROZHRANIE PRE SPRÁVY */
@@ -198,53 +203,96 @@ async function handleLogout() {
   await router.push('/auth')
 }
 
+interface AxiosErrorLike {
+  isAxiosError: boolean
+  response?: { status: number }
+}
+
+function isAxiosError(err: unknown): err is AxiosErrorLike {
+  return (
+    typeof err === 'object' &&
+    err !== null &&
+    'isAxiosError' in err &&
+    (err as { isAxiosError?: unknown }).isAxiosError === true
+  )
+}
+
 /* FUNKCIA NA VYTVORENIE NOVÉHO KANÁLU */
-function handleCreateChannel(data: ChannelData) {
-  // Formátovanie channel name
-  const formattedName = data.name.startsWith('#') ? data.name : `#${data.name}`
+async function handleCreateChannel(data: ChannelData) {
+  const formattedName = data.name.replace(/^#/, '')
+  const channelPath = `/chat/${data.type}-${data.name.toLowerCase().replace(/\s+/g, '-')}`
 
-  // Kontrola, či názov kanála už existuje v oboch kategóriách
-  const allChannels = [...privateChannels.value, ...publicChannels.value]
-  const nameExists = allChannels.some(ch => ch.name.toLowerCase() === formattedName.toLowerCase())
-
-  if (nameExists) {
+  // Frontend oldali ellenőrzés, hogy a channel név már létezik-e
+  const allChannelNames = [...privateChannels.value, ...publicChannels.value].map(ch => ch.name.toLowerCase())
+  if (allChannelNames.includes(formattedName.toLowerCase())) {
     $q.notify({
       type: 'negative',
       message: `Channel "${formattedName}" already exists!`,
       position: 'top',
-      timeout: 2500
+      timeout: 2000
     })
     return
   }
 
-  // Generovanie pathu pre nový channel
-  const channelPath = `/chat/${data.visibility}-${data.name.toLowerCase().replace(/\s+/g, '-')}`
+  try {
+    const token = localStorage.getItem('auth_token')
+    if (!token || !currentUserId.value) throw new Error('User not authenticated')
 
-  const newChannel = {
-    id: Date.now(),       // EZ HELYETT KI KELL MAJD VALAMIT TALÁLNI
-    // Ha később a backend visszaadja a tényleges id-t a channel létrehozáskor, akkor frissítENI KELL ÚGYIS
-    name: formattedName,
-    path: channelPath
+    // POST request az új csatorna létrehozásához
+    const res = await axios.post<ChannelResponse>(
+      'http://localhost:3333/channels',
+      { name: formattedName,
+        type: data.type,
+        invitedMembers: data.invitedMembers || [],
+        notificationSettings: data.notificationSettings},
+      { headers: { Authorization: `Bearer ${token}` } }
+    )
+    const newChannelId = res.data.id
+
+    // Mentés a user_channel táblába a notificationSettings-szel
+    await axios.post(
+      `http://localhost:3333/user_channel`,
+      {
+        channelId: newChannelId,
+        userId: currentUserId.value,
+        role: 'admin',
+        notificationSettings: data.notificationSettings
+      },
+      { headers: { Authorization: `Bearer ${token}` } }
+    )
+
+    // Hozzáadás a frontend csatorna listához
+    const newChannel = { id: newChannelId, name: formattedName, path: channelPath }
+    if (data.type === 'private') privateChannels.value.push(newChannel)
+    else publicChannels.value.push(newChannel)
+
+    // Értesítés a felhasználónak és navigáció
+    $q.notify({
+      type: 'positive',
+      message: `Channel "${newChannel.name}" created!`,
+      position: 'top',
+      timeout: 2000
+    })
+    currentChannelName.value = newChannel.name
+    void router.push(channelPath)
+
+  } catch (err: unknown) {
+    let message = 'Channel creation failed!'
+
+    if (isAxiosError(err)) {
+      if (err.response?.status === 409) {
+        message = `Channel "${formattedName}" already exists!`
+      }
+    }
+
+    console.error('Failed to create channel', err)
+    $q.notify({
+      type: 'negative',
+      message,
+      position: 'top',
+      timeout: 2000
+    })
   }
-
-  // Pridanie do kategórie na základe visibility
-  if (data.visibility === 'private') {
-    privateChannels.value.push(newChannel)
-  } else {
-    publicChannels.value.push(newChannel)
-  }
-
-  // Zobraziť oznámenie o úspechu
-  $q.notify({
-    type: 'positive',
-    message: `Channel "${newChannel.name}" created successfully!`,
-    position: 'top',
-    timeout: 2000
-  })
-
-  // Navigácia do nového channela
-  currentChannelName.value = newChannel.name
-  void router.push(channelPath)
 }
 
 /* FUNKCIA NA ODOSLANIE SPRÁVY */

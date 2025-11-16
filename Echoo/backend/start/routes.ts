@@ -12,6 +12,8 @@ import Channel from '#models/channel'
 import { middleware } from '#start/kernel'
 const MessagesController = () => import('#controllers/messages_controller')
 const AuthController = () => import('#controllers/auth_controller')
+const ChannelsController = () => import('#controllers/channels_controller')
+const UserChannelController = () => import('#controllers/user_channel_controller')
 
 router.get('/', async () => {
   return {
@@ -27,8 +29,6 @@ router.get('/channels', async () => {
     return { error: 'Unable to fetch channels', details: error.message }
   }
 })
-
-//router.get('/channels/:id/messages', [MessagesController, 'index'])
 
 router.get('/channels/:id/messages', async (ctx) => {
   const module = await MessagesController()
@@ -49,3 +49,13 @@ router
 
 router.post('/auth/login', [AuthController, 'login'])
 router.post('/auth/register', [AuthController, 'register'])
+
+router.post('/channels', [ChannelsController, 'store']).middleware([middleware.auth()])
+
+router
+  .post('/user_channel', async ({ request, auth }) => {
+    const module = await UserChannelController()
+    const controllerInstance = new module.default()
+    return controllerInstance.store({ request, auth })
+  })
+  .middleware([middleware.auth()])

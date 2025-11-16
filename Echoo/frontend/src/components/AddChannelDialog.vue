@@ -41,7 +41,7 @@
         <div class="q-mb-md">
           <label class="text-weight-medium q-mb-xs block">Visibility</label>
           <q-select
-            v-model="visibility"
+            v-model="type"
             :options="visibilityOptions"
             filled
             dense
@@ -52,7 +52,7 @@
             map-options
           >
             <template v-slot:prepend>
-              <q-icon :name="visibility === 'private' ? 'lock' : 'public'" color="white" />
+              <q-icon :name="type === 'private' ? 'lock' : 'public'" color="white" />
             </template>
           </q-select>
         </div>
@@ -67,6 +67,8 @@
             dense
             multiple
             use-chips
+            emit-value
+            map-options
             bg-color="rgba(255, 255, 255, 0.1)"
             color="white"
             dark
@@ -82,7 +84,7 @@
         <div class="q-mb-md">
           <label class="text-weight-medium q-mb-xs block">Notification Settings</label>
           <q-option-group
-            v-model="notificationLevel"
+            v-model="notificationSettings"
             :options="notificationOptions"
             color="primary"
             dark
@@ -118,23 +120,11 @@
 <script lang="ts" setup>
 import { ref, watch } from 'vue'
 
-/*
-import axios from 'axios'
-
-// Opció: külön instance az API-hoz, baseURL beállítva
-const api = axios.create({
-  baseURL: 'http://127.0.0.1:3333', // backend URL
-  timeout: 10000,
-  withCredentials: true // ha auth cookie kell
-})
-*/
-
 // Stav formulára
 const channelName = ref('')
-const visibility = ref<'private' | 'public'>('public')
-const description = ref('')
-const invitedMembers = ref<string[]>([])
-const notificationLevel = ref('all')
+const type = ref<'private' | 'public'>('public')
+const invitedMembers = ref<number[]>([])
+const notificationSettings = ref<'all' | 'mentions' | 'muted'>('all')
 
 // Možnosti viditeľnosti
 const visibilityOptions = [
@@ -144,11 +134,9 @@ const visibilityOptions = [
 
 // Dostupní členovia
 const availableMembers = ref([
-  'John Doe',
-  'Jane Smith',
-  'Bob Johnson',
-  'Alice Williams',
-  'Charlie Brown'
+  { label: 'John Doe', value: 1 },
+  { label: 'Jane Smith', value: 2 },
+  { label: 'Bob Johnson', value: 3 },
 ])
 
 // Možnosti notifikácií
@@ -173,10 +161,9 @@ defineProps<{
 // Typ dát kanála
 interface ChannelData {
   name: string
-  visibility: 'private' | 'public'
-  description: string
-  invitedMembers: string[]
-  notificationLevel: string
+  type: 'private' | 'public'
+  invitedMembers: number[]
+  notificationSettings: string
 }
 
 // Zatvorenie dialógu a reset formulára
@@ -189,10 +176,9 @@ function closeDialog() {
 function createChannel() {
   const channelData: ChannelData = {
     name: channelName.value,
-    visibility: visibility.value,
-    description: description.value,
+    type: type.value,
     invitedMembers: invitedMembers.value,
-    notificationLevel: notificationLevel.value
+    notificationSettings: notificationSettings.value
   }
 
   emit('create', channelData)
@@ -202,16 +188,16 @@ function createChannel() {
 // Reset všetkých polí formulára
 function resetForm() {
   channelName.value = ''
-  visibility.value = 'public'
-  description.value = ''
+  type.value = 'public'
   invitedMembers.value = []
-  notificationLevel.value = 'all'
+  notificationSettings.value = 'all'
 }
 
 // Reset formulára pri zmene emit (alebo zatvorení)
 watch(() => emit, () => {
   resetForm()
 })
+
 </script>
 
 

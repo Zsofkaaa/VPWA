@@ -1,5 +1,4 @@
 import Message from '#models/message'
-//import User from '#models/user'
 
 export default class MessagesController {
   public async index({ params }: { params: { id: number } }) {

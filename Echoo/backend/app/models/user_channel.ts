@@ -5,6 +5,8 @@ import Channel from './channel.js'
 import { DateTime } from 'luxon'
 
 export default class UserChannel extends BaseModel {
+  public static table = 'user_channel'
+
   @column({ isPrimary: true }) declare id: number
   @column() declare userId: number | null
   @column() declare channelId: number | null

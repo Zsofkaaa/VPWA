@@ -138,10 +138,9 @@ interface Channel {
 
 interface ChannelData {
   name: string
-  visibility: 'private' | 'public'
-  description: string
-  invitedMembers: string[]
-  notificationLevel: string
+  type: 'private' | 'public'
+  invitedMembers: number[]
+  notificationSettings: string
 }
 
 /* PROPS - ÚDAJE ZO ZVYŠKU APLIKÁCIE */
