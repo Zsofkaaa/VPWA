@@ -85,3 +85,20 @@ router.get('/channels/:id/members', async (ctx) => {
   const controllerInstance = new ControllerClass()
   return controllerInstance.members(ctx)
 })
+
+router
+  .delete('/channels/:id/leave', async (ctx) => {
+    const module = await UserChannelController()
+    const ControllerClass = module.default
+    const controllerInstance = new ControllerClass()
+    return controllerInstance.leave(ctx)
+  })
+  .middleware([middleware.auth()])
+
+router
+  .get('/user/channels', async (ctx) => {
+    const module = await UserChannelController()
+    const controllerInstance = new module.default()
+    return controllerInstance.getUserChannels(ctx)
+  })
+  .middleware([middleware.auth()])

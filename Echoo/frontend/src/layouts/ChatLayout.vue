@@ -12,12 +12,13 @@
 
     <!-- SIDEBAR -->
     <Sidebar
-    v-model:drawer-open="drawerOpen"
-    :private-channels="privateChannels"
-    :public-channels="publicChannels"
-    @go-to-channel="goToChannel"
-    @logout="handleLogout"
-    @create-channel="handleCreateChannel"
+      v-model:drawer-open="drawerOpen"
+      :private-channels="privateChannels"
+      :public-channels="publicChannels"
+      :active-channel-path="activeChannelPath"
+      @go-to-channel="goToChannel"
+      @logout="handleLogout"
+      @create-channel="handleCreateChannel"
     />
 
     <!-- MAIN CONTENT -->
@@ -132,6 +133,9 @@ const currentChannelName = ref('')
 
 const currentUserId = ref<number | null>(null)
 const currentChannelId = ref<number | null>(null)
+
+const activeChannelPath = ref<string>('')
+
 
 /* ŠTÝL PRE FOOTER – POZÍCIA DOLNÉHO PANELU */
 const footerStyle = computed(() => ({
@@ -395,28 +399,48 @@ watch(
 
     if (found) {
       currentChannelName.value = found.name
-      currentChannelId.value = found.id  // ← itt beállítjuk az ID-t
+      currentChannelId.value = found.id
+      activeChannelPath.value = found.path
+
+      // Debug log
+      console.log('Current IDs:', {
+        userId: currentUserId.value,
+        channelId: currentChannelId.value
+      })
+
+      // Biztonsági ellenőrzés
+      if (typeof currentUserId.value !== 'number' || typeof currentChannelId.value !== 'number') {
+        console.warn('Invalid IDs, skip backend query', currentUserId.value, currentChannelId.value)
+        return
+      }
+
       await loadMessages(newPath)
     } else {
       currentChannelName.value = ''
       currentChannelId.value = null
+      activeChannelPath.value = ''
       messages.value = []
     }
   },
   { immediate: true }
 )
 
+
 onMounted(async () => {
   try {
-    const response = await axios.get<Channel[]>('http://localhost:3333/channels')
-    const channels: Channel[] = response.data
+    const token = localStorage.getItem('auth_token')
+
+    const res = await axios.get<ChannelResponse[]>('http://localhost:3333/user/channels', {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+    const channels: ChannelResponse[] = res.data
 
     privateChannels.value = channels
       .filter(ch => ch.type === 'private')
       .map(ch => ({
         id: ch.id,
         name: ch.name,
-        path: `/chat/${ch.type}-${ch.name.replace(/\s+/g, '-')}`
+        path: `/chat/${ch.id}`   // ← egyezzen a backenddel
       }))
 
     publicChannels.value = channels
@@ -424,10 +448,14 @@ onMounted(async () => {
       .map(ch => ({
         id: ch.id,
         name: ch.name,
-        path: `/chat/${ch.type}-${ch.name.replace(/\s+/g, '-')}`
+        path: `/chat/${ch.id}`   // ← egyezzen a backenddel
       }))
+
+    console.log('Loaded private channels:', privateChannels.value)
+    console.log('Loaded public channels:', publicChannels.value)
+
   } catch (err) {
-    console.error('Failed to load channels', err)
+    console.error('Failed to load user channels', err)
   }
 })
 

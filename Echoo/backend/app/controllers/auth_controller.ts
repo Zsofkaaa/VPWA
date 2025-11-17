@@ -1,6 +1,8 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import User from '#models/user'
 import hash from '@adonisjs/core/services/hash'
+import Channel from '#models/channel'
+import UserChannel from '#models/user_channel'
 
 export default class AuthController {
   public async login({ request, response }: HttpContext) {
@@ -64,6 +66,19 @@ export default class AuthController {
         email,
         password,
       })
+
+      // Automatikus beléptetés minden public csatornába
+      const publicChannels = await Channel.query().where('type', 'public')
+
+      for (const channel of publicChannels) {
+        await UserChannel.create({
+          userId: user.id,
+          channelId: channel.id,
+          role: 'member',
+          notificationSettings: 'all',
+          kickCount: 0,
+        })
+      }
 
       const token = await User.accessTokens.create(user)
 

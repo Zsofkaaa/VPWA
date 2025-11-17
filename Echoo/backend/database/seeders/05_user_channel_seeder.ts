@@ -13,12 +13,17 @@ export default class UserChannelSeeder extends BaseSeeder {
       return
     }
 
-    for (const user of users) {
-      for (const channel of channels) {
+    for (const channel of channels) {
+      // A channel.createdBy alapján megkapjuk az admin user_id-ját
+      const creatorId = channel.createdBy
+
+      for (const user of users) {
+        const isCreator = user.id === creatorId
+
         await UserChannel.create({
           userId: user.id,
           channelId: channel.id,
-          role: 'member',
+          role: isCreator ? 'admin' : 'member',
           notificationSettings: 'all',
           kickCount: 0,
         })
