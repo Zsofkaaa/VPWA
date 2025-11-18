@@ -18,18 +18,18 @@ export default class Message extends BaseModel {
   @column.dateTime({ autoCreate: true }) declare createdAt: DateTime
   @column.dateTime({ autoCreate: true, autoUpdate: true }) declare updatedAt: DateTime
 
-  @belongsTo(() => User, { foreignKey: 'sender_id' })
+  @belongsTo(() => User, { foreignKey: 'senderId' })
   declare sender: BelongsTo<typeof User>
 
-  @belongsTo(() => Channel, { foreignKey: 'channel_id' })
+  @belongsTo(() => Channel, { foreignKey: 'channelId' })
   declare channel: BelongsTo<typeof Channel>
 
-  @hasOne(() => UserMessageCommand, { foreignKey: 'message_id' })
+  @hasOne(() => UserMessageCommand, { foreignKey: 'messageId' })
   declare userMessageCommands: HasOne<typeof UserMessageCommand>
 
-  @hasMany(() => MessageMention, { foreignKey: 'message_id' })
+  @hasMany(() => MessageMention, { foreignKey: 'messageId' })
   declare mentions: HasMany<typeof MessageMention>
 
-  @hasOne(() => ChannelHistory, { foreignKey: 'last_fetched_message_id' })
+  @hasOne(() => ChannelHistory, { foreignKey: 'lastFetchedMessageId' })
   declare relatedHistories: HasOne<typeof ChannelHistory>
 }

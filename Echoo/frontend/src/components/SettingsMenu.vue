@@ -133,7 +133,13 @@
 
 
 <script lang="ts" setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import { useQuasar } from 'quasar'
+import axios from 'axios'
+
+const $q = useQuasar()
+const API_URL = 'http://localhost:3333'
+const token = localStorage.getItem('auth_token')
 
 // Stav dialógu
 const showDialog = ref(false)
@@ -141,16 +147,16 @@ const showPassword = ref(false)
 
 // Formulárové polia
 // "ref" robí premeny reaktívne — zmena hodnoty automaticky aktualizuje UI
-const firstName = ref('John')
-const lastName = ref('Doe')
-const nickname = ref('johndoe')
-const email = ref('john.doe@example.com')
+const firstName = ref('')
+const lastName = ref('')
+const nickname = ref('')
+const email = ref('')
 const password = ref('')
 const confirmPassword = ref('')
 
 // Overenie platnosti formulára
 const isFormValid = computed(() => {
-  const emailValid = email.value
+  const emailValid = email.value.length > 3
   const passwordValid = !password.value || (password.value === confirmPassword.value && password.value.length >= 6)
   return emailValid && passwordValid
 })
@@ -163,22 +169,71 @@ function closeDialog() {
   showPassword.value = false
 }
 
+// Type for user data
+interface UserData {
+  firstName: string
+  lastName: string
+  nickName: string
+  email: string
+}
+
 // Uloženie zmien
-function saveSettings() {
+// Save
+async function saveSettings() {
   if (!isFormValid.value) return
 
-  const updatedSettings = {
+  const payload: Partial<UserData> & { password?: string } = {
     firstName: firstName.value,
     lastName: lastName.value,
-    nickname: nickname.value,
+    nickName: nickname.value,
     email: email.value,
-    ...(password.value && { password: password.value }) // pridá pole password len ak existuje
   }
 
-  console.log('Saving settings:', updatedSettings)
+  if (password.value) {
+    payload.password = password.value
+  }
 
-  closeDialog()
+  try {
+    await axios.put(`${API_URL}/user/update`, payload, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+
+    $q.notify({
+      type: 'positive',
+      message: 'Profile updated successfully!'
+    })
+
+    closeDialog()
+  } catch (err) {
+    console.error(err)
+    $q.notify({
+      type: 'negative',
+      message: 'Failed to save profile settings.'
+    })
+  }
 }
+
+// Load current user
+async function loadUserData() {
+  try {
+    const res = await axios.get<UserData>(`${API_URL}/me`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+
+    const user = res.data
+
+    firstName.value = user.firstName
+    lastName.value = user.lastName
+    nickname.value = user.nickName
+    email.value = user.email
+  } catch (err) {
+    console.error('Failed to load user data', err)
+  }
+}
+
+// Fix floating promise by using void
+onMounted(() => { void loadUserData() })
+
 </script>
 
 

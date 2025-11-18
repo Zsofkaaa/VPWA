@@ -5,18 +5,20 @@
 
     <!-- HEADER -->
     <Header
-    v-model:drawer-open="drawerOpen"
-    :current-channel="currentChannelName"
+      v-model:drawer-open="drawerOpen"
+      :current-channel="currentChannelName"
+      :current-channel-id="currentChannelId"
     />
 
     <!-- SIDEBAR -->
     <Sidebar
-    v-model:drawer-open="drawerOpen"
-    :private-channels="privateChannels"
-    :public-channels="publicChannels"
-    @go-to-channel="goToChannel"
-    @logout="handleLogout"
-    @create-channel="handleCreateChannel"
+      v-model:drawer-open="drawerOpen"
+      :private-channels="privateChannels"
+      :public-channels="publicChannels"
+      :active-channel-path="activeChannelPath"
+      @go-to-channel="goToChannel"
+      @logout="handleLogout"
+      @create-channel="handleCreateChannel"
     />
 
     <!-- MAIN CONTENT -->
@@ -72,18 +74,24 @@ defineOptions({ name: 'ChatLayout' })
 /* ROZHRANIA PRE TYPY DÁT */
 interface ChannelData {
   name: string
-  visibility: 'private' | 'public'
-  description: string
-  invitedMembers: string[]
-  notificationLevel: string
+  type: 'private' | 'public'
+  invitedMembers: number[]
+  notificationSettings: string
+}
+
+interface ChannelResponse {
+  id: number
+  name: string
+  type: 'private' | 'public'
 }
 
 /* ROZHRANIE PRE SPRÁVY */
 interface Message {
   id: number
+  userId: number
   user: string
   text: string
-  isPing?: boolean
+  isPing?: boolean | undefined
 }
 
 interface Channel {
@@ -94,8 +102,18 @@ interface Channel {
   lastActiveAt: string
 }
 
-const privateChannels = ref<{ name: string; path: string }[]>([])
-const publicChannels = ref<{ name: string; path: string }[]>([])
+// Add interface for the API response
+interface MessageResponse {
+  id: number
+  userId: number
+  text: string
+  user: string
+  hasPing?: boolean
+  // Add other response properties if needed
+}
+
+const privateChannels = ref<{ id: number; name: string; path: string }[]>([])
+const publicChannels = ref<{ id: number; name: string; path: string }[]>([])
 
 /* ZÁKLADNÉ INŠTANCIE */
 const router = useRouter()
@@ -112,6 +130,12 @@ const newMessage = ref('')
 const isTyping = ref(false)
 const showNotification = ref(false)
 const currentChannelName = ref('')
+
+const currentUserId = ref<number | null>(null)
+const currentChannelId = ref<number | null>(null)
+
+const activeChannelPath = ref<string>('')
+
 
 /* ŠTÝL PRE FOOTER – POZÍCIA DOLNÉHO PANELU */
 const footerStyle = computed(() => ({
@@ -133,10 +157,50 @@ const typingStatusStyle = computed(() => ({
   zIndex: 2150
 }))
 
+async function loadMessages(channelPath: string) {
+  const channelName = channelPath.split('/chat/')[1]
+
+  // Add validation for channelName
+  if (!channelName) {
+    console.warn('Invalid channel path:', channelPath)
+    messages.value = []
+    return
+  }
+
+  const channel = [...privateChannels.value, ...publicChannels.value]
+    .find((c) => c.path.includes(channelName))
+
+  if (!channel) {
+    messages.value = []
+    return
+  }
+
+  try {
+    const res = await axios.get<Channel[]>('http://localhost:3333/channels')
+    const channelsData: Channel[] = res.data
+
+    const channelDb = channelsData.find(c => c.name === channel.name)
+    if (!channelDb) return
+
+    const msgRes = await axios.get<Message[]>(
+      `http://localhost:3333/channels/${channelDb.id}/messages`
+    )
+
+    messages.value = msgRes.data.reverse()
+  } catch (e) {
+    console.error("Failed to load messages", e)
+  }
+}
+
 /* FUNKCIA NA ZMENU KANÁLU */
-function goToChannel(ch: { name: string; path: string }) {
+function goToChannel(ch: { name: string; path?: string }) {
   currentChannelName.value = ch.name
-  void router.push(ch.path)
+
+  if (ch.path) {
+    void router.push(ch.path)
+  } else {
+    console.warn(`Channel path is undefined for "${ch.name}"`)
+  }
 }
 
 /* FUNKCIA NA ODHLÁSENIE POUŽÍVATEĽA */
@@ -145,68 +209,144 @@ async function handleLogout() {
   await router.push('/auth')
 }
 
+interface AxiosErrorLike {
+  isAxiosError: boolean
+  response?: { status: number }
+}
+
+function isAxiosError(err: unknown): err is AxiosErrorLike {
+  return (
+    typeof err === 'object' &&
+    err !== null &&
+    'isAxiosError' in err &&
+    (err as { isAxiosError?: unknown }).isAxiosError === true
+  )
+}
+
 /* FUNKCIA NA VYTVORENIE NOVÉHO KANÁLU */
-function handleCreateChannel(data: ChannelData) {
-  // Formátovanie channel name
-  const formattedName = data.name.startsWith('#') ? data.name : `#${data.name}`
+async function handleCreateChannel(data: ChannelData) {
+  const formattedName = data.name.replace(/^#/, '')
+  const channelPath = `/chat/${data.type}-${data.name.toLowerCase().replace(/\s+/g, '-')}`
 
-  // Kontrola, či názov kanála už existuje v oboch kategóriách
-  const allChannels = [...privateChannels.value, ...publicChannels.value]
-  const nameExists = allChannels.some(ch => ch.name.toLowerCase() === formattedName.toLowerCase())
-
-  if (nameExists) {
+  // Frontend oldali ellenőrzés, hogy a channel név már létezik-e
+  const allChannelNames = [...privateChannels.value, ...publicChannels.value].map(ch => ch.name.toLowerCase())
+  if (allChannelNames.includes(formattedName.toLowerCase())) {
     $q.notify({
       type: 'negative',
       message: `Channel "${formattedName}" already exists!`,
       position: 'top',
-      timeout: 2500
+      timeout: 2000
     })
     return
   }
 
-  // Generovanie pathu pre nový channel
-  const channelPath = `/chat/${data.visibility}-${data.name.toLowerCase().replace(/\s+/g, '-')}`
+  try {
+    const token = localStorage.getItem('auth_token')
+    if (!token || !currentUserId.value) throw new Error('User not authenticated')
 
-  const newChannel = {
-    name: formattedName,
-    path: channelPath
+    // POST request az új csatorna létrehozásához
+    const res = await axios.post<ChannelResponse>(
+      'http://localhost:3333/channels',
+      { name: formattedName,
+        type: data.type,
+        invitedMembers: data.invitedMembers || [],
+        notificationSettings: data.notificationSettings},
+      { headers: { Authorization: `Bearer ${token}` } }
+    )
+    const newChannelId = res.data.id
+
+    // Mentés a user_channel táblába a notificationSettings-szel
+    await axios.post(
+      `http://localhost:3333/user_channel`,
+      {
+        channelId: newChannelId,
+        userId: currentUserId.value,
+        role: 'admin',
+        notificationSettings: data.notificationSettings
+      },
+      { headers: { Authorization: `Bearer ${token}` } }
+    )
+
+    // Hozzáadás a frontend csatorna listához
+    const newChannel = { id: newChannelId, name: formattedName, path: channelPath }
+    if (data.type === 'private') privateChannels.value.push(newChannel)
+    else publicChannels.value.push(newChannel)
+
+    // Értesítés a felhasználónak és navigáció
+    $q.notify({
+      type: 'positive',
+      message: `Channel "${newChannel.name}" created!`,
+      position: 'top',
+      timeout: 2000
+    })
+    currentChannelName.value = newChannel.name
+    void router.push(channelPath)
+
+  } catch (err: unknown) {
+    let message = 'Channel creation failed!'
+
+    if (isAxiosError(err)) {
+      if (err.response?.status === 409) {
+        message = `Channel "${formattedName}" already exists!`
+      }
+    }
+
+    console.error('Failed to create channel', err)
+    $q.notify({
+      type: 'negative',
+      message,
+      position: 'top',
+      timeout: 2000
+    })
   }
-
-  // Pridanie do kategórie na základe visibility
-  if (data.visibility === 'private') {
-    privateChannels.value.push(newChannel)
-  } else {
-    publicChannels.value.push(newChannel)
-  }
-
-  // Zobraziť oznámenie o úspechu
-  $q.notify({
-    type: 'positive',
-    message: `Channel "${newChannel.name}" created successfully!`,
-    position: 'top',
-    timeout: 2000
-  })
-
-  // Navigácia do nového channela
-  currentChannelName.value = newChannel.name
-  void router.push(channelPath)
 }
 
 /* FUNKCIA NA ODOSLANIE SPRÁVY */
-function onEnterPress(e: KeyboardEvent) {
+async function onEnterPress(e: KeyboardEvent) {
   if (e.key === 'Enter' && newMessage.value.trim() !== '') {
     e.preventDefault()
 
-    const newMsg: Message = {
-      id: Date.now(),
-      user: 'You',
-      text: newMessage.value.trim()
+    const content = newMessage.value.trim()
+
+    try {
+      // Feltételezzük, hogy currentChannelName alapján megvan a channelId
+      const allChannels = [...privateChannels.value, ...publicChannels.value]
+      const channel = allChannels.find(ch => ch.name === currentChannelName.value)
+      if (!channel) return
+
+      // POST request a backendre with proper typing
+      const token = localStorage.getItem('auth_token') // helyesen!
+      const res = await axios.post<MessageResponse>(
+        `http://localhost:3333/channels/${channel.id}/messages`,
+        { content },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
+      )
+
+      // Hozzáadjuk a visszakapott üzenetet a chathez
+      messages.value.push({
+        id: res.data.id,
+        userId: res.data.userId,
+        user: res.data.user,
+        text: res.data.text,
+        isPing: res.data.hasPing
+      })
+
+      // Reset input
+      newMessage.value = ''
+
+    } catch (err) {
+      console.error('Failed to send message', err)
+      $q.notify({
+        type: 'negative',
+        message: 'Message could not be sent!',
+        position: 'top',
+        timeout: 2000
+      })
     }
-
-    messages.value.push(newMsg)
-
-    // Reset input
-    newMessage.value = ''
   }
 }
 
@@ -253,41 +393,83 @@ watch(
 /* SLEDOVANIE ROUTE: KEĎ SA MENÍ KANÁL ALEBO VSTÚPIME PRIAMO CEZ ROUTE */
 watch(
   () => route.path,
-  (newPath) => {
-    // Nájdi channel podľa path
+  async (newPath) => {
     const allChannels = [...privateChannels.value, ...publicChannels.value]
     const found = allChannels.find(ch => ch.path === newPath)
 
     if (found) {
       currentChannelName.value = found.name
+      currentChannelId.value = found.id
+      activeChannelPath.value = found.path
+
+      // Debug log
+      console.log('Current IDs:', {
+        userId: currentUserId.value,
+        channelId: currentChannelId.value
+      })
+
+      // Biztonsági ellenőrzés
+      if (typeof currentUserId.value !== 'number' || typeof currentChannelId.value !== 'number') {
+        console.warn('Invalid IDs, skip backend query', currentUserId.value, currentChannelId.value)
+        return
+      }
+
+      await loadMessages(newPath)
     } else {
-      // Ak route neexistuje v našom zozname
       currentChannelName.value = ''
+      currentChannelId.value = null
+      activeChannelPath.value = ''
       messages.value = []
     }
   },
-  { immediate: true }   //spustí sa aj pri prvom načítaní
+  { immediate: true }
 )
+
 
 onMounted(async () => {
   try {
-    const response = await axios.get<Channel[]>('http://localhost:3333/channels')
-    const channels = response.data
+    const token = localStorage.getItem('auth_token')
+
+    const res = await axios.get<ChannelResponse[]>('http://localhost:3333/user/channels', {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+    const channels: ChannelResponse[] = res.data
 
     privateChannels.value = channels
-      .filter((ch) => ch.type === 'private')
-      .map((ch) => ({ name: ch.name, path: `/chat/${ch.type}-${ch.name.replace(/\s+/g, '-')}` }))
+      .filter(ch => ch.type === 'private')
+      .map(ch => ({
+        id: ch.id,
+        name: ch.name,
+        path: `/chat/${ch.id}`   // ← egyezzen a backenddel
+      }))
 
     publicChannels.value = channels
-      .filter((ch) => ch.type === 'public')
-      .map((ch) => ({ name: ch.name, path: `/chat/${ch.type}-${ch.name.replace(/\s+/g, '-')}` }))
+      .filter(ch => ch.type === 'public')
+      .map(ch => ({
+        id: ch.id,
+        name: ch.name,
+        path: `/chat/${ch.id}`   // ← egyezzen a backenddel
+      }))
+
+    console.log('Loaded private channels:', privateChannels.value)
+    console.log('Loaded public channels:', publicChannels.value)
+
   } catch (err) {
-    console.error('Failed to load channels', err)
+    console.error('Failed to load user channels', err)
+  }
+})
+
+onMounted(() => {
+  const savedUser = localStorage.getItem("user")
+  if (savedUser) {
+    const user = JSON.parse(savedUser)
+    currentUserId.value = user.id
   }
 })
 
 /* SPRÁVY DOSTUPNÉ PRE VŠETKY DIEŤA KOMPONENTY */
 provide('messages', messages)
+provide("currentUserId", currentUserId)
 
 </script>
 

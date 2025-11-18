@@ -52,11 +52,14 @@
           <q-item
           clickable
           @click="selectChannel(ch)"
-          :class="['sidebar-item', { 'active-channel': ch.path === activeChannelPath }]"
+          :class="['sidebar-item', { 'active-channel': ch.path === props.activeChannelPath }]"
           >
             <q-item-section>{{ ch.name }}</q-item-section>
           </q-item>
-          <ManageChannelMenu v-if="ch.path === activeChannelPath" />
+          <ManageChannelMenu
+            v-if="ch.path === props.activeChannelPath"
+            :channel="{ id: ch.id, name: ch.name }"
+          />
         </div>
       </div>
 
@@ -70,10 +73,14 @@
           <q-item
           clickable
           @click="selectChannel(ch)"
-          :class="['sidebar-item', { 'active-channel': ch.path === activeChannelPath }]">
+          :class="['sidebar-item', { 'active-channel': ch.path === props.activeChannelPath }]"
+          >
             <q-item-section>{{ ch.name }}</q-item-section>
           </q-item>
-          <ManageChannelMenu v-if="ch.path === activeChannelPath" />
+          <ManageChannelMenu
+            v-if="ch.path === props.activeChannelPath"
+            :channel="{ id: ch.id, name: ch.name }"
+          />
         </div>
       </div>
 
@@ -127,20 +134,21 @@
 import { ref, computed } from 'vue'
 import ManageChannelMenu from './ManageChannelMenu.vue'
 import AddChannelDialog from './AddChannelDialog.vue'
-
+import { useQuasar } from 'quasar'
+const $q = useQuasar()
 
 /* ROZHRANIA PRE DÁTA O KANÁLOCH */
 interface Channel {
+  id: number
   name: string
   path: string
 }
 
 interface ChannelData {
   name: string
-  visibility: 'private' | 'public'
-  description: string
-  invitedMembers: string[]
-  notificationLevel: string
+  type: 'private' | 'public'
+  invitedMembers: number[]
+  notificationSettings: string
 }
 
 /* PROPS - ÚDAJE ZO ZVYŠKU APLIKÁCIE */
@@ -148,6 +156,7 @@ const props = defineProps<{
   drawerOpen: boolean
   privateChannels: Channel[]
   publicChannels: Channel[]
+  activeChannelPath: string   // ← ez új
 }>()
 
 /* UDALOSTI, KTORÉ KOMPONENT VYSIELA */
@@ -159,7 +168,7 @@ const emit = defineEmits<{
 }>()
 
 /* AKTUÁLNE VYBRANÝ KANÁL */
-const activeChannelPath = ref<string>('')
+//const activeChannelPath = ref<string>('')
 
 /* OVLÁDANIE ZOBRAZENIA DIALÓGU NA PRIDANIE KANÁLU */
 const showAddChannelDialog = ref(false)
@@ -172,12 +181,15 @@ const allChannelNames = computed(() => {
 /* LOGIKA PRE POZVÁNKY */
 const inviteDialog = ref(false)
 const inviteAccepted = ref(false)
-const invitedChannel: Channel = { name: 'Channel', path: '/chat/invite-channel' }
+const invitedChannel: Channel = { id: 1, name: 'Channel', path: '/chat/invite-channel' }  //AZ ID-T MAJD KI KELL JAVÍTANI
+
+console.log('Sidebar received privateChannels:', props.privateChannels)
+console.log('Sidebar received publicChannels:', props.publicChannels)
+console.log('Sidebar activeChannelPath:', props.activeChannelPath)
 
 /* FUNKCIA NA VÝBER KANÁLU */
 function selectChannel(ch: Channel) {
-  activeChannelPath.value = ch.path
-  emit('goToChannel', ch)
+  emit('goToChannel', ch) // a parent kezeli az activeChannelPath frissítését
 }
 
 /* FUNKCIA NA VYTVORENIE NOVÉHO KANÁLU */

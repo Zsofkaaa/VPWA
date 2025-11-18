@@ -3,8 +3,11 @@
   "compilerOptions": {
     "rootDir": "./",
     "outDir": "./build",
+    "baseUrl": ".",
     "paths": {
-      "App/*": ["./app/*"]
+      "App/*": ["./app/*"],
+      "@ioc:Adonis/Addons/*": ["node_modules/@adonisjs/*/build/src"],
+      "@ioc:Adonis/Lucid/Orm": ["node_modules/@adonisjs/lucid/build/src/Orm/index.js"]
     }
   }
 }

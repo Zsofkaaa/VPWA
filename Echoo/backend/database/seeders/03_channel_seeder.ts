@@ -13,7 +13,7 @@ export default class ChannelSeeder extends BaseSeeder {
       },
       {
         name: 'Development',
-        type: 'private',
+        type: 'public',
         createdBy: 2,
         lastActiveAt: DateTime.now(),
       },

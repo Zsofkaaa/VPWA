@@ -1,6 +1,6 @@
 import { BaseSeeder } from '@adonisjs/lucid/seeders'
 import User from '#models/user'
-import Hash from '@adonisjs/core/services/hash'
+//import Hash from '@adonisjs/core/services/hash'
 
 export default class UserSeeder extends BaseSeeder {
   public async run() {

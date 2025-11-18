@@ -41,7 +41,7 @@
         <div class="q-mb-md">
           <label class="text-weight-medium q-mb-xs block">Visibility</label>
           <q-select
-            v-model="visibility"
+            v-model="type"
             :options="visibilityOptions"
             filled
             dense
@@ -52,7 +52,7 @@
             map-options
           >
             <template v-slot:prepend>
-              <q-icon :name="visibility === 'private' ? 'lock' : 'public'" color="white" />
+              <q-icon :name="type === 'private' ? 'lock' : 'public'" color="white" />
             </template>
           </q-select>
         </div>
@@ -67,6 +67,8 @@
             dense
             multiple
             use-chips
+            emit-value
+            map-options
             bg-color="rgba(255, 255, 255, 0.1)"
             color="white"
             dark
@@ -82,7 +84,7 @@
         <div class="q-mb-md">
           <label class="text-weight-medium q-mb-xs block">Notification Settings</label>
           <q-option-group
-            v-model="notificationLevel"
+            v-model="notificationSettings"
             :options="notificationOptions"
             color="primary"
             dark
@@ -116,40 +118,24 @@
 
 
 <script lang="ts" setup>
-import { ref, watch } from 'vue'
-
-/*
+import { ref, watch, onMounted } from 'vue'
 import axios from 'axios'
-
-// Opció: külön instance az API-hoz, baseURL beállítva
-const api = axios.create({
-  baseURL: 'http://127.0.0.1:3333', // backend URL
-  timeout: 10000,
-  withCredentials: true // ha auth cookie kell
-})
-*/
 
 // Stav formulára
 const channelName = ref('')
-const visibility = ref<'private' | 'public'>('public')
-const description = ref('')
-const invitedMembers = ref<string[]>([])
-const notificationLevel = ref('all')
+const type = ref<'private' | 'public'>('public')
+const invitedMembers = ref<number[]>([])
+const notificationSettings = ref<'all' | 'mentions' | 'muted'>('all')
+const availableMembers = ref<{ label: string, value: number }[]>([])
+const currentUserId = ref<number | null>(null) // a saját user ID
+const API_URL = 'http://localhost:3333'
+const token = localStorage.getItem('auth_token')
 
 // Možnosti viditeľnosti
 const visibilityOptions = [
   { label: 'Public', value: 'public', icon: 'public' },
   { label: 'Private', value: 'private', icon: 'lock' }
 ]
-
-// Dostupní členovia
-const availableMembers = ref([
-  'John Doe',
-  'Jane Smith',
-  'Bob Johnson',
-  'Alice Williams',
-  'Charlie Brown'
-])
 
 // Možnosti notifikácií
 const notificationOptions = [
@@ -173,10 +159,20 @@ defineProps<{
 // Typ dát kanála
 interface ChannelData {
   name: string
-  visibility: 'private' | 'public'
-  description: string
-  invitedMembers: string[]
-  notificationLevel: string
+  type: 'private' | 'public'
+  invitedMembers: number[]
+  notificationSettings: string
+}
+
+interface MeResponse {
+  id: number
+  name: string | null
+  nickName: string | null
+}
+
+interface User {
+  id: number
+  nickName: string
 }
 
 // Zatvorenie dialógu a reset formulára
@@ -189,10 +185,9 @@ function closeDialog() {
 function createChannel() {
   const channelData: ChannelData = {
     name: channelName.value,
-    visibility: visibility.value,
-    description: description.value,
+    type: type.value,
     invitedMembers: invitedMembers.value,
-    notificationLevel: notificationLevel.value
+    notificationSettings: notificationSettings.value
   }
 
   emit('create', channelData)
@@ -202,21 +197,52 @@ function createChannel() {
 // Reset všetkých polí formulára
 function resetForm() {
   channelName.value = ''
-  visibility.value = 'public'
-  description.value = ''
+  type.value = 'public'
   invitedMembers.value = []
-  notificationLevel.value = 'all'
+  notificationSettings.value = 'all'
 }
 
 // Reset formulára pri zmene emit (alebo zatvorení)
-watch(() => emit, () => {
-  resetForm()
+watch(() => emit, () => { resetForm() })
+
+// Load users on mount
+onMounted(async () => {
+  try {
+    // 1️⃣ get current user (/me)
+    const authResponse = await axios.get<MeResponse>(`${API_URL}/me`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+
+    currentUserId.value = authResponse.data.id
+    console.log('Current user id:', currentUserId.value)
+
+    // 2️⃣ get all users (/users)
+    const response = await axios.get<User[]>(`${API_URL}/users`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+
+    console.log('Users from backend:', response.data)
+
+    // 3️⃣ fill available members except current user
+    availableMembers.value = response.data
+      .filter(user => user.id !== currentUserId.value)
+      .map(user => ({
+        label: user.nickName,
+        value: user.id
+      }))
+
+    console.log('Available members:', availableMembers.value)
+
+  } catch (error) {
+    console.error('Failed to load users', error)
+  }
 })
+
 </script>
 
 
 
-<style scoped>
+<style>
 .block {
   display: block; /* zaberá celú šírku a zalomí riadok */
 }
@@ -255,4 +281,11 @@ watch(() => emit, () => {
 .create-btn:disabled {
   background-color: rgba(76, 175, 80, 0.5);
 }
+
+/* QSelect chips (invited members) - better contrast */
+.q-field--dark .q-chip {
+  background-color: #1e3b5c !important;
+  color: #ffffff !important;
+}
+
 </style>

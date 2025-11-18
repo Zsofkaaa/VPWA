@@ -9,16 +9,21 @@
 
 import router from '@adonisjs/core/services/router'
 import Channel from '#models/channel'
+import { middleware } from '#start/kernel'
+const MessagesController = () => import('#controllers/messages_controller')
 const AuthController = () => import('#controllers/auth_controller')
+const ChannelsController = () => import('#controllers/channels_controller')
+const UserChannelController = () => import('#controllers/user_channel_controller')
 
-// Alap route
+import UserControllerClass from '#controllers/user_controller'
+const userController = new UserControllerClass()
+
 router.get('/', async () => {
   return {
     hello: 'world',
   }
 })
 
-// API route a csatornák lekérésére
 router.get('/channels', async () => {
   try {
     const channels = await Channel.query().orderBy('id', 'asc')
@@ -28,5 +33,72 @@ router.get('/channels', async () => {
   }
 })
 
+router.get('/channels/:id/messages', async (ctx) => {
+  const module = await MessagesController()
+  const ControllerClass = module.default
+  const controllerInstance = new ControllerClass()
+  return controllerInstance.index({ params: { id: Number(ctx.params.id) } })
+})
+
+router
+  .post('/channels/:id/messages', async ({ auth, params, request }) => {
+    const module = await MessagesController()
+    const ControllerClass = module.default
+    const controllerInstance = new ControllerClass()
+
+    return controllerInstance.store({ auth, params, request })
+  })
+  .middleware([middleware.auth()])
+
 router.post('/auth/login', [AuthController, 'login'])
 router.post('/auth/register', [AuthController, 'register'])
+
+router.post('/channels', [ChannelsController, 'store']).middleware([middleware.auth()])
+
+router
+  .post('/user_channel', async ({ request, auth }) => {
+    const module = await UserChannelController()
+    const controllerInstance = new module.default()
+    return controllerInstance.store({ request, auth })
+  })
+  .middleware([middleware.auth()])
+
+router
+  .get('/users', async (ctx) => {
+    return userController.index(ctx)
+  })
+  .middleware([middleware.auth()])
+
+router
+  .get('/me', async (ctx) => {
+    return userController.me(ctx)
+  })
+  .middleware([middleware.auth()])
+
+router
+  .put('/user/update', async (ctx) => userController.update(ctx))
+  .middleware([middleware.auth()])
+
+router.get('/channels/:id/members', async (ctx) => {
+  const module = await UserChannelController()
+  const ControllerClass = module.default
+  const controllerInstance = new ControllerClass()
+  return controllerInstance.members(ctx)
+})
+
+router
+  .delete('/channels/:id/leave', async (ctx) => {
+    const module = await UserChannelController()
+    const ControllerClass = module.default
+    const controllerInstance = new ControllerClass()
+    return controllerInstance.leave(ctx)
+  })
+  .middleware([middleware.auth()])
+
+router
+  .get('/user/channels', async (ctx) => {
+    const module = await UserChannelController()
+    const controllerInstance = new module.default()
+    return controllerInstance.getUserChannels(ctx)
+  })
+  .middleware([middleware.auth()])

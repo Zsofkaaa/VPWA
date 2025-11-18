@@ -14,12 +14,12 @@ export default class UserMessageCommand extends BaseModel {
   @column.dateTime({ autoCreate: true }) declare createdAt: DateTime
   @column.dateTime({ autoCreate: true, autoUpdate: true }) declare updatedAt: DateTime
 
-  @belongsTo(() => User, { foreignKey: 'user_id' })
+  @belongsTo(() => User, { foreignKey: 'userId' })
   declare user: BelongsTo<typeof User>
 
-  @belongsTo(() => Message, { foreignKey: 'message_id' })
+  @belongsTo(() => Message, { foreignKey: 'messageId' })
   declare message: BelongsTo<typeof Message>
 
-  @belongsTo(() => Command, { foreignKey: 'command_id' })
+  @belongsTo(() => Command, { foreignKey: 'commandId' })
   declare command: BelongsTo<typeof Command>
 }

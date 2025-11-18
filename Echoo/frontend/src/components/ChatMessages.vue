@@ -19,7 +19,10 @@
       >
 
         <!-- MENO POUŽÍVATEĽA -->
-        <div class="text-bold">{{ msg.user }}</div>
+        <div class="text-bold">
+          {{ msg.user }}
+          <span v-if="currentUserId === msg.userId" class="you-label">(You)</span>
+        </div>
 
         <!-- OBSAH SPRÁVY (S KONTROLOU NA PING) -->
         <div
@@ -43,12 +46,16 @@
 
 // KELL A SCROLL TO BOTTOM
 
-import { ref, watch } from 'vue'
-//import { nextTick } from 'vue'
+import { nextTick, ref, watch } from 'vue'
+import { inject } from 'vue'
+
+const currentUserId = inject<number>('currentUserId')
+
 
 /* ROZHRANIE PRE SPRÁVU */
 interface Message {
   id: number
+  userId: number
   user: string
   text: string
   isPing?: boolean
@@ -69,36 +76,32 @@ function formatMessage(text: string, isPing?: boolean): string {
   return text.replace(/(@\w+)/g, '<span class="ping-highlight">$1</span>');
 }
 
-/* FUNKCIA NAČÍTAVAJÚCA STARŠIE SPRÁVY PRI SCROLLOVANÍ HORE */
-/*
-function loadMore(index: number, done: (stop?: boolean) => void) {
+// AUTOMATIC SCROLL TO BOTTOM
+function scrollToBottom() {
   const el = messagesContainer.value
-  const prevScrollHeight = el ? el.scrollHeight : 0
+  if (!el) return
 
-  setTimeout(() => {
-    const older: Message[] = Array.from({ length: 10 }, (_, i) => ({
-      id: Date.now() + Math.floor(Math.random() * 100000) + i,
-      user: `User ${Math.ceil(Math.random() * 5)}`,
-      text: `Older message ${i + 1}`
-    }))
-
-    // Pridá staršie správy na začiatok
-    localMessages.value = [...older, ...localMessages.value]
-
-    // Udrží pozíciu scrolovania po načítaní
-    void nextTick().then(() => {
-      if (el) el.scrollTop = el.scrollHeight - prevScrollHeight
-      done()
-    })
-  }, 450)
+  el.scrollTop = el.scrollHeight
 }
-*/
 
 /* SLEDUJE ZMENY V PROPS.MESSAGES A AKTUALIZUJE LOKÁLNE SPRÁVY */
 watch(
   () => props.messages,
-  (newVal) => {
+  async (newVal) => {
+    const wasAtBottom = (() => {
+      const el = messagesContainer.value
+      if (!el) return true
+      return el.scrollTop + el.clientHeight >= el.scrollHeight - 50
+    })()
+
     localMessages.value = [...newVal]
+
+    await nextTick()
+
+    // csak akkor görgessünk le, ha a user nem scrollozott fel
+    if (wasAtBottom) {
+      scrollToBottom()
+    }
   },
   { immediate: true, deep: true }
 )
@@ -135,6 +138,18 @@ watch(
   background-color: rgba(88, 101, 242, 0.15) !important;
   border: 2px solid #5865f2;
   font-weight: 600;
+}
+
+.you-label {
+  display: inline-block;
+  background-color: #355377;
+  color: white;
+  font-size: 0.7em;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-left: 6px;
+  vertical-align: middle;
 }
 
 </style>

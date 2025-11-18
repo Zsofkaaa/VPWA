@@ -6,6 +6,7 @@ import UserMessageCommand from './user_message_command.js'
 import MessageMention from './message_mention.js'
 import UserChannel from './user_channel.js'
 import { DateTime } from 'luxon'
+import AccessToken from './access_token.js' // EZ LEHET NEM KELL MAJD!!!
 import hash from '@adonisjs/core/services/hash'
 import { DbAccessTokensProvider } from '@adonisjs/auth/access_tokens'
 
@@ -33,22 +34,25 @@ export default class User extends BaseModel {
   @hasMany(() => UserMessageCommand, { foreignKey: 'user_id' })
   declare userMessageCommands: HasMany<typeof UserMessageCommand>
 
-  @hasMany(() => MessageMention, { foreignKey: 'mentioned_user_id' })
+  @hasMany(() => MessageMention, { foreignKey: 'mentionedUserId' })
   declare mentions: HasMany<typeof MessageMention>
 
-  @hasMany(() => Message, { foreignKey: 'sender_id' })
+  @hasMany(() => Message, { foreignKey: 'senderId' })
   declare messages: HasMany<typeof Message>
 
-  @hasMany(() => Channel, { foreignKey: 'created_by' })
+  @hasMany(() => Channel, { foreignKey: 'createdBy' })
   declare createdChannels: HasMany<typeof Channel>
 
-  @hasMany(() => UserChannel, { foreignKey: 'user_id' })
+  @hasMany(() => UserChannel, { foreignKey: 'userId' })
   declare userChannels: HasMany<typeof UserChannel>
 
   @manyToMany(() => Channel, {
     pivotTable: 'user_channel',
-    pivotForeignKey: 'user_id',
-    pivotRelatedForeignKey: 'channel_id',
+    pivotForeignKey: 'userId',
+    pivotRelatedForeignKey: 'channelId',
   })
   declare channels: ManyToMany<typeof Channel>
+
+  @hasMany(() => AccessToken)
+  declare accessTokens: HasMany<typeof AccessToken>
 }

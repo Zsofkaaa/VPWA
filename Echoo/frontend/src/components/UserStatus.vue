@@ -15,6 +15,9 @@
 <script lang="ts" setup>
 import { ref, computed } from 'vue'
 
+import { useQuasar } from 'quasar'
+const $q = useQuasar()
+
 // Typ statusu - definuje tri možné hodnoty
 type Status = 'online' | 'dnd' | 'offline'
 

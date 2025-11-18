@@ -110,7 +110,16 @@
 
 
 <script lang="ts" setup>
+import axios from 'axios'
+import { useRouter } from 'vue-router'
+import { useQuasar } from 'quasar'
 import { ref } from 'vue'
+
+//const route = useRoute()
+const router = useRouter()
+const $q = useQuasar()
+
+const props = defineProps<{ channel: { id: number, name: string } }>()
 
 // Premenná, ktorá určuje, či je menu otvorené
 const menu = ref(false)
@@ -152,9 +161,32 @@ function terminateChannel() {
 }
 
 // Funkcia na opustenie kanála
-function leaveChannel() {
+async function leaveChannel() {
   menu.value = false
-  console.log('Leave channel clicked')
+
+  if (!props.channel.id) {
+    console.error('Invalid channel id', props.channel)
+    return
+  }
+
+  const token = localStorage.getItem('auth_token')
+
+  try {
+    await axios.delete(`http://localhost:3333/channels/${props.channel.id}/leave`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+
+    $q.notify({
+      type: 'positive',
+      message: 'You left the channel',
+      position: 'top'
+    })
+
+    await router.push('/chat')
+  } catch (err) {
+    console.error('Leave failed:', err)
+    $q.notify({ type: 'negative', message: 'Failed to leave channel' })
+  }
 }
 </script>
 

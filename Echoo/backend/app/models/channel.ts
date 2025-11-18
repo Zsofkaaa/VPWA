@@ -15,22 +15,22 @@ export default class Channel extends BaseModel {
   @column.dateTime({ autoCreate: true }) declare createdAt: DateTime
   @column.dateTime({ autoCreate: true, autoUpdate: true }) declare updatedAt: DateTime
 
-  @belongsTo(() => User, { foreignKey: 'created_by' })
+  @belongsTo(() => User, { foreignKey: 'createdBy' })
   declare creator: BelongsTo<typeof User>
 
-  @hasOne(() => ChannelHistory, { foreignKey: 'channel_id' })
+  @hasOne(() => ChannelHistory, { foreignKey: 'channelId' })
   declare history: HasOne<typeof ChannelHistory>
 
-  @hasMany(() => Message, { foreignKey: 'channel_id' })
+  @hasMany(() => Message, { foreignKey: 'channelId' })
   declare messages: HasMany<typeof Message>
 
-  @hasMany(() => UserChannel, { foreignKey: 'channel_id' })
+  @hasMany(() => UserChannel, { foreignKey: 'channelId' })
   declare userChannels: HasMany<typeof UserChannel>
 
   @manyToMany(() => User, {
     pivotTable: 'user_channel',
-    pivotForeignKey: 'channel_id',
-    pivotRelatedForeignKey: 'user_id',
+    pivotForeignKey: 'channelId',
+    pivotRelatedForeignKey: 'userId',
   })
   declare members: ManyToMany<typeof User>
 }
