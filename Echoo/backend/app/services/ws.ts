@@ -1,5 +1,7 @@
 import { Server } from 'socket.io'
 import server from '@adonisjs/core/services/server'
+import Message from '#models/message'
+import { DateTime } from 'luxon'
 
 class Ws {
   io: Server | undefined
@@ -21,10 +23,32 @@ class Ws {
         console.log(`[WS] Csatlakozott a room-hoz: ${room}`)
       })
 
-      socket.on('message', (data) => {
-        const { channelId, ...msg } = data
-        console.log(`[WS] Üzenet a channel_${channelId}-ban:`, msg)
-        this.io?.to(`channel_${channelId}`).emit('newMessage', msg)
+      socket.on('message', async (data) => {
+        const { channelId, userId, text } = data
+
+        // 1️⃣ Mentés az adatbázisba
+        const message = await Message.create({
+          channelId,
+          senderId: userId,
+          content: text,
+          hasPing: false,
+          hasCommand: false,
+          sentAt: DateTime.now(),
+        })
+
+        // 2️⃣ Betöltjük a sender-t a relációval
+        await message.load('sender')
+
+        // 3️⃣ Küldés a csatorna minden tagjának
+        this.io?.to(`channel_${channelId}`).emit('newMessage', {
+          id: message.id,
+          text: message.content,
+          userId: message.senderId,
+          user: message.sender.nickName || `${message.sender.firstName} ${message.sender.lastName}`,
+          sentAt: message.sentAt,
+        })
+
+        console.log(`[WS] Üzenet elküldve channel_${channelId}-nak:`, message.content)
       })
     })
 
