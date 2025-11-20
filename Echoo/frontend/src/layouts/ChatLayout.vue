@@ -112,6 +112,7 @@ interface Channel {
 }
 
 // Add interface for the API response
+/*
 interface MessageResponse {
   id: number
   userId: number
@@ -120,6 +121,7 @@ interface MessageResponse {
   hasPing?: boolean
   // Add other response properties if needed
 }
+*/
 
 interface AxiosErrorLike {
   isAxiosError: boolean
@@ -150,6 +152,11 @@ const currentUserId = ref<number | null>(null)
 const currentChannelId = ref<number | null>(null)
 
 const activeChannelPath = ref<string>('')
+
+const instance = getCurrentInstance()
+const socket = instance!.appContext.config.globalProperties.$socket
+
+console.log("Socket inside component:", socket)
 
 
 /* ŠTÝL PRE FOOTER – POZÍCIA DOLNÉHO PANELU */
@@ -319,61 +326,18 @@ async function handleCreateChannel(data: ChannelData) {
 }
 
 /* FUNKCIA NA ODOSLANIE SPRÁVY */
-async function onEnterPress(e: KeyboardEvent) {
+function onEnterPress(e: KeyboardEvent) {
   if (e.key === 'Enter' && newMessage.value.trim() !== '') {
-    e.preventDefault()
     const content = newMessage.value.trim()
 
-    const socket = getCurrentInstance()?.appContext.config.globalProperties.$socket
+    // Itt már elérhető a socket a setup-ból
+    socket.emit("message", {
+      channelId: currentChannelId.value,
+      text: content,
+      userId: currentUserId.value
+    })
 
-    try {
-      // 1️⃣ Megkeressük a channelId-t
-      const allChannels = [...privateChannels.value, ...publicChannels.value]
-      const channel = allChannels.find(ch => ch.name === currentChannelName.value)
-      if (!channel) return
-
-      // 2️⃣ POST request a backendre
-      const token = localStorage.getItem('auth_token')
-      const res = await axios.post<MessageResponse>(
-        `http://localhost:3333/channels/${channel.id}/messages`,
-        { content },
-        {
-          headers: { Authorization: `Bearer ${token}` }
-        }
-      )
-
-      // 3️⃣ Hozzáadjuk a visszakapott üzenetet a frontendhez
-      const newMsg: Message = {
-        id: res.data.id,
-        userId: res.data.userId,
-        user: res.data.user,
-        text: res.data.text,
-        isPing: res.data.hasPing
-      }
-      messages.value.push(newMsg)
-
-      // 4️⃣ Küldés Socket.io-val, hogy minden kliens kapja
-      // ITT ROSSZ A PODMIENKA
-      if (socket && currentChannelId.value) {
-        socket.emit('message', {
-        channelId: currentChannelId.value,
-        ... newMsg
-        })
-        console.log('Sending message:', { channelId: currentChannelId.value, ...newMsg })
-      }
-
-      // 5️⃣ Reset input
-      newMessage.value = ''
-
-    } catch (err) {
-      console.error('Failed to send message', err)
-      $q.notify({
-        type: 'negative',
-        message: 'Message could not be sent!',
-        position: 'top',
-        timeout: 2000
-      })
-    }
+    newMessage.value = ""
   }
 }
 
@@ -486,23 +450,19 @@ onMounted(() => {
 })
 
 onMounted(() => {
-  const socket = getCurrentInstance()?.appContext.config.globalProperties.$socket
-  if (!socket) return
-
-  console.log('Socket object:', socket)
-  console.log('Socket connected?', socket?.connected)
+  console.log('Socket connected?', socket.connected)
 
   if (currentChannelId.value) {
     socket.emit('join', `channel_${currentChannelId.value}`)
   }
 
+  // csak egyszer kell!
   socket.on('newMessage', (msg: Message) => {
     messages.value.push(msg)
   })
 })
 
 watch(currentChannelId, (id, oldId) => {
-  const socket = getCurrentInstance()?.appContext.config.globalProperties.$socket
   if (!socket) return
 
   if (oldId) socket.emit('leave', `channel_${oldId}`)
