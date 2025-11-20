@@ -94,4 +94,24 @@ export default class AuthController {
       })
     }
   }
+
+  // AuthController.ts
+  public async logout({ auth, response }: HttpContext) {
+    try {
+      // TS hack: any-ként kezeljük, hogy ne dobjon hibát
+      const apiAuth: any = auth.use('api')
+
+      if (apiAuth.token) {
+        await apiAuth.token.delete() // token érvénytelenítése
+      }
+
+      return response.json({ message: 'Logged out successfully' })
+    } catch (error) {
+      console.error('Logout error:', error)
+      return response.status(500).json({
+        message: 'Logout failed',
+        error: error instanceof Error ? error.message : 'Unknown error',
+      })
+    }
+  }
 }

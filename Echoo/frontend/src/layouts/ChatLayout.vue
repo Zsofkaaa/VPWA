@@ -19,6 +19,7 @@
       @go-to-channel="goToChannel"
       @logout="handleLogout"
       @create-channel="handleCreateChannel"
+      @leftChannel="handleChannelLeft"
     />
 
     <!-- MAIN CONTENT -->
@@ -57,7 +58,7 @@
 
 // KELL A SCROLLING ÉS A NOTIFICATION LOGIKA, MEG A PING LOGIKA IS
 
-import { ref, computed, watch, provide, nextTick, onMounted } from 'vue'
+import { ref, computed, watch, provide, onMounted, getCurrentInstance } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useQuasar } from 'quasar'
 import { useAuth } from '../composables/useAuth'
@@ -70,6 +71,14 @@ import axios from 'axios'
 
 /* NASTAVENIE MENA KOMPONENTU */
 defineOptions({ name: 'ChatLayout' })
+
+interface UserChannel {
+  id: number
+  name: string
+  type: 'private' | 'public'
+  path: string
+  role: 'admin' | 'member'
+}
 
 /* ROZHRANIA PRE TYPY DÁT */
 interface ChannelData {
@@ -112,6 +121,12 @@ interface MessageResponse {
   // Add other response properties if needed
 }
 
+interface AxiosErrorLike {
+  isAxiosError: boolean
+  response?: { status: number }
+}
+
+const userChannels = ref<UserChannel[]>([])
 const privateChannels = ref<{ id: number; name: string; path: string }[]>([])
 const publicChannels = ref<{ id: number; name: string; path: string }[]>([])
 
@@ -157,18 +172,26 @@ const typingStatusStyle = computed(() => ({
   zIndex: 2150
 }))
 
-async function loadMessages(channelPath: string) {
-  const channelName = channelPath.split('/chat/')[1]
-
-  // Add validation for channelName
-  if (!channelName) {
-    console.warn('Invalid channel path:', channelPath)
-    messages.value = []
+function handleChannelLeft(channelId: number) {
+  const idxPrivate = privateChannels.value.findIndex(c => c.id === channelId)
+  if (idxPrivate !== -1) {
+    privateChannels.value.splice(idxPrivate, 1)
     return
   }
 
+  const idxPublic = publicChannels.value.findIndex(c => c.id === channelId)
+  if (idxPublic !== -1) {
+    publicChannels.value.splice(idxPublic, 1)
+    return
+  }
+}
+
+async function loadMessages(channelPath: string) {
+  const channelIdStr = channelPath.split('/chat/')[1]
+  const channelId = Number(channelIdStr)
+
   const channel = [...privateChannels.value, ...publicChannels.value]
-    .find((c) => c.path.includes(channelName))
+  .find(c => c.id === channelId)
 
   if (!channel) {
     messages.value = []
@@ -193,13 +216,12 @@ async function loadMessages(channelPath: string) {
 }
 
 /* FUNKCIA NA ZMENU KANÁLU */
-function goToChannel(ch: { name: string; path?: string }) {
+function goToChannel(ch: { id: number; name: string; path?: string }) {
   currentChannelName.value = ch.name
+  currentChannelId.value = ch.id // ← EZ HIÁNYZIK!
 
   if (ch.path) {
     void router.push(ch.path)
-  } else {
-    console.warn(`Channel path is undefined for "${ch.name}"`)
   }
 }
 
@@ -207,11 +229,6 @@ function goToChannel(ch: { name: string; path?: string }) {
 async function handleLogout() {
   await logout()
   await router.push('/auth')
-}
-
-interface AxiosErrorLike {
-  isAxiosError: boolean
-  response?: { status: number }
 }
 
 function isAxiosError(err: unknown): err is AxiosErrorLike {
@@ -305,37 +322,47 @@ async function handleCreateChannel(data: ChannelData) {
 async function onEnterPress(e: KeyboardEvent) {
   if (e.key === 'Enter' && newMessage.value.trim() !== '') {
     e.preventDefault()
-
     const content = newMessage.value.trim()
 
+    const socket = getCurrentInstance()?.appContext.config.globalProperties.$socket
+
     try {
-      // Feltételezzük, hogy currentChannelName alapján megvan a channelId
+      // 1️⃣ Megkeressük a channelId-t
       const allChannels = [...privateChannels.value, ...publicChannels.value]
       const channel = allChannels.find(ch => ch.name === currentChannelName.value)
       if (!channel) return
 
-      // POST request a backendre with proper typing
-      const token = localStorage.getItem('auth_token') // helyesen!
+      // 2️⃣ POST request a backendre
+      const token = localStorage.getItem('auth_token')
       const res = await axios.post<MessageResponse>(
         `http://localhost:3333/channels/${channel.id}/messages`,
         { content },
         {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
+          headers: { Authorization: `Bearer ${token}` }
         }
       )
 
-      // Hozzáadjuk a visszakapott üzenetet a chathez
-      messages.value.push({
+      // 3️⃣ Hozzáadjuk a visszakapott üzenetet a frontendhez
+      const newMsg: Message = {
         id: res.data.id,
         userId: res.data.userId,
         user: res.data.user,
         text: res.data.text,
         isPing: res.data.hasPing
-      })
+      }
+      messages.value.push(newMsg)
 
-      // Reset input
+      // 4️⃣ Küldés Socket.io-val, hogy minden kliens kapja
+      // ITT ROSSZ A PODMIENKA
+      if (socket && currentChannelId.value) {
+        socket.emit('message', {
+        channelId: currentChannelId.value,
+        ... newMsg
+        })
+        console.log('Sending message:', { channelId: currentChannelId.value, ...newMsg })
+      }
+
+      // 5️⃣ Reset input
       newMessage.value = ''
 
     } catch (err) {
@@ -361,15 +388,6 @@ watch(newMessage, (value) => {
     }, 1000)
   } else {
     isTyping.value = false
-  }
-})
-
-/* AUTOMATICKÉ SCROLLOVANIE PO ZMENE KANÁLU */
-watch(currentChannelName, async () => {
-  await nextTick()
-  const chatMessagesEl = document.querySelector('.chat-messages')
-  if (chatMessagesEl) {
-    chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight
   }
 })
 
@@ -425,34 +443,34 @@ watch(
   { immediate: true }
 )
 
-
 onMounted(async () => {
   try {
     const token = localStorage.getItem('auth_token')
+    const userId = JSON.parse(localStorage.getItem("user") || '{}')?.id
+    if (!token || !userId) return
 
-    const res = await axios.get<ChannelResponse[]>('http://localhost:3333/user/channels', {
-      headers: { Authorization: `Bearer ${token}` }
-    })
-    const channels: ChannelResponse[] = res.data
+    const res = await axios.get<UserChannel[]>(
+      'http://localhost:3333/user/channels',
+      { headers: { Authorization: `Bearer ${token}` } }
+    )
 
-    privateChannels.value = channels
-      .filter(ch => ch.type === 'private')
-      .map(ch => ({
-        id: ch.id,
-        name: ch.name,
-        path: `/chat/${ch.id}`   // ← egyezzen a backenddel
-      }))
+    // Beállítjuk a path mezőt is, hogy router-ben használható legyen
+    userChannels.value = res.data.map(ch => ({
+      ...ch,
+      path: `/chat/${ch.id}`
+    }))
 
-    publicChannels.value = channels
-      .filter(ch => ch.type === 'public')
-      .map(ch => ({
-        id: ch.id,
-        name: ch.name,
-        path: `/chat/${ch.id}`   // ← egyezzen a backenddel
-      }))
+    // Szétválogatás private/public listára
+    privateChannels.value = userChannels.value.filter(ch => ch.type === 'private')
+    publicChannels.value = userChannels.value.filter(ch => ch.type === 'public')
 
-    console.log('Loaded private channels:', privateChannels.value)
-    console.log('Loaded public channels:', publicChannels.value)
+    // Ha van aktuális route, állítsuk be a current channel-t
+    const found = userChannels.value.find(ch => ch.path === route.path)
+    if (found) {
+      currentChannelId.value = found.id
+      currentChannelName.value = found.name
+      activeChannelPath.value = found.path
+    }
 
   } catch (err) {
     console.error('Failed to load user channels', err)
@@ -467,9 +485,40 @@ onMounted(() => {
   }
 })
 
+onMounted(() => {
+  const socket = getCurrentInstance()?.appContext.config.globalProperties.$socket
+  if (!socket) return
+
+  console.log('Socket object:', socket)
+  console.log('Socket connected?', socket?.connected)
+
+  if (currentChannelId.value) {
+    socket.emit('join', `channel_${currentChannelId.value}`)
+  }
+
+  socket.on('newMessage', (msg: Message) => {
+    messages.value.push(msg)
+  })
+})
+
+watch(currentChannelId, (id, oldId) => {
+  const socket = getCurrentInstance()?.appContext.config.globalProperties.$socket
+  if (!socket) return
+
+  if (oldId) socket.emit('leave', `channel_${oldId}`)
+  if (id) {
+    console.log('Joining room:', `channel_${id}`)
+    socket.emit('join', `channel_${id}`)
+  }
+})
+
 /* SPRÁVY DOSTUPNÉ PRE VŠETKY DIEŤA KOMPONENTY */
 provide('messages', messages)
 provide("currentUserId", currentUserId)
+provide('userChannels', userChannels)
+provide('currentChannelId', currentChannelId)
+provide('currentChannelName', currentChannelName)
+provide('activeChannelPath', activeChannelPath)
 
 </script>
 
