@@ -349,13 +349,18 @@ async function kickUsers(userIds: number[]) {
 
 async function banUsers(userIds: number[]) {
   const token = localStorage.getItem('auth_token')
+
   try {
     for (const userId of userIds) {
-      await axios.post(`http://localhost:3333/channels/${props.channel.id}/ban/${userId}`, {}, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
+      await axios.delete(
+        `${API_URL}/channels/${props.channel.id}/ban/${userId}`,
+        {
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      )
     }
-    $q.notify({ type: 'positive', message: 'Users banned' })
+
+    $q.notify({ type: 'positive', message: 'User(s) banned successfully' })
     showBanUserDialog.value = false
   } catch (err) {
     console.error('Ban failed', err)

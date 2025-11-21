@@ -75,4 +75,22 @@ export default class UserChannelController {
 
     return response.ok(Array.from(channelsMap.values()))
   }
+
+  public async ban({ params, response }: HttpContext) {
+    const channelId = Number(params.id)
+    const userId = Number(params.userId)
+
+    const record = await UserChannel.query()
+      .where('channelId', channelId)
+      .andWhere('userId', userId)
+      .first()
+
+    if (!record) {
+      return response.notFound({ error: 'User is not in this channel' })
+    }
+
+    await record.delete()
+
+    return response.ok({ message: 'User banned successfully' })
+  }
 }

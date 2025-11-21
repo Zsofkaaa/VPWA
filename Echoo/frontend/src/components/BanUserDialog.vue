@@ -57,7 +57,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   "update:visible": [boolean]
-  "confirm": [number]
+  "ban-users": [number[]]
 }>()
 
 const internalVisible = ref(props.visible)
@@ -83,7 +83,7 @@ function closeDialog() {
 
 function confirmBan() {
   if (selectedUser.value) {
-    emit("confirm", selectedUser.value)
+    emit("ban-users", [selectedUser.value])   // !!! FONTOS !!!
     closeDialog()
   }
 }
