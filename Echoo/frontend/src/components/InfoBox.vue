@@ -7,17 +7,45 @@
     </q-tooltip>
 
     <!-- Menu s príkazmi (otvorí sa po kliknutí, nezatvára sa automaticky) -->
-    <q-menu :auto-close="false" anchor="bottom middle" self="top middle" transition-show="jump-down" transition-hide="jump-up">
+    <q-menu 
+      :auto-close="false" 
+      anchor="bottom middle" 
+      self="top middle" 
+      transition-show="jump-down" 
+      transition-hide="jump-up"
+      @before-show="loadCommands"
+    >      
       <div class="info-box-container" @click.stop>
-        <div class="info-title">Commands</div>
-        <div class="info-line">/join channelName [private]</div>
-        <div class="info-line">/join channelName</div>
-        <div class="info-line">/invite nickName</div>
-        <div class="info-line">/revoke nickName</div>
-        <div class="info-line">/kick nickName</div>
-        <div class="info-line">/quit</div>
-        <div class="info-line">/cancel</div>
-        <div class="info-line">/list</div>
+         <!-- Loading state -->
+        <div v-if="loading" class="text-center q-pa-md">
+          <q-spinner color="white" size="sm" />
+        </div>
+        
+        <!-- Error state -->
+        <div v-else-if="error" class="error-message">
+          Failed to load commands
+        </div>
+        
+        <!-- Commands list -->
+        <div v-else>
+          <div 
+            v-for="command in commands" 
+            :key="command.id" 
+            class="info-line"
+          >
+            {{ command.name }}
+            
+            <!-- Tooltip a description megjelenítésére -->
+            <q-tooltip 
+              anchor="center right" 
+              self="center left"
+              :offset="[10, 0]"
+              max-width="300px"
+            >
+              {{ command.description }}
+            </q-tooltip>
+          </div>
+        </div>
       </div>
     </q-menu>
   </q-btn>
@@ -26,7 +54,51 @@
 
 <script lang="ts" setup>
 import { useQuasar } from 'quasar'
+import { ref } from 'vue'
+
 const $q = useQuasar()
+
+interface Command {
+  id: number
+  name: string
+  description: string
+}
+
+const commands = ref<Command[]>([])
+const loading = ref(false)
+const error = ref(false)
+
+const loadCommands = async () => {
+  // Ha már betöltöttük, ne töltsük újra
+  if (commands.value.length > 0) return
+  
+  loading.value = true
+  error.value = false
+  
+  try {
+    // Használd a teljes backend URL-t
+    const response = await fetch('http://localhost:3333/api/commands')
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`)
+    }
+    
+    const data = await response.json()
+    
+    console.log('Loaded commands:', data) // Debug log
+    
+    if (data.success) {
+      commands.value = data.data
+    } else {
+      error.value = true
+    }
+  } catch (err) {
+    console.error('Failed to load commands:', err)
+    error.value = true
+  } finally {
+    loading.value = false
+  }
+}
 </script>
 
 
