@@ -9,6 +9,11 @@
     @load="onLoad"
     spinner-color="white"
     >
+      <template v-slot:loading>
+        <div class="row justify-center q-my-md">
+          <q-spinner-tail color="blue" size="40px" />
+        </div>
+      </template>
 
       <!-- CYKLUS PRE ZOBRAZENIE KAŽDEJ SPRÁVY -->
       <div
