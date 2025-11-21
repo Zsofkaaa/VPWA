@@ -35,10 +35,13 @@
 
     <!-- FOOTER -->
     <ChatFooter
-    v-model:new-message="newMessage"
-    :footer-style="footerStyle"
-    @enter-press="onEnterPress"
+      v-if="isChatPage"
+      v-model:new-message="newMessage"
+      :footer-style="footerStyle"
+      @enter-press="onEnterPress"
     />
+
+
 
     <!-- NOTIFICATION POPUP -->
     <NotificationPopUp
@@ -155,6 +158,8 @@ const activeChannelPath = ref<string>('')
 
 const instance = getCurrentInstance()
 const socket = instance!.appContext.config.globalProperties.$socket
+
+const isChatPage = computed(() => route.path.startsWith('/chat/'))
 
 console.log("Socket inside component:", socket)
 
