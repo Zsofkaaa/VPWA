@@ -214,14 +214,11 @@ onMounted(async () => {
     })
 
     currentUserId.value = authResponse.data.id
-    console.log('Current user id:', currentUserId.value)
 
     // 2️⃣ get all users (/users)
     const response = await axios.get<User[]>(`${API_URL}/users`, {
       headers: { Authorization: `Bearer ${token}` }
     })
-
-    console.log('Users from backend:', response.data)
 
     // 3️⃣ fill available members except current user
     availableMembers.value = response.data
@@ -230,8 +227,6 @@ onMounted(async () => {
         label: user.nickName,
         value: user.id
       }))
-
-    console.log('Available members:', availableMembers.value)
 
   } catch (error) {
     console.error('Failed to load users', error)

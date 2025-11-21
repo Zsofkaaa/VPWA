@@ -61,6 +61,7 @@ const props = defineProps<{
   visible: boolean
   channelId: number
   currentMembers: number[]
+  //availableUsers: { label: string; value: number }[]
 }>()
 
 const emit = defineEmits<{
@@ -102,20 +103,20 @@ function addUsers() {
   closeDialog()
 }
 
-/* -----------------------------------------
-   WATCHERS – tökéletes szinkron megoldás
-------------------------------------------*/
-
 // Ha a parent kinyitja → internalVisible is kövesse
-watch(() => props.visible, (val) => {
-  internalVisible.value = val
-  if (val) void loadAvailableUsers()
-})
+watch(
+  () => props.visible,
+  (val) => {
+    internalVisible.value = val
+    if (val) void loadAvailableUsers() // ← betölti az availableUsers-t
+  }
+)
 
 // Ha a dialog bezáródik → jelezzük vissza parentnek
 watch(internalVisible, (val) => {
   emit("update:visible", val)
 })
+
 </script>
 
 <style scoped>

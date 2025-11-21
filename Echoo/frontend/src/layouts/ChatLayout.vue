@@ -148,9 +148,6 @@ const socket = instance!.appContext.config.globalProperties.$socket
 
 const isChatPage = computed(() => route.path.startsWith('/chat/'))
 
-console.log("Socket inside component:", socket)
-
-
 /* ŠTÝL PRE FOOTER – POZÍCIA DOLNÉHO PANELU */
 const footerStyle = computed(() => ({
   left: $q.screen.lt.md ? '0' : '300px',
@@ -383,12 +380,6 @@ watch(
       currentChannelId.value = found.id
       activeChannelPath.value = found.path
 
-      // Debug log
-      console.log('Current IDs:', {
-        userId: currentUserId.value,
-        channelId: currentChannelId.value
-      })
-
       // Biztonsági ellenőrzés
       if (typeof currentUserId.value !== 'number' || typeof currentChannelId.value !== 'number') {
         console.warn('Invalid IDs, skip backend query', currentUserId.value, currentChannelId.value)
@@ -466,7 +457,6 @@ watch(currentChannelId, (id, oldId) => {
 
   if (oldId) socket.emit('leave', `channel_${oldId}`)
   if (id) {
-    console.log('Joining room:', `channel_${id}`)
     socket.emit('join', `channel_${id}`)
   }
 })

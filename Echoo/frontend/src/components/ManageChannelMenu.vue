@@ -116,7 +116,8 @@
       <AddUserDialog
         :visible="showAddUserDialog"
         :channel-id="props.channel.id"
-        :current-members="currentChannelMembers"
+        :available-users="availableUsers"
+        :current-members="props.channel.members?.map(m => m.userId) || []"
         @update:visible="showAddUserDialog = $event"
         @add-users="addUsers"
       />
@@ -161,6 +162,12 @@ interface User {
   nickName: string
 }
 
+interface MeResponse {
+  id: number
+  name: string | null
+  nickName: string | null
+}
+
 const props = defineProps<{
   channel: {
     id: number
@@ -178,14 +185,16 @@ const showAddUserDialog = ref(false)
 const showKickUserDialog = ref(false)
 const showBanUserDialog = ref(false)
 
-const currentChannelMembers = ref<number[]>([])
+const availableUsers = ref<{ label: string; value: number }[]>([])
+const currentUserId = ref<number | null>(null)
 
-// Teljes Member lista a Kick/Ban dialógokhoz
-const currentMembers = ref<Member[]>([])
+const API_URL = 'http://localhost:3333'
+const token = localStorage.getItem('auth_token')
 
-// MappedMembers: User[] típus a dialogokhoz
-const mappedMembers = computed<User[]>(() =>
-  currentMembers.value.map(m => ({ id: m.userId, nickName: m.username }))
+const channelMembers = ref<User[]>([])
+
+const mappedMembers = computed(() =>
+  channelMembers.value.map(user => ({ id: user.id, nickName: user.nickName }))
 )
 
 // Premenná, ktorá určuje, či je menu otvorené
@@ -197,21 +206,59 @@ const emit = defineEmits<{
 
 function openAddUserDialog() {
   menu.value = false
-  // Backendből is lekérheted a csatorna tagjait, vagy props.channel.members
-  currentChannelMembers.value = props.channel.members?.map(m => m.userId) || []
+  void loadAvailableUsers(props.channel.id)
   showAddUserDialog.value = true
 }
 
-function openKickUserDialog() {
+async function openKickUserDialog() {
   menu.value = false
-  currentMembers.value = props.channel.members ? [...props.channel.members] : []
+  await loadChannelMembers()
   showKickUserDialog.value = true
 }
 
-function openBanUserDialog() {
+async function openBanUserDialog() {
   menu.value = false
-  currentMembers.value = props.channel.members ? [...props.channel.members] : []
+  await loadChannelMembers()
   showBanUserDialog.value = true
+}
+
+async function loadChannelMembers() {
+  if (!props.channel.id) return
+  try {
+    const res = await axios.get<User[]>(
+      `${API_URL}/channels/${props.channel.id}/members`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    )
+    channelMembers.value = res.data.filter(u => u.id !== currentUserId.value)
+    console.log('Channel members for Kick/Ban:', channelMembers.value)
+  } catch (err) {
+    console.error('Failed to load channel members', err)
+  }
+}
+
+async function loadAvailableUsers(channelId: number) {
+  try {
+    // 1️⃣ Lekérjük a saját usert
+    const authResponse = await axios.get<MeResponse>(`${API_URL}/me`, { headers: { Authorization: `Bearer ${token}` } })
+    currentUserId.value = authResponse.data.id
+
+    // 2️⃣ Lekérjük az összes usert
+    const allUsers = await axios.get<User[]>(`${API_URL}/users`, { headers: { Authorization: `Bearer ${token}` } })
+
+    // 3️⃣ Lekérjük a csatorna tagjait
+    const membersResponse = await axios.get<User[]>(`${API_URL}/channels/${channelId}/members`, { headers: { Authorization: `Bearer ${token}` } })
+    channelMembers.value = membersResponse.data
+
+    // 4️⃣ Szűrés: csak azok, akik nem tagok és nem mi magunk vagyunk
+    availableUsers.value = allUsers.data
+      .filter(u => !channelMembers.value.some(m => m.id === u.id))
+      .filter(u => u.id !== currentUserId.value)
+      .map(u => ({ label: u.nickName, value: u.id }))
+
+    console.log('Available users for AddUserDialog:', availableUsers.value)
+  } catch (err) {
+    console.error('Failed to load available users', err)
+  }
 }
 
 // Funkcia na pridanie používateľa

@@ -87,6 +87,7 @@ function confirmBan() {
     closeDialog()
   }
 }
+
 </script>
 
 <style scoped>
