@@ -12,9 +12,9 @@
         <img class="logo" :src="logo" alt="app logo" />
       </div>
 
-      <!-- 💭 TEXT SPRÁVY -->
+      <!-- TEXT SPRÁVY -->
       <div class="message-box">
-        {{ message }}
+        {{ shortMessage }}
       </div>
 
     </div>
@@ -26,7 +26,7 @@
 
 
 <script lang="ts" setup>
-import { toRefs } from 'vue'
+import { computed, toRefs } from 'vue'
 
 /* ÚDAJE, KTORÉ PRICHÁDZAJÚ DO NOTIFIKÁCIE */
 const props = defineProps<{
@@ -39,9 +39,14 @@ const props = defineProps<{
 /* PREVOD NA REAKTÍVNE PREMENNÉ */
 const { sender, message, logo, visible } = toRefs(props)
 
+// Skrátenie správy na 100 znakov + "..."
+const shortMessage = computed(() => {
+  if (message.value.length > 100) {
+    return message.value.substring(0, 100) + '...'
+  }
+  return message.value
+})
 </script>
-
-
 
 <style scoped>
 
