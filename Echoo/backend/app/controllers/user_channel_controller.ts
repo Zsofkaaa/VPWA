@@ -24,6 +24,7 @@ export default class UserChannelController {
     const members = userChannels.map((uc) => ({
       id: uc.user?.id ?? 0,
       nickName: uc.user?.nickName ?? 'UNKNOWN',
+      role: uc.role,
     }))
 
     return response.ok(members)
@@ -67,6 +68,7 @@ export default class UserChannelController {
           name: uc.channel.name,
           type: uc.channel.type, // 👈 MOST MÁR VAN
           path: `/chat/${uc.channel.id}`,
+          role: uc.role,
         })
       }
     })

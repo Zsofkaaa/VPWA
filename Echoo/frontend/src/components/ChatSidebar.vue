@@ -48,17 +48,19 @@
       <div class="q-pa-sm sidebar-subtitle">Private Channels</div>
 
       <div class="channel-list">
-        <div v-for="ch in privateChannels" :key="ch.name" class="channel-wrapper">
+        <div v-for="ch in props.privateChannels" :key="ch.id" class="channel-wrapper">
           <q-item
-          clickable
-          @click="selectChannel(ch)"
-          :class="['sidebar-item', { 'active-channel': ch.path === props.activeChannelPath }]"
+            clickable
+            @click="selectChannel(ch)"
+            :class="['sidebar-item', { 'active-channel': ch.path === props.activeChannelPath }]"
           >
             <q-item-section>{{ ch.name }}</q-item-section>
-          </q-item>
+        </q-item>
           <ManageChannelMenu
-            v-if="ch.path === props.activeChannelPath"
+            v-if="ch.path === props.activeChannelPath && ch.role"
             :channel="{ id: ch.id, name: ch.name }"
+            :userRole="ch.role"
+            @leftChannel="emit('leftChannel', ch.id)"
           />
         </div>
       </div>
@@ -69,17 +71,19 @@
       <div class="q-pa-sm sidebar-subtitle">Public Channels</div>
 
       <div class="channel-list">
-        <div v-for="ch in publicChannels" :key="ch.name" class="channel-wrapper">
+        <div v-for="ch in props.publicChannels" :key="ch.id" class="channel-wrapper">
           <q-item
-          clickable
-          @click="selectChannel(ch)"
-          :class="['sidebar-item', { 'active-channel': ch.path === props.activeChannelPath }]"
+            clickable
+            @click="selectChannel(ch)"
+            :class="['sidebar-item', { 'active-channel': ch.path === props.activeChannelPath }]"
           >
             <q-item-section>{{ ch.name }}</q-item-section>
           </q-item>
           <ManageChannelMenu
-            v-if="ch.path === props.activeChannelPath"
+            v-if="ch.path === props.activeChannelPath && ch.role"
             :channel="{ id: ch.id, name: ch.name }"
+            :userRole="ch.role"
+            @leftChannel="emit('leftChannel', ch.id)"
           />
         </div>
       </div>
@@ -131,7 +135,7 @@
 
 
 <script lang="ts" setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import ManageChannelMenu from './ManageChannelMenu.vue'
 import AddChannelDialog from './AddChannelDialog.vue'
 import { useQuasar } from 'quasar'
@@ -142,6 +146,7 @@ interface Channel {
   id: number
   name: string
   path: string
+  role?: 'admin' | 'member'   // opcionális, mert lehet, hogy még nem betöltött
 }
 
 interface ChannelData {
@@ -165,6 +170,7 @@ const emit = defineEmits<{
   'goToChannel': [channel: Channel]
   'logout': []
   'createChannel': [data: ChannelData]
+  'leftChannel': [channelId: number]   // ← ide kell
 }>()
 
 /* AKTUÁLNE VYBRANÝ KANÁL */
@@ -177,6 +183,9 @@ const showAddChannelDialog = ref(false)
 const allChannelNames = computed(() => {
   return [...props.privateChannels, ...props.publicChannels].map(ch => ch.name)
 })
+
+const privateChannelList = ref<Channel[]>([...props.privateChannels])
+const publicChannelList = ref<Channel[]>([...props.publicChannels])
 
 /* LOGIKA PRE POZVÁNKY */
 const inviteDialog = ref(false)
@@ -214,6 +223,13 @@ function joinChannel() {
   selectChannel(invitedChannel)
 }
 
+watch(() => props.privateChannels, (newVal) => {
+  privateChannelList.value = [...newVal]
+}, { immediate: true, deep: true })
+
+watch(() => props.publicChannels, (newVal) => {
+  publicChannelList.value = [...newVal]
+}, { immediate: true, deep: true })
 </script>
 
 

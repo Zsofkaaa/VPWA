@@ -81,27 +81,37 @@
 
         <q-separator dark />
 
-        <!-- Zrušiť kanál -->
-        <q-item clickable v-ripple @click="terminateChannel">
-            <q-item-section avatar>
-              <q-icon name="highlight_off" color="white" />
-            </q-item-section>
-            <q-item-section>
-              <q-item-label>Terminate Channel</q-item-label>
-            </q-item-section>
-          </q-item>
+        <!-- Zrušiť kanál (csak admin) -->
+        <q-item
+          v-if="props.userRole === 'admin'"
+          clickable
+          v-ripple
+          @click="terminateChannel"
+        >
+          <q-item-section avatar>
+            <q-icon name="highlight_off" color="white" />
+          </q-item-section>
+          <q-item-section>
+            <q-item-label>Terminate Channel</q-item-label>
+          </q-item-section>
+        </q-item>
 
-          <q-separator dark />
+        <q-separator v-if="props.userRole === 'admin'" dark />
 
-          <!-- Opustiť kanál -->
-          <q-item clickable v-ripple @click="leaveChannel">
-            <q-item-section avatar>
-              <q-icon name="exit_to_app" color="white" />
-            </q-item-section>
-            <q-item-section>
-              <q-item-label>Leave Channel</q-item-label>
-            </q-item-section>
-          </q-item>
+        <!-- Opustiť kanál (csak member) -->
+        <q-item
+          v-if="props.userRole === 'member'"
+          clickable
+          v-ripple
+          @click="leaveChannel"
+        >
+          <q-item-section avatar>
+            <q-icon name="exit_to_app" color="white" />
+          </q-item-section>
+          <q-item-section>
+            <q-item-label>Leave Channel</q-item-label>
+          </q-item-section>
+        </q-item>
       </q-list>
     </q-menu>
   </div>
@@ -119,10 +129,17 @@ import { ref } from 'vue'
 const router = useRouter()
 const $q = useQuasar()
 
-const props = defineProps<{ channel: { id: number, name: string } }>()
+const props = defineProps<{
+  channel: { id: number, name: string }
+  userRole: 'admin' | 'member'
+}>()
 
 // Premenná, ktorá určuje, či je menu otvorené
 const menu = ref(false)
+
+const emit = defineEmits<{
+  'leftChannel': [channelId: number]
+}>()
 
 // Funkcia na pridanie používateľa
 function addUser() {
@@ -187,6 +204,8 @@ async function leaveChannel() {
     console.error('Leave failed:', err)
     $q.notify({ type: 'negative', message: 'Failed to leave channel' })
   }
+
+  emit('leftChannel', props.channel.id)
 }
 </script>
 

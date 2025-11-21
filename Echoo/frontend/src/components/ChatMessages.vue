@@ -76,6 +76,12 @@ function formatMessage(text: string, isPing?: boolean): string {
   return text.replace(/(@\w+)/g, '<span class="ping-highlight">$1</span>');
 }
 
+function isAtBottom() {
+  const el = messagesContainer.value
+  if (!el) return true
+  return el.scrollTop + el.clientHeight >= el.scrollHeight - 50
+}
+
 // AUTOMATIC SCROLL TO BOTTOM
 function scrollToBottom() {
   const el = messagesContainer.value
@@ -88,20 +94,12 @@ function scrollToBottom() {
 watch(
   () => props.messages,
   async (newVal) => {
-    const wasAtBottom = (() => {
-      const el = messagesContainer.value
-      if (!el) return true
-      return el.scrollTop + el.clientHeight >= el.scrollHeight - 50
-    })()
+    const wasBottom = isAtBottom()
 
     localMessages.value = [...newVal]
-
     await nextTick()
 
-    // csak akkor görgessünk le, ha a user nem scrollozott fel
-    if (wasAtBottom) {
-      scrollToBottom()
-    }
+    if (wasBottom) scrollToBottom()
   },
   { immediate: true, deep: true }
 )
