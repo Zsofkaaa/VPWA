@@ -161,12 +161,27 @@ async function onRegister() {
   if (success) {
     Notify.create({
       type: 'positive',
-      message: 'Registration successful!'
+      message: 'Registration successful! Please log in.'
     });
-    await router.push('/chat');
+
+    // 🌟 Visszaállunk login módra
+    mode.value = 'login';
+
+    // 🌟 Töröljük a mezőket
+    reg.value = {
+      firstName: '',
+      lastName: '',
+      nickname: '',
+      email: '',
+      password: '',
+      password2: ''
+    };
+
+    // esetleg: email beírva maradhat automatikusan
+    login.value.email = registerData.email;
   }
-  // NE mutass error notification-t, mert már a banner mutatja
 }
+
 
 async function onSubmit() {
   if (mode.value === 'login') {
