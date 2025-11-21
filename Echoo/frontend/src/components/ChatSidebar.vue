@@ -59,7 +59,7 @@
         </q-item>
           <ManageChannelMenu
             v-if="ch.path === props.activeChannelPath && ch.role"
-            :channel="{ id: ch.id, name: ch.name }"
+            :channel="{ id: ch.id, name: ch.name, type: ch.type, members: ch.members }"
             :userRole="ch.role"
             @leftChannel="emit('leftChannel', ch.id)"
           />
@@ -83,7 +83,7 @@
           </q-item>
           <ManageChannelMenu
             v-if="ch.path === props.activeChannelPath && ch.role"
-            :channel="{ id: ch.id, name: ch.name }"
+            :channel="{ id: ch.id, name: ch.name, type: ch.type, members: ch.members }"
             :userRole="ch.role"
             @leftChannel="emit('leftChannel', ch.id)"
           />
@@ -148,7 +148,9 @@ interface Channel {
   id: number
   name: string
   path: string
-  role?: 'admin' | 'member'   // opcionális, mert lehet, hogy még nem betöltött
+  role?: 'admin' | 'member'
+  type: 'private' | 'public'
+  members?: { userId: number; username: string }[]
 }
 
 interface ChannelData {
@@ -189,7 +191,7 @@ const allChannelNames = computed(() => {
 /* LOGIKA PRE POZVÁNKY */
 const inviteDialog = ref(false)
 const inviteAccepted = ref(false)
-const invitedChannel: Channel = { id: 1, name: 'Channel', path: '/chat/invite-channel' }  //AZ ID-T MAJD KI KELL JAVÍTANI
+const invitedChannel: Channel = { id: 1, name: 'Channel', path: '/chat/invite-channel', type: 'public' }  //AZ ID-T MAJD KI KELL JAVÍTANI
 
 console.log('Sidebar received privateChannels:', props.privateChannels)
 console.log('Sidebar received publicChannels:', props.publicChannels)

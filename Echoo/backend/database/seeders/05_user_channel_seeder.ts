@@ -29,7 +29,5 @@ export default class UserChannelSeeder extends BaseSeeder {
         })
       }
     }
-
-    console.log('UserChannel seeding complete.')
   }
 }
