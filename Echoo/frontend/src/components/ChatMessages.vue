@@ -98,7 +98,7 @@ function isAtBottom() {
   const el = messagesContainer.value
   if (!el) return true
   // Tolerancia 100px pre detekciu spodku
-  const threshold = 100
+  const threshold = 10000
   return Math.abs(el.scrollHeight - el.scrollTop - el.clientHeight) <= threshold
 }
 
@@ -185,7 +185,6 @@ onMounted(() => {
   flex: 1;
   overflow-y: auto;
   padding: 16px;
-  padding-bottom: 100px;
   display: flex;
   flex-direction: column;
 }
