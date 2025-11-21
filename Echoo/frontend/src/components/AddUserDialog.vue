@@ -16,7 +16,7 @@
 
         <q-select
           v-model="selectedUsers"
-          :options="availableUsers"
+          :options="props.availableUsers"
           filled
           dense
           multiple
@@ -50,18 +50,20 @@
 
 <script lang="ts" setup>
 import { ref, watch } from 'vue'
-import axios from 'axios'
+//import axios from 'axios'
 
+/*
 interface User {
   id: number
   nickName: string
 }
+  */
 
 const props = defineProps<{
   visible: boolean
   channelId: number
   currentMembers: number[]
-  //availableUsers: { label: string; value: number }[]
+  availableUsers: { label: string; value: number }[]
 }>()
 
 const emit = defineEmits<{
@@ -73,29 +75,16 @@ const emit = defineEmits<{
 const internalVisible = ref(props.visible)
 
 const selectedUsers = ref<number[]>([])
-const availableUsers = ref<{ label: string; value: number }[]>([])
+//const availableUsers = ref<{ label: string; value: number }[]>([])
 
+/*
 const API_URL = "http://localhost:3333"
 const token = localStorage.getItem("auth_token")
+*/
 
 function closeDialog() {
   internalVisible.value = false
   selectedUsers.value = []
-}
-
-async function loadAvailableUsers() {
-  try {
-    const res = await axios.get<User[]>(`${API_URL}/users`, {
-      headers: { Authorization: `Bearer ${token}` }
-    })
-
-    availableUsers.value = res.data
-      .filter(u => !props.currentMembers.includes(u.id))
-      .map(u => ({ label: u.nickName, value: u.id }))
-
-  } catch (err) {
-    console.error("Failed to load users", err)
-  }
 }
 
 function addUsers() {
@@ -108,7 +97,7 @@ watch(
   () => props.visible,
   (val) => {
     internalVisible.value = val
-    if (val) void loadAvailableUsers() // ← betölti az availableUsers-t
+    //if (val) void loadAvailableUsers() // ← betölti az availableUsers-t
   }
 )
 

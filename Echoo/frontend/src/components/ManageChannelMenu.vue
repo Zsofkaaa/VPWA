@@ -162,11 +162,13 @@ interface User {
   nickName: string
 }
 
+/*
 interface MeResponse {
   id: number
   name: string | null
   nickName: string | null
 }
+  */
 
 const props = defineProps<{
   channel: {
@@ -177,6 +179,8 @@ const props = defineProps<{
   }
   userRole: 'admin' | 'member'
 }>()
+
+console.log(props.channel.name)
 
 const router = useRouter()
 const $q = useQuasar()
@@ -213,22 +217,62 @@ function openAddUserDialog() {
 async function openKickUserDialog() {
   menu.value = false
   await loadChannelMembers()
+
+  if (channelMembers.value.length === 0) {
+    $q.notify({
+      type: 'warning',
+      message: 'You are alone in this channel, no one can be kicked',
+      position: 'top'
+    })
+    return
+  }
+
   showKickUserDialog.value = true
 }
 
 async function openBanUserDialog() {
   menu.value = false
   await loadChannelMembers()
+
+  if (channelMembers.value.length === 0) {
+    $q.notify({
+      type: 'warning',
+      message: 'You are alone in this channel, no one can be banned',
+      position: 'top'
+    })
+    return
+  }
+
   showBanUserDialog.value = true
+}
+
+async function loadCurrentUser() {
+  try {
+    const res = await axios.get<{ id: number; nickName: string }>(
+      `${API_URL}/me`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    )
+    currentUserId.value = res.data.id
+  } catch (err) {
+    console.error('Failed to load current user', err)
+  }
 }
 
 async function loadChannelMembers() {
   if (!props.channel.id) return
   try {
+    // 1️⃣ Lekérjük a saját user ID-t
+    if (!currentUserId.value) {
+      await loadCurrentUser()
+    }
+
+    // 2️⃣ Lekérjük a csatorna tagjait
     const res = await axios.get<User[]>(
       `${API_URL}/channels/${props.channel.id}/members`,
       { headers: { Authorization: `Bearer ${token}` } }
     )
+
+    // 3️⃣ Szűrjük ki a saját userünket
     channelMembers.value = res.data.filter(u => u.id !== currentUserId.value)
     console.log('Channel members for Kick/Ban:', channelMembers.value)
   } catch (err) {
@@ -238,21 +282,22 @@ async function loadChannelMembers() {
 
 async function loadAvailableUsers(channelId: number) {
   try {
-    // 1️⃣ Lekérjük a saját usert
-    const authResponse = await axios.get<MeResponse>(`${API_URL}/me`, { headers: { Authorization: `Bearer ${token}` } })
-    currentUserId.value = authResponse.data.id
+    // 1️⃣ Lekérjük az összes felhasználót
+    const allUsersRes = await axios.get<User[]>(`${API_URL}/users`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+    const allUsers = allUsersRes.data
 
-    // 2️⃣ Lekérjük az összes usert
-    const allUsers = await axios.get<User[]>(`${API_URL}/users`, { headers: { Authorization: `Bearer ${token}` } })
+    // 2️⃣ Lekérjük a csatorna tagjait
+    const membersRes = await axios.get<User[]>(`${API_URL}/channels/${channelId}/members`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+    const channelUsers = membersRes.data
 
-    // 3️⃣ Lekérjük a csatorna tagjait
-    const membersResponse = await axios.get<User[]>(`${API_URL}/channels/${channelId}/members`, { headers: { Authorization: `Bearer ${token}` } })
-    channelMembers.value = membersResponse.data
-
-    // 4️⃣ Szűrés: csak azok, akik nem tagok és nem mi magunk vagyunk
-    availableUsers.value = allUsers.data
-      .filter(u => !channelMembers.value.some(m => m.id === u.id))
-      .filter(u => u.id !== currentUserId.value)
+    // 3️⃣ Kivonjuk a csatorna tagjait az összes felhasználóból
+    availableUsers.value = allUsers
+      .filter(u => u.id !== currentUserId.value)      // saját user kihagyása
+      .filter(u => !channelUsers.some(m => m.id === u.id))
       .map(u => ({ label: u.nickName, value: u.id }))
 
     console.log('Available users for AddUserDialog:', availableUsers.value)
