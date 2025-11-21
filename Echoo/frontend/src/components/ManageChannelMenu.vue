@@ -57,18 +57,6 @@
 
         <q-separator dark />
 
-        <!-- Spravovať oprávnenia -->
-        <q-item clickable v-ripple @click="managePermissions">
-          <q-item-section avatar>
-            <q-icon name="security" color="white" />
-          </q-item-section>
-          <q-item-section>
-            <q-item-label>Manage Permissions</q-item-label>
-          </q-item-section>
-        </q-item>
-
-        <q-separator dark />
-
         <!-- Spravovať notifikácie -->
         <q-item clickable v-ripple @click="manageNotifications">
           <q-item-section avatar>
@@ -159,12 +147,6 @@ function banUser() {
   console.log('Remove user clicked')
 }
 
-// Funkcia na správu oprávnení
-function managePermissions() {
-  menu.value = false
-  console.log('Manage permissions clicked')
-}
-
 // Funkcia na správu notifikácií
 function manageNotifications() {
   menu.value = false
@@ -172,19 +154,40 @@ function manageNotifications() {
 }
 
 // Funkcia na vymazanie kanála
-function terminateChannel() {
+async function terminateChannel() {
   menu.value = false
-  console.log('Terminate channel clicked')
+
+  const token = localStorage.getItem('auth_token')
+
+  try {
+    await axios.delete(`http://localhost:3333/channels/${props.channel.id}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+
+    $q.notify({
+      type: 'positive',
+      message: 'Channel terminated',
+      position: 'top'
+    })
+
+    // Parent komponensnek szólunk, hogy törölje a listából
+    emit('leftChannel', props.channel.id)
+
+    // Redirect
+    await router.push('/chat')
+
+  } catch (err) {
+    console.error('Terminate failed:', err)
+    $q.notify({
+      type: 'negative',
+      message: 'Failed to terminate channel'
+    })
+  }
 }
 
 // Funkcia na opustenie kanála
 async function leaveChannel() {
   menu.value = false
-
-  if (!props.channel.id) {
-    console.error('Invalid channel id', props.channel)
-    return
-  }
 
   const token = localStorage.getItem('auth_token')
 
@@ -199,14 +202,17 @@ async function leaveChannel() {
       position: 'top'
     })
 
+    emit('leftChannel', props.channel.id)
+
     await router.push('/chat')
+
   } catch (err) {
     console.error('Leave failed:', err)
-    $q.notify({ type: 'negative', message: 'Failed to leave channel' })
+    $q.notify({ type: 'negative',
+    message: 'Failed to leave channel' })
   }
-
-  emit('leftChannel', props.channel.id)
 }
+
 </script>
 
 

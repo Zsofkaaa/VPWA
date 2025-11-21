@@ -55,6 +55,7 @@
             :class="['sidebar-item', { 'active-channel': ch.path === props.activeChannelPath }]"
           >
             <q-item-section>{{ ch.name }}</q-item-section>
+            <div>{{ ch.role }}</div>
         </q-item>
           <ManageChannelMenu
             v-if="ch.path === props.activeChannelPath && ch.role"
@@ -78,6 +79,7 @@
             :class="['sidebar-item', { 'active-channel': ch.path === props.activeChannelPath }]"
           >
             <q-item-section>{{ ch.name }}</q-item-section>
+            <div>{{ ch.role }}</div>
           </q-item>
           <ManageChannelMenu
             v-if="ch.path === props.activeChannelPath && ch.role"
@@ -135,7 +137,7 @@
 
 
 <script lang="ts" setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed } from 'vue'
 import ManageChannelMenu from './ManageChannelMenu.vue'
 import AddChannelDialog from './AddChannelDialog.vue'
 import { useQuasar } from 'quasar'
@@ -184,9 +186,6 @@ const allChannelNames = computed(() => {
   return [...props.privateChannels, ...props.publicChannels].map(ch => ch.name)
 })
 
-const privateChannelList = ref<Channel[]>([...props.privateChannels])
-const publicChannelList = ref<Channel[]>([...props.publicChannels])
-
 /* LOGIKA PRE POZVÁNKY */
 const inviteDialog = ref(false)
 const inviteAccepted = ref(false)
@@ -223,13 +222,6 @@ function joinChannel() {
   selectChannel(invitedChannel)
 }
 
-watch(() => props.privateChannels, (newVal) => {
-  privateChannelList.value = [...newVal]
-}, { immediate: true, deep: true })
-
-watch(() => props.publicChannels, (newVal) => {
-  publicChannelList.value = [...newVal]
-}, { immediate: true, deep: true })
 </script>
 
 

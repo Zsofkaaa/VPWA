@@ -295,7 +295,7 @@ async function handleCreateChannel(data: ChannelData) {
     )
 
     // Hozzáadás a frontend csatorna listához
-    const newChannel = { id: newChannelId, name: formattedName, path: channelPath }
+    const newChannel = { id: newChannelId, name: formattedName, path: channelPath, role: 'admin' }
     if (data.type === 'private') privateChannels.value.push(newChannel)
     else publicChannels.value.push(newChannel)
 

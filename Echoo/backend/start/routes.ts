@@ -106,3 +106,5 @@ router
     return controllerInstance.getUserChannels(ctx)
   })
   .middleware([middleware.auth()])
+
+router.delete('/channels/:id', [ChannelsController, 'destroy']).middleware([middleware.auth()])
