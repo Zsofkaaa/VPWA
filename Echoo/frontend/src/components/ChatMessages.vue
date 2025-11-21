@@ -98,7 +98,7 @@ function isAtBottom() {
   const el = messagesContainer.value
   if (!el) return true
   // Tolerancia 100px pre detekciu spodku
-  const threshold = 10000
+  const threshold = 100
   return Math.abs(el.scrollHeight - el.scrollTop - el.clientHeight) <= threshold
 }
 
@@ -108,7 +108,7 @@ function scrollToBottom() {
   if (!el) return
 
   // Scrollujeme na dummy element na spodku
-  el.scrollIntoView({ behavior: 'smooth', block: 'end' })
+  el.scrollIntoView({ behavior: 'smooth', block: 'start' })
 }
 
 /* HANDLER PRE SLEDOVANIE MANUÁLNEHO SCROLLOVANIA POUŽÍVATEĽA */
