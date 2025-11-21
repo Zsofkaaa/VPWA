@@ -3,11 +3,10 @@
   <!-- HLAVNÁ SEKCIA PRE ZOBRAZENIE SPRÁV -->
   <div ref="messagesContainer" class="chat-messages">
 
-    <!-- INFINITE SCROLL
-         @load="loadMore" -->
+    <!-- INFINITE SCROLL (BEZ REVERSE PRE SPRÁVNE PORADIE) -->
     <q-infinite-scroll
     :offset="100"
-    reverse
+    @load="onLoad"
     spinner-color="white"
     >
 
@@ -35,7 +34,12 @@
         </div>
 
       </div>
+
+      <!-- DUMMY ELEMENT NA SCROLLOVANIE NA SPODOK -->
+      <div ref="bottomElement"></div>
+
     </q-infinite-scroll>
+
   </div>
 
 </template>
@@ -44,9 +48,7 @@
 
 <script lang="ts" setup>
 
-// KELL A SCROLL TO BOTTOM
-
-import { nextTick, ref, watch } from 'vue'
+import { nextTick, ref, watch, onMounted } from 'vue'
 import { inject } from 'vue'
 
 const currentUserId = inject<number>('currentUserId')
@@ -70,39 +72,101 @@ const localMessages = ref<Message[]>([])
 /* REFERENCIA NA KONTAJNER, KDE SA ZOBRAZUJÚ SPRÁVY */
 const messagesContainer = ref<HTMLElement | null>(null)
 
+/* REFERENCIA NA SPODNÝ ELEMENT PRE SCROLLOVANIE */
+const bottomElement = ref<HTMLElement | null>(null)
+
+/* PREMENNÁ PRE SLEDOVANIE, ČI POUŽÍVATEĽ SCROLLUJE HORE */
+const userScrolledUp = ref(false)
+
+/* FUNKCIA PRE INFINITE SCROLL - NAČÍTANIE STARŠÍCH SPRÁV */
+function onLoad(index: number, done: (stop?: boolean) => void) {
+  // TODO: Implementácia načítania starších správ z backendu
+  // Zatiaľ len ukončíme loading
+  setTimeout(() => {
+    done(true) // true = stop loading (žiadne ďalšie správy)
+  }, 500)
+}
+
 /* FUNKCIA NA FORMÁTOVANIE SPRÁVY (PING) */
 function formatMessage(text: string, isPing?: boolean): string {
   if (!isPing) return text;
   return text.replace(/(@\w+)/g, '<span class="ping-highlight">$1</span>');
 }
 
+/* FUNKCIA NA KONTROLU, ČI JE POUŽÍVATEĽ NA SPODKU CHATU */
 function isAtBottom() {
   const el = messagesContainer.value
   if (!el) return true
-  return el.scrollTop + el.clientHeight >= el.scrollHeight - 50
+  // Tolerancia 100px pre detekciu spodku
+  const threshold = 100
+  return Math.abs(el.scrollHeight - el.scrollTop - el.clientHeight) <= threshold
 }
 
-// AUTOMATIC SCROLL TO BOTTOM
+/* FUNKCIA NA AUTOMATICKÉ SCROLLOVANIE NA SPODOK */
 function scrollToBottom() {
+  const el = bottomElement.value
+  if (!el) return
+
+  // Scrollujeme na dummy element na spodku
+  el.scrollIntoView({ behavior: 'smooth', block: 'end' })
+}
+
+/* HANDLER PRE SLEDOVANIE MANUÁLNEHO SCROLLOVANIA POUŽÍVATEĽA */
+function handleScroll() {
   const el = messagesContainer.value
   if (!el) return
 
-  el.scrollTop = el.scrollHeight
+  // Ak používateľ scrolluje hore, označíme to
+  userScrolledUp.value = !isAtBottom()
 }
 
 /* SLEDUJE ZMENY V PROPS.MESSAGES A AKTUALIZUJE LOKÁLNE SPRÁVY */
 watch(
   () => props.messages,
-  async (newVal) => {
+  async (newVal, oldVal) => {
+    console.log('Messages changed:', { 
+      oldLength: oldVal?.length, 
+      newLength: newVal.length 
+    })
+    
     const wasBottom = isAtBottom()
+    console.log('Was at bottom:', wasBottom)
+    
+    const isNewMessage = newVal.length > (oldVal?.length || 0)
 
     localMessages.value = [...newVal]
+    
+    // Počkáme na vykreslenie DOM
     await nextTick()
 
-    if (wasBottom) scrollToBottom()
+    // Automatický scroll len ak:
+    // 1. Používateľ bol na spodku ALEBO
+    // 2. Prišla nová správa a používateľ nescrolloval hore manuálne
+    if (wasBottom || (isNewMessage && !userScrolledUp.value)) {
+      console.log('Scrolling to bottom...')
+      // Malé oneskorenie pre zabezpečenie kompletného vykreslenia
+      setTimeout(() => {
+        scrollToBottom()
+        userScrolledUp.value = false
+      }, 100)
+    }
   },
   { immediate: true, deep: true }
 )
+
+/* PRI NAČÍTANÍ KOMPONENTU */
+onMounted(() => {
+  // Pridáme scroll listener
+  const el = messagesContainer.value
+  if (el) {
+    el.addEventListener('scroll', handleScroll)
+  }
+
+  // Počiatočný scroll na spodok
+  setTimeout(() => {
+    scrollToBottom()
+  }, 200)
+})
 
 </script>
 
@@ -122,6 +186,8 @@ watch(
   overflow-y: auto;
   padding: 16px;
   padding-bottom: 100px;
+  display: flex;
+  flex-direction: column;
 }
 
 /* ŠTÝL JEDNOTLIVÝCH SPRÁV */

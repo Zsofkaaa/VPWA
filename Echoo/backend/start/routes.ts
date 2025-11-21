@@ -10,6 +10,7 @@
 import router from '@adonisjs/core/services/router'
 import Channel from '#models/channel'
 import { middleware } from '#start/kernel'
+
 const MessagesController = () => import('#controllers/messages_controller')
 const AuthController = () => import('#controllers/auth_controller')
 const ChannelsController = () => import('#controllers/channels_controller')
@@ -39,6 +40,8 @@ router.get('/channels/:id/messages', async (ctx) => {
   const controllerInstance = new ControllerClass()
   return controllerInstance.index({ params: { id: Number(ctx.params.id) } })
 })
+
+router.get('/api/commands', '#controllers/commands_controller.index')
 
 router
   .post('/channels/:id/messages', async ({ auth, params, request }) => {

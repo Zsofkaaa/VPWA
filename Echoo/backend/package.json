@@ -64,6 +64,7 @@
     "@adonisjs/websocket": "^1.0.12",
     "@vinejs/vine": "^3.0.1",
     "argon2": "^0.43.1",
+    "axios": "^1.13.2",
     "luxon": "^3.7.2",
     "pg": "^8.16.3",
     "reflect-metadata": "^0.2.2",

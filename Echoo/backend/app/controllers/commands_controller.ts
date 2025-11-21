@@ -1,0 +1,27 @@
+// app/controllers/commands_controller.ts
+import type { HttpContext } from '@adonisjs/core/http'
+import Command from '#models/command'
+
+export default class CommandsController {
+  /**
+   * GET /api/commands
+   * Visszaadja az összes parancsot
+   */
+  async index({ response }: HttpContext) {
+    try {
+      const commands = await Command.query()
+        .select('id', 'name', 'description')
+        .orderBy('id', 'asc')
+
+      return response.ok({
+        success: true,
+        data: commands,
+      })
+    } catch (error) {
+      return response.internalServerError({
+        success: false,
+        message: 'Failed to fetch commands',
+      })
+    }
+  }
+}
