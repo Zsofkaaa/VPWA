@@ -58,6 +58,7 @@
         <q-separator dark />
 
         <!-- Spravovať oprávnenia -->
+         <!--
         <q-item clickable v-ripple @click="managePermissions">
           <q-item-section avatar>
             <q-icon name="security" color="white" />
@@ -68,6 +69,7 @@
         </q-item>
 
         <q-separator dark />
+        -->
 
         <!-- Spravovať notifikácie -->
         <q-item clickable v-ripple @click="manageNotifications">
@@ -160,10 +162,12 @@ function banUser() {
 }
 
 // Funkcia na správu oprávnení
+/*
 function managePermissions() {
   menu.value = false
   console.log('Manage permissions clicked')
 }
+*/
 
 // Funkcia na správu notifikácií
 function manageNotifications() {
