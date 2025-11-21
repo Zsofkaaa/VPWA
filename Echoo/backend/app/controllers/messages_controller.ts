@@ -21,24 +21,17 @@ export default class MessagesController {
     }))
   }
 
-  public async store({
-    auth,
-    params,
-    request,
-  }: {
-    auth: any
-    params: Record<string, any>
-    request: any
-  }) {
+  public async store({ auth, params, request }: any) {
     const channelId = Number(params.id)
     const { content } = request.only(['content'])
 
-    // A bejelentkezett felhasználó ID-je
     const senderId = auth?.user?.id
-    if (!senderId) {
-      throw new Error('User not authenticated')
-    }
+    if (!senderId) throw new Error('User not authenticated')
 
+    // Channel lekérése
+    const channel = await Channel.findOrFail(channelId)
+
+    // Üzenet létrehozása
     const message = await Message.create({
       channelId,
       senderId,
@@ -49,7 +42,9 @@ export default class MessagesController {
 
     await message.load('sender')
 
-    await Channel.query().where('id', channelId).update({ lastActiveAt: DateTime.now() })
+    // LastActiveAt frissítése - camelCase működik a model instance-on
+    channel.lastActiveAt = DateTime.now()
+    await channel.save()
 
     return {
       id: message.id,
