@@ -1,4 +1,6 @@
 import Message from '#models/message'
+import Channel from '#models/channel'
+import { DateTime } from 'luxon'
 
 export default class MessagesController {
   public async index({ params }: { params: { id: number } }) {
@@ -46,6 +48,8 @@ export default class MessagesController {
     })
 
     await message.load('sender')
+
+    await Channel.query().where('id', channelId).update({ lastActiveAt: DateTime.now() })
 
     return {
       id: message.id,
