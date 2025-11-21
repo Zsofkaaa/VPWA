@@ -185,6 +185,7 @@ onMounted(() => {
   flex: 1;
   overflow-y: auto;
   padding: 16px;
+  margin-top: 80px;
   display: flex;
   flex-direction: column;
 }
