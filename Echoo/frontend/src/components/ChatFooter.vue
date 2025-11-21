@@ -52,6 +52,9 @@ defineEmits<{
   display: flex;
   align-items: center;
   padding: 0 16px;
+  position: relative; 
+  border-top: 1px solid #333;
+  flex-shrink: 0;
 }
 
 /* šTÝL PRE TEXTOVÉ POLE */

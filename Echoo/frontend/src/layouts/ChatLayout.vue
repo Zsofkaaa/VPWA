@@ -1,8 +1,6 @@
 <template>
-
-  <!-- HLAVNÝ CHAT LAYOUT (ZÁKLADNÁ ŠTRUKTÚRA STRÁNKY) -->
   <q-layout view="hHh Lpr lFf" class="bg-dark text-white">
-
+    
     <!-- HEADER -->
     <Header
       v-model:drawer-open="drawerOpen"
@@ -22,37 +20,37 @@
       @leftChannel="handleChannelLeft"
     />
 
-    <!-- MAIN CONTENT -->
-    <q-page-container class="chat-bg">
-      <router-view />
-    </q-page-container>
+    <!-- MAIN CONTENT WRAPPER -->
+    <div class="main-wrapper">
+      <!-- MAIN CONTENT -->
+      <q-page-container class="chat-bg">
+        <router-view />
+      </q-page-container>
 
-    <!-- TYPING STATUS -->
-    <TypingStatus
-    v-if="isTyping"
-    :typing-status-style="typingStatusStyle"
-    />
+      <!-- TYPING STATUS -->
+      <TypingStatus
+        v-if="isTyping"
+        :typing-status-style="typingStatusStyle"
+      />
 
-    <!-- FOOTER -->
-    <ChatFooter
-      v-if="isChatPage"
-      v-model:new-message="newMessage"
-      :footer-style="footerStyle"
-      @enter-press="onEnterPress"
-    />
-
-
+      <!-- FOOTER -->
+      <ChatFooter
+        v-if="isChatPage"
+        v-model:new-message="newMessage"
+        :footer-style="footerStyle"
+        @enter-press="onEnterPress"
+      />
+    </div>
 
     <!-- NOTIFICATION POPUP -->
     <NotificationPopUp
-    :visible="showNotification"
-    sender="User 1"
-    message="Message sent!"
-    logo="/pictures/logo.jpg"
+      :visible="showNotification"
+      sender="User 1"
+      message="Message sent!"
+      logo="/pictures/logo.jpg"
     />
 
   </q-layout>
-
 </template>
 
 
@@ -489,11 +487,18 @@ provide('activeChannelPath', activeChannelPath)
 
 
 
-<style>
-
-/* HLAVNÝ šTÝL */
-.chat-bg {
-  background-color: #1E1E1E;
+<style scoped>
+.main-wrapper {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
 }
 
+.chat-bg {
+  flex: 1;
+  overflow-y: auto;
+  background-color: #1E1E1E;
+  padding-bottom: 80px; 
+}
 </style>
