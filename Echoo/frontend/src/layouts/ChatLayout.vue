@@ -412,15 +412,16 @@ watch(
   },
   { immediate: true }
 )
+
 onMounted(async () => {
-  // 1️⃣ Betöltjük a user ID-t
+  // 1️. Načítanie ID aktuálneho používateľa zo storage
   const savedUser = localStorage.getItem("user")
   if (savedUser) {
     const user = JSON.parse(savedUser)
     currentUserId.value = user.id
   }
 
-  // 2️⃣ Betöltjük a csatornákat
+  // 2. Načítanie používateľských kanálov
   try {
     const token = localStorage.getItem('auth_token')
     const userId = currentUserId.value
@@ -450,37 +451,30 @@ onMounted(async () => {
     console.error('Failed to load user channels', err)
   }
 
-  // 3️⃣ Visibility change listener
+  // 3. Listener pre zmenu viditeľnosti aplikácie
   const handleVisibilityChange = () => {
     isAppVisible.value = !document.hidden
-    console.log('🔄 App visibility changed:', isAppVisible.value ? 'VISIBLE' : 'HIDDEN')
+    console.log('App visibility changed:', isAppVisible.value ? 'VISIBLE' : 'HIDDEN')
   }
-
   document.addEventListener('visibilitychange', handleVisibilityChange)
 
-  // 4️⃣ Socket setup
-  console.log('Socket connected?', socket.connected)
-
+  // 4️. Inicializácia socket pripojenia
   if (currentChannelId.value) {
     socket.emit('join', `channel_${currentChannelId.value}`)
   }
 
   socket.on('newMessage', (msg: Message) => {
-    console.log('📩 Received message:', msg)
-    
+    // Ak správa patrí aktuálnemu kanálu, pridaj ju do zoznamu
     if (msg.channelId === currentChannelId.value) {
       messages.value.push(msg)
     }
 
-    if (msg.userId === currentUserId.value) {
-      console.log('⏭️ Skipping notification - own message')
-      return
-    }
+    // Ignoruj vlastné správy pre notifikácie
+    if (msg.userId === currentUserId.value) return
 
-    console.log('👁️ isAppVisible.value:', isAppVisible.value)
-    
+    // Ak aplikácia nie je viditeľná, zobraz notifikáciu
     if (!isAppVisible.value) {
-      console.log('🔔 Showing notification - app is in background')
+      console.log('Showing notification - app is in background')
       
       const channel = [...privateChannels.value, ...publicChannels.value]
         .find(ch => ch.id === msg.channelId)
@@ -494,8 +488,6 @@ onMounted(async () => {
       setTimeout(() => {
         showNotification.value = false
       }, 5000)
-    } else {
-      console.log('⏭️ Skipping notification - app is visible')
     }
   })
 })
