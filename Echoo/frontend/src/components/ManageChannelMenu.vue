@@ -180,8 +180,6 @@ const props = defineProps<{
   userRole: 'admin' | 'member'
 }>()
 
-console.log(props.channel.name)
-
 const router = useRouter()
 const $q = useQuasar()
 
@@ -312,13 +310,8 @@ async function addUsers(userIds: number[]) {
   try {
     for (const userId of userIds) {
       await axios.post(
-        `http://localhost:3333/user_channel`,
-        {
-          channelId: props.channel.id,
-          userId,
-          role: 'member',
-          notificationSettings: 'all'
-        },
+        `${API_URL}/channels/${props.channel.id}/invite`,
+        { userId },
         { headers: { Authorization: `Bearer ${token}` } }
       )
     }

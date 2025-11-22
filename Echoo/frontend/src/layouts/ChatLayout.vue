@@ -14,10 +14,12 @@
       :private-channels="privateChannels"
       :public-channels="publicChannels"
       :active-channel-path="activeChannelPath"
+      :invites="invites"
       @go-to-channel="goToChannel"
       @logout="handleLogout"
       @create-channel="handleCreateChannel"
       @leftChannel="handleChannelLeft"
+      @invite-updated="loadInvites"
     />
 
     <!-- MAIN CONTENT WRAPPER -->
@@ -72,6 +74,15 @@ import axios from 'axios'
 
 /* NASTAVENIE MENA KOMPONENTU */
 defineOptions({ name: 'ChatLayout' })
+
+interface Invite {
+  id: number
+  channel_id: number
+  channel: {
+    id: number
+    name: string
+  }
+}
 
 interface UserChannel {
   id: number
@@ -170,6 +181,26 @@ const typingStatusStyle = computed(() => ({
   fontStyle: 'italic',
   zIndex: 2150
 }))
+
+const invites = ref<Invite[]>([])
+
+const API_URL = 'http://localhost:3333'
+const token = localStorage.getItem('auth_token')
+
+async function loadInvites() {
+  try {
+    const res = await axios.get<Invite[]>(`${API_URL}/invites/me`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+    invites.value = res.data
+  } catch (err) {
+    console.error('Failed to load invites', err)
+  }
+}
+
+onMounted(() => {
+  void loadInvites()
+})
 
 function handleChannelLeft(channelId: number) {
   const idxPrivate = privateChannels.value.findIndex(c => c.id === channelId)
@@ -454,7 +485,7 @@ onMounted(async () => {
 
   socket.on('newMessage', (msg: Message) => {
     console.log('📩 Received message:', msg)
-    
+
     if (msg.channelId === currentChannelId.value) {
       messages.value.push(msg)
     }
@@ -465,15 +496,15 @@ onMounted(async () => {
     }
 
     console.log('👁️ isAppVisible.value:', isAppVisible.value)
-    
+
     if (!isAppVisible.value) {
       console.log('🔔 Showing notification - app is in background')
-      
+
       const channel = [...privateChannels.value, ...publicChannels.value]
         .find(ch => ch.id === msg.channelId)
-      
+
       const channelName = channel ? channel.name : `Channel ${msg.channelId}`
-      
+
       notificationSender.value = `${msg.user} (#${channelName})`
       notificationMessage.value = msg.text
       showNotification.value = true
