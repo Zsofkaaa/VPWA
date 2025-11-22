@@ -63,7 +63,7 @@ const shortMessage = computed(() => {
   overflow: hidden;
   font-family: sans-serif;
   padding: 16px;
-  z-index: 3000;
+  z-index: 9999;
 }
 
 /* HLAVIČKA NOTIFIKÁCIE */
@@ -97,8 +97,9 @@ const shortMessage = computed(() => {
   border-radius: 8px;
   font-weight: bold;
   width: 100%;
-  min-height: 100px;
-  display: flex;
+  display: inline-block; /* alebo block */
+  min-height: 0;         /* odstráni fixnú výšku */
+  word-break: break-word; /* aby sa text zalomil */
 }
 
 /* ANIMÁCIA SLIDE-UP */

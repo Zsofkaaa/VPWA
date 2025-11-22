@@ -45,8 +45,8 @@
     <!-- NOTIFICATION POPUP -->
     <NotificationPopUp
       :visible="showNotification"
-      sender="User 1"
-      message="Message sent!"
+      :sender="notificationSender"
+      :message="notificationMessage"
       logo="/pictures/logo.jpg"
     />
 
@@ -101,6 +101,7 @@ interface Message {
   userId: number
   user: string
   text: string
+  channelId: number
   isPing?: boolean | undefined
 }
 
@@ -148,7 +149,9 @@ const newMessage = ref('')
 const isTyping = ref(false)
 const showNotification = ref(false)
 const currentChannelName = ref('')
-
+const notificationSender = ref('')
+const notificationMessage = ref('')
+const isAppVisible = ref(!document.hidden)
 const currentUserId = ref<number | null>(null)
 const currentChannelId = ref<number | null>(null)
 
@@ -409,11 +412,18 @@ watch(
   },
   { immediate: true }
 )
-
 onMounted(async () => {
+  // 1️⃣ Betöltjük a user ID-t
+  const savedUser = localStorage.getItem("user")
+  if (savedUser) {
+    const user = JSON.parse(savedUser)
+    currentUserId.value = user.id
+  }
+
+  // 2️⃣ Betöltjük a csatornákat
   try {
     const token = localStorage.getItem('auth_token')
-    const userId = JSON.parse(localStorage.getItem("user") || '{}')?.id
+    const userId = currentUserId.value
     if (!token || !userId) return
 
     const res = await axios.get<UserChannel[]>(
@@ -421,17 +431,14 @@ onMounted(async () => {
       { headers: { Authorization: `Bearer ${token}` } }
     )
 
-    // Beállítjuk a path mezőt is, hogy router-ben használható legyen
     userChannels.value = res.data.map(ch => ({
       ...ch,
       path: `/chat/${ch.id}`
     }))
 
-    // Szétválogatás private/public listára
     privateChannels.value = userChannels.value.filter(ch => ch.type === 'private')
     publicChannels.value = userChannels.value.filter(ch => ch.type === 'public')
 
-    // Ha van aktuális route, állítsuk be a current channel-t
     const found = userChannels.value.find(ch => ch.path === route.path)
     if (found) {
       currentChannelId.value = found.id
@@ -442,33 +449,64 @@ onMounted(async () => {
   } catch (err) {
     console.error('Failed to load user channels', err)
   }
-})
 
-onMounted(() => {
-  const savedUser = localStorage.getItem("user")
-  if (savedUser) {
-    const user = JSON.parse(savedUser)
-    currentUserId.value = user.id
+  // 3️⃣ Visibility change listener
+  const handleVisibilityChange = () => {
+    isAppVisible.value = !document.hidden
+    console.log('🔄 App visibility changed:', isAppVisible.value ? 'VISIBLE' : 'HIDDEN')
   }
-})
 
-onMounted(() => {
+  document.addEventListener('visibilitychange', handleVisibilityChange)
+
+  // 4️⃣ Socket setup
   console.log('Socket connected?', socket.connected)
 
   if (currentChannelId.value) {
     socket.emit('join', `channel_${currentChannelId.value}`)
   }
 
-  // csak egyszer kell!
   socket.on('newMessage', (msg: Message) => {
-    messages.value.push(msg)
+    console.log('📩 Received message:', msg)
+    
+    if (msg.channelId === currentChannelId.value) {
+      messages.value.push(msg)
+    }
+
+    if (msg.userId === currentUserId.value) {
+      console.log('⏭️ Skipping notification - own message')
+      return
+    }
+
+    console.log('👁️ isAppVisible.value:', isAppVisible.value)
+    
+    if (!isAppVisible.value) {
+      console.log('🔔 Showing notification - app is in background')
+      
+      const channel = [...privateChannels.value, ...publicChannels.value]
+        .find(ch => ch.id === msg.channelId)
+      
+      const channelName = channel ? channel.name : `Channel ${msg.channelId}`
+      
+      notificationSender.value = `${msg.user} (#${channelName})`
+      notificationMessage.value = msg.text
+      showNotification.value = true
+
+      setTimeout(() => {
+        showNotification.value = false
+      }, 5000)
+    } else {
+      console.log('⏭️ Skipping notification - app is visible')
+    }
   })
 })
 
 watch(currentChannelId, (id, oldId) => {
   if (!socket) return
 
-  if (oldId) socket.emit('leave', `channel_${oldId}`)
+  if (oldId) {
+    console.log('Leaving room:', `channel_${oldId}`)
+    socket.emit('leave', `channel_${oldId}`)
+  }
   if (id) {
     console.log('Joining room:', `channel_${id}`)
     socket.emit('join', `channel_${id}`)
