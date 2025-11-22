@@ -162,13 +162,13 @@ interface User {
   nickName: string
 }
 
-/*
-interface MeResponse {
-  id: number
-  name: string | null
-  nickName: string | null
+interface AxiosErrorLike {
+  response?: {
+    data?: {
+      error?: string
+    }
+  }
 }
-  */
 
 const props = defineProps<{
   channel: {
@@ -333,18 +333,37 @@ async function addUsers(userIds: number[]) {
 // --- Felhasználók Kick / Ban műveletei
 async function kickUsers(userIds: number[]) {
   const token = localStorage.getItem('auth_token')
-  try {
-    for (const userId of userIds) {
-      await axios.delete(`http://localhost:3333/channels/${props.channel.id}/kick/${userId}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-    }
-    $q.notify({ type: 'positive', message: 'Users kicked' })
-    showKickUserDialog.value = false
-  } catch (err) {
-    console.error('Kick failed', err)
-    $q.notify({ type: 'negative', message: 'Failed to kick users' })
+  if (!currentUserId.value) await loadCurrentUser()
+
+  for (const userId of userIds) {
+    try {
+  const res = await axios.delete<{ message?: string; error?: string }>(
+    `${API_URL}/channels/${props.channel.id}/kick/${userId}`,
+    { headers: { Authorization: `Bearer ${token}` } }
+  )
+
+  if (res.data.message) {
+    $q.notify({ type: 'positive', message: res.data.message })
   }
+    } catch (err: unknown) {
+      // Biztosítsuk, hogy err egy objektum és van benne response
+      if (typeof err === 'object' && err !== null && 'response' in err) {
+        const errorData = (err as AxiosErrorLike).response?.data
+        if (errorData?.error === 'You already kicked this user') {
+          $q.notify({ type: 'warning', message: 'You already kicked this user' })
+        } else {
+          console.error('Kick failed', err)
+          $q.notify({ type: 'negative', message: 'Failed to kick user' })
+        }
+      } else {
+        console.error('Kick failed', err)
+        $q.notify({ type: 'negative', message: 'Failed to kick user' })
+      }
+    }
+  }
+
+  showKickUserDialog.value = false
+  await loadChannelMembers()
 }
 
 async function banUsers(userIds: number[]) {

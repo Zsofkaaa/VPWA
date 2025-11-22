@@ -16,11 +16,11 @@ class Ws {
     })
 
     this.io.on('connection', (socket) => {
-      console.log(`[WS] Új kliens csatlakozott: ${socket.id}`)
+      console.log(`[WS] New client: ${socket.id}`)
 
       socket.on('join', (room: string) => {
         socket.join(room)
-        console.log(`[WS] Csatlakozott a room-hoz: ${room}`)
+        console.log(`[WS] Joined room: ${room}`)
       })
 
       socket.on('message', async (data) => {
@@ -48,11 +48,11 @@ class Ws {
           sentAt: message.sentAt,
         })
 
-        console.log(`[WS] Üzenet elküldve channel_${channelId}-nak:`, message.content)
+        console.log(`[WS] Message sent`, message.content)
       })
     })
 
-    console.log('[WS] WebSocket szerver elindult ✅')
+    console.log('[WS] WebSocket server running')
   }
 }
 

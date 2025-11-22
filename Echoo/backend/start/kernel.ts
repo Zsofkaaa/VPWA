@@ -23,6 +23,5 @@ export const middleware = router.named({
 app.ready(() => {
   import('#services/ws').then(({ default: Ws }) => {
     Ws.boot()
-    console.log('[WS] WebSocket server initialized')
   })
 })

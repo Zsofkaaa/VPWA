@@ -16,7 +16,7 @@
         <label class="text-weight-medium q-mb-xs block">Select User</label>
 
         <q-select
-          v-model="selectedUser"
+          v-model="selectedUsers"
           :options="memberOptions"
           filled
           dense
@@ -25,6 +25,7 @@
           bg-color="rgba(255,255,255,0.1)"
           color="white"
           dark
+          multiple
           placeholder="Select a user to kick..."
         />
       </q-card-section>
@@ -34,7 +35,7 @@
         <q-btn
           color="negative"
           label="Kick"
-          :disable="!selectedUser"
+          :disable="!selectedUsers"
           @click="confirmKick"
         />
       </q-card-actions>
@@ -57,11 +58,11 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   "update:visible": [boolean]
-  "confirm": [number]
+  "kick-users": [number[]] // 👈 itt kell tömb
 }>()
 
 const internalVisible = ref(props.visible)
-const selectedUser = ref<number | null>(null)
+const selectedUsers = ref<number[]>([])
 const memberOptions = ref<{ label: string; value: number }[]>([])
 
 watch(() => props.visible, (v) => {
@@ -77,13 +78,13 @@ watch(() => props.visible, (v) => {
 watch(internalVisible, (v) => emit("update:visible", v))
 
 function closeDialog() {
-  selectedUser.value = null
+  selectedUsers.value = []
   emit("update:visible", false)
 }
 
 function confirmKick() {
-  if (selectedUser.value) {
-    emit("confirm", selectedUser.value)
+  if (selectedUsers.value.length > 0) {
+    emit("kick-users", selectedUsers.value) // most már tömböt ad vissza
     closeDialog()
   }
 }

@@ -12,7 +12,6 @@ export default class UserChannel extends BaseModel {
   @column() declare channelId: number | null
   @column() declare role: string
   @column() declare notificationSettings: string
-  @column() declare kickCount: number
   @column.dateTime({ autoCreate: true }) declare createdAt: DateTime
   @column.dateTime({ autoCreate: true, autoUpdate: true }) declare updatedAt: DateTime
 

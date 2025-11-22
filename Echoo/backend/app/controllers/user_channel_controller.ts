@@ -1,5 +1,6 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import UserChannel from '#models/user_channel'
+import KickLog from '#models/kick_log'
 
 export default class UserChannelController {
   public async store({ request, auth }: { request: any; auth: any }) {
@@ -92,5 +93,58 @@ export default class UserChannelController {
     await record.delete()
 
     return response.ok({ message: 'User banned successfully' })
+  }
+
+  public async kick({ params, auth, response }: HttpContext) {
+    const channelId = Number(params.id)
+    const targetUserId = Number(params.userId)
+    const kickerUser = auth.user as { id: number }
+
+    // 1. A user benne van-e a csatornában?
+    const record = await UserChannel.query()
+      .where('channelId', channelId)
+      .andWhere('userId', targetUserId)
+      .first()
+
+    if (!record) {
+      return response.notFound({ error: 'User is not in this channel' })
+    }
+
+    // 2. Ellenőrizzük, hogy kicker már kickelte-e
+    const alreadyKicked = await KickLog.query()
+      .where('channelId', channelId)
+      .andWhere('targetUserId', targetUserId)
+      .andWhere('kickerUserId', kickerUser.id)
+      .first()
+
+    if (alreadyKicked) {
+      return response.badRequest({ error: 'You already kicked this user' })
+    }
+
+    // 3. Kick logolása
+    await KickLog.create({
+      channelId,
+      targetUserId,
+      kickerUserId: kickerUser.id,
+    })
+
+    // 4. Megszámoljuk, hány különböző user kickelte
+    const kicks = await KickLog.query()
+      .where('channelId', channelId)
+      .andWhere('targetUserId', targetUserId)
+
+    const uniqueKickCount = kicks.length
+
+    // 5. Ha elérte a 3 különböző kicket → ban
+    if (uniqueKickCount >= 3) {
+      await record.delete()
+      return response.ok({
+        message: 'User has been banned after 3 different users kicked them',
+      })
+    }
+
+    return response.ok({
+      message: `User kicked successfully (${uniqueKickCount}/3)`,
+    })
   }
 }
