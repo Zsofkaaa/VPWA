@@ -384,21 +384,21 @@ function joinChannel() {
   border-left: 3px solid #FFFFFF;
 }
 
-/* AKTÍVNA POZVÁNKA */
-.active-invite {
-  font-weight: bold;
-}
-
 /* MALÝ BADGE PRE NOVÉ POZVÁNKY */
 .invite-badge {
   width: 10px;
   height: 10px;
-  background-color: red;
+  background-color: orange;  /* ← itt változtattuk a színt */
   border-radius: 50%;
   position: absolute;
   right: 12px;
   top: 50%;
   transform: translateY(-50%);
+}
+
+/* Invite-k kiemelése kerettel */
+.active-invite {
+  background-color: rgba(255, 166, 0, 0.15); /* halvány háttér színnel még látványosabb */
 }
 
 /* ROZDEĽOVACIA ČIARA MEDZI SEKCIAMI */

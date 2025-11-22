@@ -1,10 +1,21 @@
 import Message from '#models/message'
 import Channel from '#models/channel'
 import { DateTime } from 'luxon'
+import UserChannel from '#models/user_channel'
 
 export default class MessagesController {
-  public async index({ params }: { params: { id: number } }) {
-    const channelId = params.id
+  public async index({ auth, params, response }: any) {
+    const channelId = Number(params.id)
+
+    // membership check
+    const membership = await UserChannel.query()
+      .where('channel_id', channelId)
+      .where('user_id', auth.user.id)
+      .first()
+
+    if (!membership) {
+      return response.unauthorized({ error: 'Not a member of this channel' })
+    }
 
     const messages = await Message.query()
       .where('channel_id', channelId)

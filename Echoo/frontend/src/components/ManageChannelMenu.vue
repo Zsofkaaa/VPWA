@@ -315,7 +315,7 @@ async function addUsers(userIds: number[]) {
         { headers: { Authorization: `Bearer ${token}` } }
       )
     }
-    $q.notify({ type: 'positive', message: 'Users added successfully' })
+    $q.notify({ type: 'positive', message: 'Invite(s) sent successfully' })
     showAddUserDialog.value = false
   } catch (err) {
     console.error('Failed to add users', err)
