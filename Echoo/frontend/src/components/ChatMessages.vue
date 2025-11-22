@@ -9,6 +9,11 @@
     @load="onLoad"
     spinner-color="white"
     >
+      <template v-slot:loading>
+        <div class="row justify-center q-my-md">
+          <q-spinner-tail color="blue" size="40px" />
+        </div>
+      </template>
 
       <!-- CYKLUS PRE ZOBRAZENIE KAŽDEJ SPRÁVY -->
       <div
@@ -179,6 +184,7 @@ onMounted(() => {
   flex: 1;
   overflow-y: auto;
   padding: 16px;
+  margin-top: 80px;
   display: flex;
   flex-direction: column;
 }

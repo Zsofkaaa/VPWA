@@ -45,6 +45,7 @@ class Ws {
           text: message.content,
           userId: message.senderId,
           user: message.sender.nickName || `${message.sender.firstName} ${message.sender.lastName}`,
+          channelId: channelId,
           sentAt: message.sentAt,
         })
 

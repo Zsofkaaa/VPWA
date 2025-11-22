@@ -1,4 +1,6 @@
 import Message from '#models/message'
+import Channel from '#models/channel'
+import { DateTime } from 'luxon'
 
 export default class MessagesController {
   public async index({ params }: { params: { id: number } }) {
@@ -19,24 +21,17 @@ export default class MessagesController {
     }))
   }
 
-  public async store({
-    auth,
-    params,
-    request,
-  }: {
-    auth: any
-    params: Record<string, any>
-    request: any
-  }) {
+  public async store({ auth, params, request }: any) {
     const channelId = Number(params.id)
     const { content } = request.only(['content'])
 
-    // A bejelentkezett felhasználó ID-je
     const senderId = auth?.user?.id
-    if (!senderId) {
-      throw new Error('User not authenticated')
-    }
+    if (!senderId) throw new Error('User not authenticated')
 
+    // Channel lekérése
+    const channel = await Channel.findOrFail(channelId)
+
+    // Üzenet létrehozása
     const message = await Message.create({
       channelId,
       senderId,
@@ -46,6 +41,10 @@ export default class MessagesController {
     })
 
     await message.load('sender')
+
+    // LastActiveAt frissítése - camelCase működik a model instance-on
+    channel.lastActiveAt = DateTime.now()
+    await channel.save()
 
     return {
       id: message.id,
