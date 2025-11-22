@@ -4,7 +4,7 @@ import KickLog from '#models/kick_log'
 
 export default class UserChannelController {
   public async store({ request, auth }: { request: any; auth: any }) {
-    const data = request.only(['userId', 'channelId', 'role', 'notificationSettings', 'kickCount'])
+    const data = request.only(['userId', 'channelId', 'role', 'notificationSettings'])
 
     const user = auth.user
     if (!user) return { error: 'Unauthorized' }

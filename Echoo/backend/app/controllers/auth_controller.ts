@@ -76,7 +76,6 @@ export default class AuthController {
           channelId: channel.id,
           role: 'member',
           notificationSettings: 'all',
-          kickCount: 0,
         })
       }
 
