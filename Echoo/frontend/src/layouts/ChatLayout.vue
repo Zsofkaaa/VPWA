@@ -129,6 +129,11 @@ interface AxiosErrorLike {
   response?: { status: number }
 }
 
+interface AppUser {
+  id: number
+  nickName: string
+}
+
 const userChannels = ref<UserChannel[]>([])
 
 const privateChannels = ref<UserChannel[]>([])
@@ -370,8 +375,6 @@ async function handleCancelCommand() {
   }
 
   const channelId = currentChannelId.value
-
-  // Megkeressük a user szerepét
   const allChannels = [...privateChannels.value, ...publicChannels.value]
   const channel = allChannels.find(ch => ch.id === channelId)
 
@@ -380,76 +383,64 @@ async function handleCancelCommand() {
     return
   }
 
-  const isAdmin = channel.role === 'admin'
   const token = localStorage.getItem('auth_token')
+  const isAdmin = channel.role === 'admin'
 
   try {
     if (isAdmin) {
-      // 🔥 CSATORNA TÖRLÉSE
+      // CSATORNA TÖRLÉS
       await axios.delete(`${API_URL}/channels/${channelId}`, {
         headers: { Authorization: `Bearer ${token}` }
       })
 
-      // Frontend listából is töröljük
+      // törlés frontendről
       privateChannels.value = privateChannels.value.filter(c => c.id !== channelId)
       publicChannels.value = publicChannels.value.filter(c => c.id !== channelId)
 
       $q.notify({
         type: 'positive',
-        message: `Channel "${channel.name}" deleted.`,
+        message: `Channel "${channel.name}" deleted.`
       })
 
     } else {
-      // 🚪 MEMBER → kilép
+      // KILÉPÉS
       await axios.delete(`${API_URL}/channels/${channelId}/leave`, {
         headers: { Authorization: `Bearer ${token}` }
       })
 
-      // frontend listából removed
       handleChannelLeft(channelId)
 
       $q.notify({
         type: 'positive',
-        message: `You left channel "${channel.name}".`,
+        message: `You left channel "${channel.name}".`
       })
     }
 
-    // Kiürítjük az állapotokat
+    // UI reset
     currentChannelId.value = null
     currentChannelName.value = ''
-    activeChannelPath.value = ''
     messages.value = []
+    activeChannelPath.value = ''
 
-    // Navigáció
     void router.push('/')
 
   } catch (err) {
     console.error(err)
     $q.notify({
       type: 'negative',
-      message: 'Failed to process /cancel command!',
+      message: 'Failed to cancel channel!'
     })
   }
 }
 
-async function handleCommand(cmd: string) {
-  const parts = cmd.trim().split(' ')
-  const command = parts[0]
-
-    if (command === '/cancel') {
-    return await handleCancelCommand()
-  }
-
-  if (command !== '/join') {
-    $q.notify({ type: 'warning', message: 'Unknown command' })
-    return
-  }
-
-  // Ellenőrizzük a [private] flag-et
+async function handleJoinCommand(parts: string[]) {
   const isPrivate = parts.includes('[private]')
 
-  // Vegyük ki a parancsot és a [private]-t
-  const nameParts = parts.slice(1).filter(p => p !== '[private]')
+  // kivesszük a parancs nevet + a [private] flaget
+  const nameParts = parts
+    .slice(1)
+    .filter(p => p !== '[private]')
+
   const channelName = nameParts.join(' ')
 
   if (!channelName) {
@@ -461,15 +452,15 @@ async function handleCommand(cmd: string) {
     const token = localStorage.getItem('auth_token')
     if (!token || !currentUserId.value) throw new Error('Not authenticated')
 
-    // Megnézzük, hogy létezik-e már a csatorna
     const channelList = isPrivate ? privateChannels.value : publicChannels.value
     const existingChannel = channelList.find(
       c => c.name.toLowerCase() === channelName.toLowerCase()
     )
+
     let channelId: number
 
     if (existingChannel) {
-      // Ha már létezik → csatlakozás
+      // ---- CSATLAKOZÁS ----
       await axios.post(
         `${API_URL}/user_channel`,
         {
@@ -480,13 +471,18 @@ async function handleCommand(cmd: string) {
         },
         { headers: { Authorization: `Bearer ${token}` } }
       )
+
       channelId = existingChannel.id
       currentChannelName.value = existingChannel.name
       currentChannelId.value = channelId
-      $q.notify({ type: 'positive', message: `Joined channel "${existingChannel.name}"` })
+
+      $q.notify({
+        type: 'positive',
+        message: `Joined channel "${existingChannel.name}"`
+      })
 
     } else {
-      // Ha nem létezik → létrehozás
+      // ---- LÉTREHOZÁS ----
       const res = await axios.post<ChannelResponse>(
         `${API_URL}/channels`,
         {
@@ -500,7 +496,6 @@ async function handleCommand(cmd: string) {
 
       channelId = res.data.id
 
-      // Hozzáadás user_channel táblához
       await axios.post(
         `${API_URL}/user_channel`,
         {
@@ -525,16 +520,213 @@ async function handleCommand(cmd: string) {
 
       currentChannelName.value = newChannel.name
       currentChannelId.value = newChannel.id
-      $q.notify({ type: 'positive', message: `Channel "${channelName}" created!` })
+
+      $q.notify({
+        type: 'positive',
+        message: `Channel "${channelName}" created!`
+      })
     }
 
-    // Navigáció a csatornához
     void router.push(`/chat/${channelId}`)
 
   } catch (err) {
     console.error(err)
-    $q.notify({ type: 'negative', message: 'Failed to join or create channel!' })
+    $q.notify({
+      type: 'negative',
+      message: 'Failed to join or create channel!'
+    })
   }
+}
+
+async function handleQuitCommand() {
+  if (!currentChannelId.value) {
+    $q.notify({
+      type: 'negative',
+      message: 'You are not in any channel!'
+    })
+    return
+  }
+
+  const channelId = currentChannelId.value
+  const allChannels = [...privateChannels.value, ...publicChannels.value]
+  const channel = allChannels.find(ch => ch.id === channelId)
+
+  if (!channel) {
+    $q.notify({
+      type: 'negative',
+      message: 'Channel not found!'
+    })
+    return
+  }
+
+  // 🔒 ADMIN ELLENŐRZÉS
+  if (channel.role !== 'admin') {
+    $q.notify({
+      type: 'negative',
+      message: 'You cannot use this command, you are not the admin!'
+    })
+    return
+  }
+
+  const token = localStorage.getItem('auth_token')
+
+  try {
+    // 💣 Csatorna törlése
+    await axios.delete(`${API_URL}/channels/${channelId}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+
+    // törlés frontendből
+    privateChannels.value = privateChannels.value.filter(c => c.id !== channelId)
+    publicChannels.value = publicChannels.value.filter(c => c.id !== channelId)
+
+    $q.notify({
+      type: 'positive',
+      message: `Channel "${channel.name}" deleted.`
+    })
+
+    // UI reset
+    currentChannelId.value = null
+    currentChannelName.value = ''
+    messages.value = []
+    activeChannelPath.value = ''
+
+    void router.push('/')
+
+  } catch (err) {
+    console.error(err)
+    $q.notify({
+      type: 'negative',
+      message: 'Failed to delete channel!'
+    })
+  }
+}
+
+async function handleInviteCommand(parts: string[]) {
+  if (!currentChannelId.value) {
+    return $q.notify({ type: 'negative', message: 'You are not in any channel!' })
+  }
+
+  const channelId = currentChannelId.value
+  const targetName = parts[1]
+
+  if (!targetName) {
+    return $q.notify({ type: 'negative', message: 'Usage: /invite nickName' })
+  }
+
+  const allChannels = [...privateChannels.value, ...publicChannels.value]
+  const channel = allChannels.find(c => c.id === channelId)
+
+  if (!channel) {
+    return $q.notify({ type: 'negative', message: 'Channel not found!' })
+  }
+
+  const isPrivate = channel.type === 'private'
+  const isAdmin = channel.role === 'admin'
+
+  // Rule: Private → only admin
+  if (isPrivate && !isAdmin) {
+    return $q.notify({ type: 'negative', message: 'Only admin can invite in private channels!' })
+  }
+
+  // Rule: Public → any member can invite (ok)
+
+  try {
+    const token = localStorage.getItem('auth_token')
+
+    await axios.post(
+      `${API_URL}/channels/${channelId}/invite`,
+      { nickname: targetName },
+      { headers: { Authorization: `Bearer ${token}` } }
+    )
+
+    $q.notify({ type: 'positive', message: `Invite sent to "${targetName}"` })
+  } catch (err) {
+    console.error(err)
+    $q.notify({ type: 'negative', message: 'Failed to invite user!' })
+  }
+}
+
+async function handleRevokeCommand(parts: string[]) {
+  if (!currentChannelId.value) {
+    return $q.notify({ type: 'negative', message: 'You are not in any channel!' })
+  }
+
+  const channelId = currentChannelId.value
+  const targetName = parts[1]
+
+  if (!targetName) {
+    return $q.notify({ type: 'negative', message: 'Usage: /revoke nickName' })
+  }
+
+  const allChannels = [...privateChannels.value, ...publicChannels.value]
+  const channel = allChannels.find(c => c.id === channelId)
+
+  if (!channel) {
+    return $q.notify({ type: 'negative', message: 'Channel not found!' })
+  }
+
+  const isAdmin = channel.role === 'admin'
+
+  if (!isAdmin) {
+    return $q.notify({ type: 'negative', message: 'Only admin can revoke users!' })
+  }
+
+  try {
+    const token = localStorage.getItem('auth_token')
+
+    const users = await axios.get<AppUser[]>(
+      `${API_URL}/users`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    )
+
+    const targetUser = users.data.find(
+      (u) => u.nickName.toLowerCase() === targetName.toLowerCase()
+    )
+
+    if (!targetUser) {
+      return $q.notify({ type: 'negative', message: 'User not found!' })
+    }
+
+    await axios.delete(
+      `${API_URL}/channels/${channelId}/ban/${targetUser.id}`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    )
+
+    $q.notify({ type: 'positive', message: `${targetName} removed from channel` })
+
+  } catch (err) {
+    console.error(err)
+    $q.notify({ type: 'negative', message: 'Failed to revoke user!' })
+  }
+}
+
+async function handleCommand(cmd: string) {
+  const parts = cmd.trim().split(' ')
+  const command = parts[0]
+
+  if (command === '/cancel') {
+    return await handleCancelCommand()
+  }
+
+  if (command === '/join') {
+    return await handleJoinCommand(parts)
+  }
+
+  if (command === '/quit') {
+  return await handleQuitCommand()
+}
+
+if (command === '/invite') {
+  return await handleInviteCommand(parts)
+}
+
+if (command === '/revoke') {
+  return await handleRevokeCommand(parts)
+}
+
+  // Unknown command
+  $q.notify({ type: 'warning', message: 'Unknown command' })
 }
 
 /* FUNKCIA NA ODOSLANIE SPRÁVY */
