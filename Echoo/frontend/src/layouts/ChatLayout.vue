@@ -363,10 +363,84 @@ function sendMessage(text: string) {
   })
 }
 
+async function handleCancelCommand() {
+  if (!currentChannelId.value) {
+    $q.notify({ type: 'negative', message: 'You are not in any channel!' })
+    return
+  }
+
+  const channelId = currentChannelId.value
+
+  // Megkeressük a user szerepét
+  const allChannels = [...privateChannels.value, ...publicChannels.value]
+  const channel = allChannels.find(ch => ch.id === channelId)
+
+  if (!channel) {
+    $q.notify({ type: 'negative', message: 'Channel not found!' })
+    return
+  }
+
+  const isAdmin = channel.role === 'admin'
+  const token = localStorage.getItem('auth_token')
+
+  try {
+    if (isAdmin) {
+      // 🔥 CSATORNA TÖRLÉSE
+      await axios.delete(`${API_URL}/channels/${channelId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+
+      // Frontend listából is töröljük
+      privateChannels.value = privateChannels.value.filter(c => c.id !== channelId)
+      publicChannels.value = publicChannels.value.filter(c => c.id !== channelId)
+
+      $q.notify({
+        type: 'positive',
+        message: `Channel "${channel.name}" deleted.`,
+      })
+
+    } else {
+      // 🚪 MEMBER → kilép
+      await axios.delete(`${API_URL}/channels/${channelId}/leave`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+
+      // frontend listából removed
+      handleChannelLeft(channelId)
+
+      $q.notify({
+        type: 'positive',
+        message: `You left channel "${channel.name}".`,
+      })
+    }
+
+    // Kiürítjük az állapotokat
+    currentChannelId.value = null
+    currentChannelName.value = ''
+    activeChannelPath.value = ''
+    messages.value = []
+
+    // Navigáció
+    void router.push('/')
+
+  } catch (err) {
+    console.error(err)
+    $q.notify({
+      type: 'negative',
+      message: 'Failed to process /cancel command!',
+    })
+  }
+}
+
 async function handleCommand(cmd: string) {
   const parts = cmd.trim().split(' ')
+  const command = parts[0]
 
-  if (parts[0] !== '/join') {
+    if (command === '/cancel') {
+    return await handleCancelCommand()
+  }
+
+  if (command !== '/join') {
     $q.notify({ type: 'warning', message: 'Unknown command' })
     return
   }
@@ -466,7 +540,6 @@ async function handleCommand(cmd: string) {
 /* FUNKCIA NA ODOSLANIE SPRÁVY */
 function onEnterPress(e: KeyboardEvent) {
   if (e.key !== 'Enter' || newMessage.value.trim() === '') return
-
   const content = newMessage.value.trim()
 
   // 1. Check if it's a command
