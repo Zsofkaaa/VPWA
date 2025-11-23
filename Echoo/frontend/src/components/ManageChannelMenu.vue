@@ -160,6 +160,7 @@ interface Member {
 interface User {
   id: number
   nickName: string
+  role: 'admin' | 'member'
 }
 
 interface AxiosErrorLike {
@@ -258,6 +259,7 @@ async function loadCurrentUser() {
 
 async function loadChannelMembers() {
   if (!props.channel.id) return
+
   try {
     // 1️⃣ Lekérjük a saját user ID-t
     if (!currentUserId.value) {
@@ -271,7 +273,9 @@ async function loadChannelMembers() {
     )
 
     // 3️⃣ Szűrjük ki a saját userünket
-    channelMembers.value = res.data.filter(u => u.id !== currentUserId.value)
+     channelMembers.value = res.data
+      .filter(u => u.id !== currentUserId.value)       // saját magad
+      .filter(u => u.role !== 'admin')                 // admin védelem
     console.log('Channel members for Kick/Ban:', channelMembers.value)
   } catch (err) {
     console.error('Failed to load channel members', err)

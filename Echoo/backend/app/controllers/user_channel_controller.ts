@@ -110,6 +110,18 @@ export default class UserChannelController {
       return response.notFound({ error: 'User is not in this channel' })
     }
 
+    if (record.role === 'admin') {
+      return response.unauthorized({
+        error: 'You cannot kick the channel admin',
+      })
+    }
+
+    if (targetUserId === kickerUser.id) {
+      return response.badRequest({
+        error: 'You cannot kick yourself',
+      })
+    }
+
     // 2. Ellenőrizzük, hogy kicker már kickelte-e
     const alreadyKicked = await KickLog.query()
       .where('channelId', channelId)
