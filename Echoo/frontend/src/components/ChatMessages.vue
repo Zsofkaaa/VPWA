@@ -31,16 +31,15 @@
         <!-- OBSAH SPRÁVY (S KONTROLOU NA PING) -->
         <div
         class="message-content q-pa-sm q-mt-xs"
-        :class="{ 'ping-message': msg.isPing }"
+        :class="{ 'ping-message': isPingedMessage(msg) }"
         >
-
-          <!-- FORMÁTOVANIE TEXTU (ZVÝRAZNENIE @USERNAME) -->
-          <span v-html="formatMessage(msg.text, msg.isPing)"></span>
+          <!-- FORMÁTOVANÝ TEXT - S MODRÝM ZVÝRAZNENÍM @NICKNAME -->
+          <span v-html="formatMessage(msg.text)"></span>
         </div>
 
       </div>
 
-      <!-- DUMMY ELEMENT NA SCROLLOVANIE NA SPODOK -->
+      <!-- DUMMY ELEMENT PRE SCROLLOVANIE NA SPODOK -->
       <div ref="bottomElement"></div>
 
     </q-infinite-scroll>
@@ -56,76 +55,114 @@
 import { nextTick, ref, watch, onMounted } from 'vue'
 import { inject } from 'vue'
 
+// Získame ID aktuálneho používateľa z providera
 const currentUserId = inject<number>('currentUserId')
 
-
-/* ROZHRANIE PRE SPRÁVU */
+// Rozhranie pre správu
 interface Message {
   id: number
   userId: number
   user: string
   text: string
-  isPing?: boolean
+  mentionedUserIds?: number[]
 }
 
-/* ÚDAJE PRICHÁDZAJÚCE Z NADRADENEJ KOMPONENTY */
+// Props z rodičovskej komponenty
 const props = defineProps<{ messages: Message[] }>()
 
-/* LOKÁLNE POLE SPRÁV (KÓPIA PRE VNÚTORNÚ PRÁCU) */
+// Lokálne pole správ
 const localMessages = ref<Message[]>([])
 
-/* REFERENCIA NA KONTAJNER, KDE SA ZOBRAZUJÚ SPRÁVY */
+// Referencia na kontajner s správami
 const messagesContainer = ref<HTMLElement | null>(null)
 
-/* REFERENCIA NA SPODNÝ ELEMENT PRE SCROLLOVANIE */
+// Referencia na spodný element
 const bottomElement = ref<HTMLElement | null>(null)
 
-/* PREMENNÁ PRE SLEDOVANIE, ČI POUŽÍVATEĽ SCROLLUJE HORE */
+// Sledujeme, či používateľ scrolluje hore
 const userScrolledUp = ref(false)
 
-/* FUNKCIA PRE INFINITE SCROLL - NAČÍTANIE STARŠÍCH SPRÁV */
+// Získame nickname aktuálneho používateľa z localStorage
+function getCurrentUserNickname(): string | null {
+  const savedUser = localStorage.getItem('user')
+  if (!savedUser) return null
+  
+  try {
+    const user = JSON.parse(savedUser)
+    return user.nickName?.toLowerCase() || null
+  } catch {
+    return null
+  }
+}
+
+// Extrahuje všetky @mentions zo správy
+function extractMentions(text: string): string[] {
+  const mentionRegex = /@(\w+)/g
+  const matches = text.matchAll(mentionRegex)
+  return Array.from(matches, (m) => m[1])
+    .filter((mention): mention is string => Boolean(mention))
+    .map(m => m.toLowerCase())
+}
+
+// Infinite scroll - načítanie starších správ
 function onLoad(index: number, done: (stop?: boolean) => void) {
   // TODO: Implementácia načítania starších správ z backendu
-  // Zatiaľ len ukončíme loading
   setTimeout(() => {
-    done(true) // true = stop loading (žiadne ďalšie správy)
+    done(true)
   }, 500)
 }
 
-/* FUNKCIA NA FORMÁTOVANIE SPRÁVY (PING) */
-function formatMessage(text: string, isPing?: boolean): string {
-  if (!isPing) return text;
-  return text.replace(/(@\w+)/g, '<span class="ping-highlight">$1</span>');
+// Formátuje správu - zvýrazní @nickname na modro
+function formatMessage(text: string): string {
+  // Všetky @slová zvýrazníme modrou farbou
+  return text.replace(/(@\w+)/g, '<span class="ping-highlight">$1</span>')
 }
 
-/* FUNKCIA NA KONTROLU, ČI JE POUŽÍVATEĽ NA SPODKU CHATU */
+// Určuje, či je správa pingovaná (či je aktuálny používateľ spomenutý)
+function isPingedMessage(msg: Message): boolean {
+  // Ak správu poslal aktuálny používateľ, nikdy nie je pingovaná
+  if (msg.userId === currentUserId) {
+    return false
+  }
+
+  // Kontrola cez mentionedUserIds (ak backend poslal)
+  if (msg.mentionedUserIds && msg.mentionedUserIds.length > 0) {
+    if (msg.mentionedUserIds.includes(currentUserId as number)) {
+      return true
+    }
+  }
+
+  // Fallback: kontrola priamo v texte správy
+  const currentNickname = getCurrentUserNickname()
+  if (!currentNickname) return false
+
+  const mentions = extractMentions(msg.text)
+  return mentions.includes(currentNickname)
+}
+
+// Skontroluje, či je používateľ na spodku chatu
 function isAtBottom() {
   const el = messagesContainer.value
   if (!el) return true
-  // Tolerancia 100px pre detekciu spodku
   const threshold = 100
   return Math.abs(el.scrollHeight - el.scrollTop - el.clientHeight) <= threshold
 }
 
-/* FUNKCIA NA AUTOMATICKÉ SCROLLOVANIE NA SPODOK */
+// Automaticky scrolluje na spodok
 function scrollToBottom() {
   const el = bottomElement.value
   if (!el) return
-
-  // Scrollujeme na dummy element na spodku
   el.scrollIntoView({ behavior: 'smooth', block: 'start' })
 }
 
-/* HANDLER PRE SLEDOVANIE MANUÁLNEHO SCROLLOVANIA POUŽÍVATEĽA */
+// Sleduje manuálne scrollovanie používateľa
 function handleScroll() {
   const el = messagesContainer.value
   if (!el) return
-
-  // Ak používateľ scrolluje hore, označíme to
   userScrolledUp.value = !isAtBottom()
 }
 
-/* SLEDUJE ZMENY V PROPS.MESSAGES A AKTUALIZUJE LOKÁLNE SPRÁVY */
+// Sleduje zmeny v správach
 watch(
   () => props.messages,
   async (newVal, oldVal) => {
@@ -136,14 +173,11 @@ watch(
 
     localMessages.value = [...newVal]
 
-    // Počkáme na vykreslenie DOM
+    // Čakáme na vykreslenie DOM
     await nextTick()
 
-    // Automatický scroll len ak:
-    // 1. Používateľ bol na spodku ALEBO
-    // 2. Prišla nová správa a používateľ nescrolloval hore manuálne
+    // Automatický scroll, ak bol používateľ na spodku alebo prišla nová správa
     if (wasBottom || (isNewMessage && !userScrolledUp.value)) {
-      // Malé oneskorenie pre zabezpečenie kompletného vykreslenia
       setTimeout(() => {
         scrollToBottom()
         userScrolledUp.value = false
@@ -153,9 +187,9 @@ watch(
   { immediate: true, deep: true }
 )
 
-/* PRI NAČÍTANÍ KOMPONENTU */
+// Pri načítaní komponenty
 onMounted(() => {
-  // Pridáme scroll listener
+  // Pridáme listener pre scrollovanie
   const el = messagesContainer.value
   if (el) {
     el.addEventListener('scroll', handleScroll)
@@ -173,13 +207,13 @@ onMounted(() => {
 
 <style>
 
-/* ZVÝRAZNENIE POUŽÍVATEĽA V PING SPRÁVE */
+/* Modrá farba pre @nickname slová */
 .ping-highlight {
   color: #00aff4 !important;
   font-weight: 700;
 }
 
-/* HLAVNÝ KONTAJNER PRE SPRÁVY */
+/* Hlavný kontajner pre správy */
 .chat-messages {
   flex: 1;
   overflow-y: auto;
@@ -189,20 +223,21 @@ onMounted(() => {
   flex-direction: column;
 }
 
-/* ŠTÝL JEDNOTLIVÝCH SPRÁV */
+/* Základný štýl pre správy */
 .message-content {
   border-radius: 8px;
   background-color: #2d2d2d;
   color: white;
 }
 
-/* ŠTÝL PRE PING SPRÁVU (ZVÝRAZNENÉ SPRÁVY) */
+/* Štýl pre pingovanú správu - modrý background a border */
 .ping-message {
   background-color: rgba(88, 101, 242, 0.15) !important;
   border: 2px solid #5865f2;
   font-weight: 600;
 }
 
+/* Štýl pre "You" označenie */
 .you-label {
   display: inline-block;
   background-color: #355377;
