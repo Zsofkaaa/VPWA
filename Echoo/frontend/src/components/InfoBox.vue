@@ -7,37 +7,37 @@
     </q-tooltip>
 
     <!-- Menu s príkazmi (otvorí sa po kliknutí, nezatvára sa automaticky) -->
-    <q-menu 
-      :auto-close="false" 
-      anchor="bottom middle" 
-      self="top middle" 
-      transition-show="jump-down" 
+    <q-menu
+      :auto-close="false"
+      anchor="bottom middle"
+      self="top middle"
+      transition-show="jump-down"
       transition-hide="jump-up"
       @before-show="loadCommands"
-    >      
+    >
       <div class="info-box-container" @click.stop>
          <!-- Loading state -->
         <div v-if="loading" class="text-center q-pa-md">
           <q-spinner color="white" size="sm" />
         </div>
-        
+
         <!-- Error state -->
         <div v-else-if="error" class="error-message">
           Failed to load commands
         </div>
-        
+
         <!-- Commands list -->
         <div v-else>
-          <div 
-            v-for="command in commands" 
-            :key="command.id" 
+          <div
+            v-for="command in commands"
+            :key="command.id"
             class="info-line"
           >
             {{ command.name }}
-            
+
             <!-- Tooltip a description megjelenítésére -->
-            <q-tooltip 
-              anchor="center right" 
+            <q-tooltip
+              anchor="center right"
               self="center left"
               :offset="[10, 0]"
               max-width="300px"
@@ -71,22 +71,20 @@ const error = ref(false)
 const loadCommands = async () => {
   // Ha már betöltöttük, ne töltsük újra
   if (commands.value.length > 0) return
-  
+
   loading.value = true
   error.value = false
-  
+
   try {
     // Használd a teljes backend URL-t
     const response = await fetch('http://localhost:3333/api/commands')
-    
+
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`)
     }
-    
+
     const data = await response.json()
-    
-    console.log('Loaded commands:', data) // Debug log
-    
+
     if (data.success) {
       commands.value = data.data
     } else {

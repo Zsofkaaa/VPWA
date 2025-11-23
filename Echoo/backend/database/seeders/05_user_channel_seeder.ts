@@ -25,11 +25,8 @@ export default class UserChannelSeeder extends BaseSeeder {
           channelId: channel.id,
           role: isCreator ? 'admin' : 'member',
           notificationSettings: 'all',
-          kickCount: 0,
         })
       }
     }
-
-    console.log('UserChannel seeding complete.')
   }
 }

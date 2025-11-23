@@ -108,3 +108,21 @@ router
   .middleware([middleware.auth()])
 
 router.delete('/channels/:id', [ChannelsController, 'destroy']).middleware([middleware.auth()])
+
+router
+  .delete('/channels/:id/ban/:userId', async (ctx) => {
+    const module = await UserChannelController()
+    const ControllerClass = module.default
+    const controllerInstance = new ControllerClass()
+    return controllerInstance.ban(ctx)
+  })
+  .middleware([middleware.auth()])
+
+router
+  .delete('/channels/:id/kick/:userId', async (ctx) => {
+    const module = await UserChannelController()
+    const ControllerClass = module.default
+    const controllerInstance = new ControllerClass()
+    return controllerInstance.kick(ctx)
+  })
+  .middleware([middleware.auth()])

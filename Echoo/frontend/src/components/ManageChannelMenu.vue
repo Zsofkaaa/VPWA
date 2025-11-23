@@ -22,7 +22,12 @@
       <q-list style="min-width: 200px; background-color: #2d4a6b; color: white;">
 
         <!-- Pridať používateľa -->
-        <q-item clickable v-ripple @click="addUser">
+        <q-item
+          v-if="!(props.channel.type === 'private' && props.userRole !== 'admin')"
+          clickable
+          v-ripple
+          @click="openAddUserDialog"
+        >
           <q-item-section avatar>
             <q-icon name="person_add" color="white" />
           </q-item-section>
@@ -31,10 +36,10 @@
           </q-item-section>
         </q-item>
 
-        <q-separator dark />
+        <q-separator v-if="!(props.channel.type === 'private' && props.userRole !== 'admin')" dark />
 
         <!-- Vyhodiť používateľa -->
-        <q-item clickable v-ripple @click="kickUser">
+        <q-item clickable v-ripple @click="openKickUserDialog">
           <q-item-section avatar>
             <q-icon name="sports_martial_arts" color="white" />
           </q-item-section>
@@ -45,8 +50,13 @@
 
         <q-separator dark />
 
-        <!-- Zablokovať používateľa -->
-        <q-item clickable v-ripple @click="banUser">
+        <!-- Zablokovať používateľa (iba admin) -->
+        <q-item
+          v-if="props.userRole === 'admin'"
+          clickable
+          v-ripple
+          @click="openBanUserDialog"
+        >
           <q-item-section avatar>
             <q-icon name="no_accounts" color="white" />
           </q-item-section>
@@ -55,7 +65,7 @@
           </q-item-section>
         </q-item>
 
-        <q-separator dark />
+        <q-separator v-if="props.userRole === 'admin'" dark />
 
         <!-- Spravovať notifikácie -->
         <q-item clickable v-ripple @click="manageNotifications">
@@ -69,7 +79,7 @@
 
         <q-separator dark />
 
-        <!-- Zrušiť kanál (csak admin) -->
+        <!-- Zrušiť kanál (iba admin) -->
         <q-item
           v-if="props.userRole === 'admin'"
           clickable
@@ -102,6 +112,32 @@
         </q-item>
       </q-list>
     </q-menu>
+
+      <AddUserDialog
+        :visible="showAddUserDialog"
+        :channel-id="props.channel.id"
+        :available-users="availableUsers"
+        :current-members="props.channel.members?.map(m => m.userId) || []"
+        @update:visible="showAddUserDialog = $event"
+        @add-users="addUsers"
+      />
+
+      <KickUserDialog
+        :visible="showKickUserDialog"
+        :channel-id="props.channel.id"
+        :members="mappedMembers"
+        @update:visible="showKickUserDialog = $event"
+        @kick-users="kickUsers"
+      />
+
+      <BanUserDialog
+        :visible="showBanUserDialog"
+        :channel-id="props.channel.id"
+        :members="mappedMembers"
+        @update:visible="showBanUserDialog = $event"
+        @ban-users="banUsers"
+      />
+
   </div>
 </template>
 
@@ -111,16 +147,59 @@
 import axios from 'axios'
 import { useRouter } from 'vue-router'
 import { useQuasar } from 'quasar'
-import { ref } from 'vue'
+import { ref , computed } from 'vue'
+import AddUserDialog from './AddUserDialog.vue'
+import KickUserDialog from './KickUserDialog.vue'
+import BanUserDialog from './BanUserDialog.vue'
 
-//const route = useRoute()
+interface Member {
+  userId: number
+  username: string
+}
+
+interface User {
+  id: number
+  nickName: string
+}
+
+interface AxiosErrorLike {
+  response?: {
+    data?: {
+      error?: string
+    }
+  }
+}
+
+const props = defineProps<{
+  channel: {
+    id: number
+    name: string
+    type: 'private' | 'public'
+    members?: Member[] | undefined
+  }
+  userRole: 'admin' | 'member'
+}>()
+
+console.log(props.channel.name)
+
 const router = useRouter()
 const $q = useQuasar()
 
-const props = defineProps<{
-  channel: { id: number, name: string }
-  userRole: 'admin' | 'member'
-}>()
+const showAddUserDialog = ref(false)
+const showKickUserDialog = ref(false)
+const showBanUserDialog = ref(false)
+
+const availableUsers = ref<{ label: string; value: number }[]>([])
+const currentUserId = ref<number | null>(null)
+
+const API_URL = 'http://localhost:3333'
+const token = localStorage.getItem('auth_token')
+
+const channelMembers = ref<User[]>([])
+
+const mappedMembers = computed(() =>
+  channelMembers.value.map(user => ({ id: user.id, nickName: user.nickName }))
+)
 
 // Premenná, ktorá určuje, či je menu otvorené
 const menu = ref(false)
@@ -129,22 +208,183 @@ const emit = defineEmits<{
   'leftChannel': [channelId: number]
 }>()
 
+function openAddUserDialog() {
+  menu.value = false
+  void loadAvailableUsers(props.channel.id)
+  showAddUserDialog.value = true
+}
+
+async function openKickUserDialog() {
+  menu.value = false
+  await loadChannelMembers()
+
+  if (channelMembers.value.length === 0) {
+    $q.notify({
+      type: 'warning',
+      message: 'You are alone in this channel, no one can be kicked',
+      position: 'top'
+    })
+    return
+  }
+
+  showKickUserDialog.value = true
+}
+
+async function openBanUserDialog() {
+  menu.value = false
+  await loadChannelMembers()
+
+  if (channelMembers.value.length === 0) {
+    $q.notify({
+      type: 'warning',
+      message: 'You are alone in this channel, no one can be banned',
+      position: 'top'
+    })
+    return
+  }
+
+  showBanUserDialog.value = true
+}
+
+async function loadCurrentUser() {
+  try {
+    const res = await axios.get<{ id: number; nickName: string }>(
+      `${API_URL}/me`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    )
+    currentUserId.value = res.data.id
+  } catch (err) {
+    console.error('Failed to load current user', err)
+  }
+}
+
+async function loadChannelMembers() {
+  if (!props.channel.id) return
+  try {
+    // 1️⃣ Lekérjük a saját user ID-t
+    if (!currentUserId.value) {
+      await loadCurrentUser()
+    }
+
+    // 2️⃣ Lekérjük a csatorna tagjait
+    const res = await axios.get<User[]>(
+      `${API_URL}/channels/${props.channel.id}/members`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    )
+
+    // 3️⃣ Szűrjük ki a saját userünket
+    channelMembers.value = res.data.filter(u => u.id !== currentUserId.value)
+    console.log('Channel members for Kick/Ban:', channelMembers.value)
+  } catch (err) {
+    console.error('Failed to load channel members', err)
+  }
+}
+
+async function loadAvailableUsers(channelId: number) {
+  try {
+    // 1️⃣ Lekérjük az összes felhasználót
+    const allUsersRes = await axios.get<User[]>(`${API_URL}/users`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+    const allUsers = allUsersRes.data
+
+    // 2️⃣ Lekérjük a csatorna tagjait
+    const membersRes = await axios.get<User[]>(`${API_URL}/channels/${channelId}/members`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+    const channelUsers = membersRes.data
+
+    // 3️⃣ Kivonjuk a csatorna tagjait az összes felhasználóból
+    availableUsers.value = allUsers
+      .filter(u => u.id !== currentUserId.value)      // saját user kihagyása
+      .filter(u => !channelUsers.some(m => m.id === u.id))
+      .map(u => ({ label: u.nickName, value: u.id }))
+
+    console.log('Available users for AddUserDialog:', availableUsers.value)
+  } catch (err) {
+    console.error('Failed to load available users', err)
+  }
+}
+
 // Funkcia na pridanie používateľa
-function addUser() {
-  menu.value = false
-  console.log('Add user clicked')
+async function addUsers(userIds: number[]) {
+  const token = localStorage.getItem('auth_token')
+  try {
+    for (const userId of userIds) {
+      await axios.post(
+        `http://localhost:3333/user_channel`,
+        {
+          channelId: props.channel.id,
+          userId,
+          role: 'member',
+          notificationSettings: 'all'
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
+      )
+    }
+    $q.notify({ type: 'positive', message: 'Users added successfully' })
+    showAddUserDialog.value = false
+  } catch (err) {
+    console.error('Failed to add users', err)
+    $q.notify({ type: 'negative', message: 'Failed to add users' })
+  }
 }
 
-// Funkcia na vyhodenie používateľa
-function kickUser() {
-  menu.value = false
-  console.log('Remove user clicked')
+// --- Felhasználók Kick / Ban műveletei
+async function kickUsers(userIds: number[]) {
+  const token = localStorage.getItem('auth_token')
+  if (!currentUserId.value) await loadCurrentUser()
+
+  for (const userId of userIds) {
+    try {
+  const res = await axios.delete<{ message?: string; error?: string }>(
+    `${API_URL}/channels/${props.channel.id}/kick/${userId}`,
+    { headers: { Authorization: `Bearer ${token}` } }
+  )
+
+  if (res.data.message) {
+    $q.notify({ type: 'positive', message: res.data.message })
+  }
+    } catch (err: unknown) {
+      // Biztosítsuk, hogy err egy objektum és van benne response
+      if (typeof err === 'object' && err !== null && 'response' in err) {
+        const errorData = (err as AxiosErrorLike).response?.data
+        if (errorData?.error === 'You already kicked this user') {
+          $q.notify({ type: 'warning', message: 'You already kicked this user' })
+        } else {
+          console.error('Kick failed', err)
+          $q.notify({ type: 'negative', message: 'Failed to kick user' })
+        }
+      } else {
+        console.error('Kick failed', err)
+        $q.notify({ type: 'negative', message: 'Failed to kick user' })
+      }
+    }
+  }
+
+  showKickUserDialog.value = false
+  await loadChannelMembers()
 }
 
-// Funkcia na zablokovanie používateľa
-function banUser() {
-  menu.value = false
-  console.log('Remove user clicked')
+async function banUsers(userIds: number[]) {
+  const token = localStorage.getItem('auth_token')
+
+  try {
+    for (const userId of userIds) {
+      await axios.delete(
+        `${API_URL}/channels/${props.channel.id}/ban/${userId}`,
+        {
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      )
+    }
+
+    $q.notify({ type: 'positive', message: 'User(s) banned successfully' })
+    showBanUserDialog.value = false
+  } catch (err) {
+    console.error('Ban failed', err)
+    $q.notify({ type: 'negative', message: 'Failed to ban users' })
+  }
 }
 
 // Funkcia na správu notifikácií

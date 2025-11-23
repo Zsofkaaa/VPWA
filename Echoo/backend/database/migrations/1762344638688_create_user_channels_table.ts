@@ -15,7 +15,6 @@ export default class extends BaseSchema {
         .onDelete('CASCADE')
       table.string('role').defaultTo('member')
       table.string('notification_settings').defaultTo('all')
-      table.integer('kick_count').defaultTo(0)
       table.timestamp('created_at')
       table.timestamp('updated_at')
     })

@@ -1,6 +1,6 @@
 <template>
   <q-layout view="hHh Lpr lFf" class="bg-dark text-white">
-    
+
     <!-- HEADER -->
     <Header
       v-model:drawer-open="drawerOpen"
@@ -81,7 +81,7 @@ interface UserChannel {
   role: 'admin' | 'member'
 }
 
-/* ROZHRANIA PRE TYPY DÁT */
+/* ROZHRANIE PRE NEWCHANNELDIALOG */
 interface ChannelData {
   name: string
   type: 'private' | 'public'
@@ -113,26 +113,15 @@ interface Channel {
   lastActiveAt: string
 }
 
-// Add interface for the API response
-/*
-interface MessageResponse {
-  id: number
-  userId: number
-  text: string
-  user: string
-  hasPing?: boolean
-  // Add other response properties if needed
-}
-*/
-
 interface AxiosErrorLike {
   isAxiosError: boolean
   response?: { status: number }
 }
 
 const userChannels = ref<UserChannel[]>([])
-const privateChannels = ref<{ id: number; name: string; path: string }[]>([])
-const publicChannels = ref<{ id: number; name: string; path: string }[]>([])
+
+const privateChannels = ref<UserChannel[]>([])
+const publicChannels = ref<UserChannel[]>([])
 
 /* ZÁKLADNÉ INŠTANCIE */
 const router = useRouter()
@@ -161,9 +150,6 @@ const instance = getCurrentInstance()
 const socket = instance!.appContext.config.globalProperties.$socket
 
 const isChatPage = computed(() => route.path.startsWith('/chat/'))
-
-console.log("Socket inside component:", socket)
-
 
 /* ŠTÝL PRE FOOTER – POZÍCIA DOLNÉHO PANELU */
 const footerStyle = computed(() => ({
@@ -298,7 +284,14 @@ async function handleCreateChannel(data: ChannelData) {
     )
 
     // Hozzáadás a frontend csatorna listához
-    const newChannel = { id: newChannelId, name: formattedName, path: channelPath, role: 'admin' }
+    const newChannel: UserChannel = {
+      id: newChannelId,
+      name: formattedName,
+      path: channelPath,
+      role: 'admin',
+      type: data.type
+    }
+
     if (data.type === 'private') privateChannels.value.push(newChannel)
     else publicChannels.value.push(newChannel)
 
@@ -389,12 +382,6 @@ watch(
       currentChannelName.value = found.name
       currentChannelId.value = found.id
       activeChannelPath.value = found.path
-
-      // Debug log
-      console.log('Current IDs:', {
-        userId: currentUserId.value,
-        channelId: currentChannelId.value
-      })
 
       // Biztonsági ellenőrzés
       if (typeof currentUserId.value !== 'number' || typeof currentChannelId.value !== 'number') {
@@ -500,7 +487,6 @@ watch(currentChannelId, (id, oldId) => {
     socket.emit('leave', `channel_${oldId}`)
   }
   if (id) {
-    console.log('Joining room:', `channel_${id}`)
     socket.emit('join', `channel_${id}`)
   }
 })
@@ -529,6 +515,6 @@ provide('activeChannelPath', activeChannelPath)
   flex: 1;
   overflow-y: auto;
   background-color: #1E1E1E;
-  padding-bottom: 80px; 
+  padding-bottom: 80px;
 }
 </style>

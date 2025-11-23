@@ -20,15 +20,9 @@ export const middleware = router.named({
   auth: () => import('#middleware/auth_middleware'),
 })
 
-startCronJobs()
-
-/**
- * ✔ WEBSOCKET INITIALIZATION
- * Csak akkor fut le, ha a HTTP szerver elindult — nem ACE parancsnál
- */
+// WEBSOCKET INITIALIZATION
 app.ready(() => {
   import('#services/ws').then(({ default: Ws }) => {
     Ws.boot()
-    console.log('[WS] WebSocket server initialized')
   })
 })

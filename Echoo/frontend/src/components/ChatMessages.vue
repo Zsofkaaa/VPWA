@@ -129,13 +129,8 @@ function handleScroll() {
 watch(
   () => props.messages,
   async (newVal, oldVal) => {
-    console.log('Messages changed:', {
-      oldLength: oldVal?.length,
-      newLength: newVal.length
-    })
 
     const wasBottom = isAtBottom()
-    console.log('Was at bottom:', wasBottom)
 
     const isNewMessage = newVal.length > (oldVal?.length || 0)
 
@@ -148,7 +143,6 @@ watch(
     // 1. Používateľ bol na spodku ALEBO
     // 2. Prišla nová správa a používateľ nescrolloval hore manuálne
     if (wasBottom || (isNewMessage && !userScrolledUp.value)) {
-      console.log('Scrolling to bottom...')
       // Malé oneskorenie pre zabezpečenie kompletného vykreslenia
       setTimeout(() => {
         scrollToBottom()
