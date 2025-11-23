@@ -1,48 +1,43 @@
 import Message from '#models/message'
 import Channel from '#models/channel'
 import { DateTime } from 'luxon'
-import UserChannel from '#models/user_channel'
+//import UserChannel from '#models/user_channel'
 
 export default class MessagesController {
-  public async index({ auth, params, response }: any) {
-    const channelId = Number(params.id)
+  // Kanál všetkých správ s informáciami o pingoch
+  public async index({ params }: { params: { id: number } }) {
+    const channelId = params.id
 
-    // membership check
-    const membership = await UserChannel.query()
-      .where('channel_id', channelId)
-      .where('user_id', auth.user.id)
-      .first()
-
-    if (!membership) {
-      return response.unauthorized({ error: 'Not a member of this channel' })
-    }
-
+    // Načítame správy s autormi a nemenovanými používateľmi
     const messages = await Message.query()
       .where('channel_id', channelId)
       .preload('sender')
+      .preload('mentions', (q) => q.select('mentionedUserId'))
       .orderBy('id', 'desc')
       .limit(30)
 
+    // Transformujeme do formátu pre frontend
     return messages.map((msg) => ({
       id: msg.id,
       userId: msg.senderId,
       user: msg.sender.nickName,
       text: msg.content,
-      isPing: msg.hasPing,
+      mentionedUserIds: msg.mentions.map((m) => m.mentionedUserId),
     }))
   }
 
+  // Vytvorenie novej správy (iba pre HTTP POST, socket to nepoužíva)
   public async store({ auth, params, request }: any) {
     const channelId = Number(params.id)
     const { content } = request.only(['content'])
 
     const senderId = auth?.user?.id
-    if (!senderId) throw new Error('User not authenticated')
+    if (!senderId) throw new Error('Používateľ nie je autentifikovaný')
 
-    // Channel lekérése
+    // Vyhľadáme kanál
     const channel = await Channel.findOrFail(channelId)
 
-    // Üzenet létrehozása
+    // Vytvoríme novú správu
     const message = await Message.create({
       channelId,
       senderId,
@@ -51,18 +46,20 @@ export default class MessagesController {
       hasCommand: false,
     })
 
+    // Načítame autora správy
     await message.load('sender')
 
-    // LastActiveAt frissítése - camelCase működik a model instance-on
+    // Aktualizujeme čas poslednej aktivity v kanáli
     channel.lastActiveAt = DateTime.now()
     await channel.save()
 
+    // Vrátime správu vo formáte pre frontend
     return {
       id: message.id,
       userId: senderId,
       user: message.sender.nickName,
       text: message.content,
-      isPing: message.hasPing,
+      mentionedUserIds: [],
     }
   }
 }

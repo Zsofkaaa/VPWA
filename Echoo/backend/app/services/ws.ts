@@ -1,6 +1,8 @@
 import { Server } from 'socket.io'
 import server from '@adonisjs/core/services/server'
 import Message from '#models/message'
+import MessageMention from '#models/message_mention'
+import User from '#models/user'
 import { DateTime } from 'luxon'
 
 class Ws {
@@ -26,34 +28,76 @@ class Ws {
       socket.on('message', async (data) => {
         const { channelId, userId, text } = data
 
-        // 1️⃣ Mentés az adatbázisba
-        const message = await Message.create({
-          channelId,
-          senderId: userId,
-          content: text,
-          hasPing: false,
-          hasCommand: false,
-          sentAt: DateTime.now(),
-        })
+        try {
+          // Extrakcia @nickname-ov zo textu
+          const mentionedNicknames = this.extractMentions(text)
+          let mentionedUserIds: number[] = []
 
-        // 2️⃣ Betöltjük a sender-t a relációval
-        await message.load('sender')
+          // Ak sú nejaké mentions, vyhľadáme používateľov v DB
+          if (mentionedNicknames.length > 0) {
+            const mentionedUsers = await User.query().whereIn('nickName', mentionedNicknames)
 
-        // 3️⃣ Küldés a csatorna minden tagjának
-        this.io?.to(`channel_${channelId}`).emit('newMessage', {
-          id: message.id,
-          text: message.content,
-          userId: message.senderId,
-          user: message.sender.nickName || `${message.sender.firstName} ${message.sender.lastName}`,
-          channelId: channelId,
-          sentAt: message.sentAt,
-        })
+            // Odstránime duplikáty a vylúčime samotného pošilatela
+            mentionedUserIds = [
+              ...new Set(mentionedUsers.filter((u) => u.id !== userId).map((u) => u.id)),
+            ]
+          }
 
-        console.log(`[WS] Message sent`, message.content)
+          // Vytvoríme správu v databáze
+          const message = await Message.create({
+            channelId,
+            senderId: userId,
+            content: text,
+            hasPing: mentionedUserIds.length > 0,
+            hasCommand: false,
+            sentAt: DateTime.now(),
+          })
+
+          // Ak sú nemenovaní používatelia, uložíme ich do MessageMention tabuľky
+          if (mentionedUserIds.length > 0) {
+            const mentions = mentionedUserIds.map((mentionedUserId) => ({
+              messageId: message.id,
+              mentionedUserId,
+            }))
+            await MessageMention.createMany(mentions)
+          }
+
+          // Načítame údaje o pošilateľovi (meno, priezvisko, prezývka)
+          await message.load('sender')
+
+          // Pošleme správu všetkým klientom v kanáli
+          this.io?.to(`channel_${channelId}`).emit('newMessage', {
+            id: message.id,
+            text: message.content,
+            userId: message.senderId,
+            user:
+              message.sender.nickName || `${message.sender.firstName} ${message.sender.lastName}`,
+            channelId: channelId,
+            sentAt: message.sentAt,
+            mentionedUserIds: mentionedUserIds,
+          })
+
+          console.log(`[WS] Message sent`, {
+            content: message.content,
+            mentions: mentionedNicknames,
+            mentionedUserIds: mentionedUserIds,
+          })
+        } catch (error) {
+          console.error('[WS] Sending error:', error)
+          socket.emit('error', { message: 'Message cannot be sent' })
+        }
       })
     })
 
-    console.log('[WS] WebSocket server running')
+    console.log('[WS] WebSocket server is running')
+  }
+
+  // Funkcia na extrakciu @nickname-ov zo textu
+  // Príklad: "Ahoj @janko a @marko!" -> ['janko', 'marko']
+  private extractMentions(text: string): string[] {
+    const mentionRegex = /@(\w+)/g
+    const matches = text.matchAll(mentionRegex)
+    return Array.from(matches, (m) => m[1])
   }
 }
 
