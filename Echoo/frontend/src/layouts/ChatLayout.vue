@@ -355,20 +355,129 @@ async function handleCreateChannel(data: ChannelData) {
   }
 }
 
+function sendMessage(text: string) {
+  socket.emit('message', {
+    channelId: currentChannelId.value,
+    text,
+    userId: currentUserId.value
+  })
+}
+
+async function handleCommand(cmd: string) {
+  const parts = cmd.trim().split(' ')
+
+  if (parts[0] !== '/join') {
+    $q.notify({ type: 'warning', message: 'Unknown command' })
+    return
+  }
+
+  // Ellenőrizzük a [private] flag-et
+  const isPrivate = parts.includes('[private]')
+
+  // Vegyük ki a parancsot és a [private]-t
+  const nameParts = parts.slice(1).filter(p => p !== '[private]')
+  const channelName = nameParts.join(' ')
+
+  if (!channelName) {
+    $q.notify({ type: 'negative', message: 'Channel name is required!' })
+    return
+  }
+
+  try {
+    const token = localStorage.getItem('auth_token')
+    if (!token || !currentUserId.value) throw new Error('Not authenticated')
+
+    // Megnézzük, hogy létezik-e már a csatorna
+    const channelList = isPrivate ? privateChannels.value : publicChannels.value
+    const existingChannel = channelList.find(
+      c => c.name.toLowerCase() === channelName.toLowerCase()
+    )
+    let channelId: number
+
+    if (existingChannel) {
+      // Ha már létezik → csatlakozás
+      await axios.post(
+        `${API_URL}/user_channel`,
+        {
+          channelId: existingChannel.id,
+          userId: currentUserId.value,
+          role: isPrivate ? 'admin' : 'member',
+          notificationSettings: 'all'
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
+      )
+      channelId = existingChannel.id
+      currentChannelName.value = existingChannel.name
+      currentChannelId.value = channelId
+      $q.notify({ type: 'positive', message: `Joined channel "${existingChannel.name}"` })
+
+    } else {
+      // Ha nem létezik → létrehozás
+      const res = await axios.post<ChannelResponse>(
+        `${API_URL}/channels`,
+        {
+          name: channelName,
+          type: isPrivate ? 'private' : 'public',
+          invitedMembers: [],
+          notificationSettings: 'all'
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
+      )
+
+      channelId = res.data.id
+
+      // Hozzáadás user_channel táblához
+      await axios.post(
+        `${API_URL}/user_channel`,
+        {
+          channelId,
+          userId: currentUserId.value,
+          role: isPrivate ? 'admin' : 'member',
+          notificationSettings: 'all'
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
+      )
+
+      const newChannel: UserChannel = {
+        id: channelId,
+        name: channelName,
+        path: `/chat/${channelId}`,
+        type: isPrivate ? 'private' : 'public',
+        role: isPrivate ? 'admin' : 'member'
+      }
+
+      if (isPrivate) privateChannels.value.push(newChannel)
+      else publicChannels.value.push(newChannel)
+
+      currentChannelName.value = newChannel.name
+      currentChannelId.value = newChannel.id
+      $q.notify({ type: 'positive', message: `Channel "${channelName}" created!` })
+    }
+
+    // Navigáció a csatornához
+    void router.push(`/chat/${channelId}`)
+
+  } catch (err) {
+    console.error(err)
+    $q.notify({ type: 'negative', message: 'Failed to join or create channel!' })
+  }
+}
+
 /* FUNKCIA NA ODOSLANIE SPRÁVY */
 function onEnterPress(e: KeyboardEvent) {
-  if (e.key === 'Enter' && newMessage.value.trim() !== '') {
-    const content = newMessage.value.trim()
+  if (e.key !== 'Enter' || newMessage.value.trim() === '') return
 
-    // Itt már elérhető a socket a setup-ból
-    socket.emit("message", {
-      channelId: currentChannelId.value,
-      text: content,
-      userId: currentUserId.value
-    })
+  const content = newMessage.value.trim()
 
-    newMessage.value = ""
+  // 1. Check if it's a command
+  if (content.startsWith('/')) {
+    void handleCommand(content)
+  } else {
+    // normál üzenet
+    sendMessage(content)
   }
+
+  newMessage.value = ""
 }
 
 /* LOGIKA PRE DETEKCIU PÍSANIA SPRÁV */
