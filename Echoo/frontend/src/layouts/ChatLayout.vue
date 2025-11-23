@@ -602,13 +602,90 @@ async function handleQuitCommand() {
   }
 }
 
+async function handleKickCommand(parts: string[]) {
+  if (!currentChannelId.value) {
+    return $q.notify({ type: 'negative', message: 'You are not in any channel!' })
+  }
+
+  const channelId = currentChannelId.value
+
+  // több szóból álló nickName
+  const targetName = parts.slice(1).join(' ')
+
+  if (!targetName) {
+    return $q.notify({ type: 'negative', message: 'Usage: /kick nickName' })
+  }
+
+  const allChannels = [...privateChannels.value, ...publicChannels.value]
+  const channel = allChannels.find(c => c.id === channelId)
+
+  if (!channel) {
+    return $q.notify({ type: 'negative', message: 'Channel not found!' })
+  }
+
+  const isAdmin = channel.role === 'admin'
+
+  try {
+    const token = localStorage.getItem('auth_token')
+
+    // Megkeressük előbb a user ID-t
+    const users = await axios.get<AppUser[]>(
+      `${API_URL}/users`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    )
+
+    const targetUser = users.data.find(
+      u => u.nickName.toLowerCase() === targetName.toLowerCase()
+    )
+
+    if (!targetUser) {
+      return $q.notify({ type: 'negative', message: 'User not found!' })
+    }
+
+    if (targetUser.id === currentUserId.value) {
+      return $q.notify({ type: 'negative', message: 'You cannot kick yourself!' })
+    }
+
+    // 🔥 ADMIN → permanens ban
+    if (isAdmin) {
+      await axios.delete(
+        `${API_URL}/channels/${channelId}/ban/${targetUser.id}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      )
+
+      $q.notify({
+        type: 'positive',
+        message: `User "${targetName}" permanently banned`
+      })
+
+    } else {
+      // 🟡 MEMBER → normál kick (1/3)
+      await axios.delete(
+        `${API_URL}/channels/${channelId}/kick/${targetUser.id}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      )
+
+      $q.notify({
+        type: 'positive',
+        message: `You kicked "${targetName}"`
+      })
+    }
+
+  } catch (err) {
+    console.error(err)
+    $q.notify({ type: 'negative', message: 'Failed to kick user!' })
+  }
+}
+
 async function handleInviteCommand(parts: string[]) {
   if (!currentChannelId.value) {
     return $q.notify({ type: 'negative', message: 'You are not in any channel!' })
   }
 
   const channelId = currentChannelId.value
-  const targetName = parts[1]
+
+  // több szóból álló név kezelése
+  const targetName = parts.slice(1).join(' ')
 
   if (!targetName) {
     return $q.notify({ type: 'negative', message: 'Usage: /invite nickName' })
@@ -624,23 +701,40 @@ async function handleInviteCommand(parts: string[]) {
   const isPrivate = channel.type === 'private'
   const isAdmin = channel.role === 'admin'
 
-  // Rule: Private → only admin
+  // Private → csak admin hívhat
   if (isPrivate && !isAdmin) {
     return $q.notify({ type: 'negative', message: 'Only admin can invite in private channels!' })
   }
 
-  // Rule: Public → any member can invite (ok)
-
   try {
     const token = localStorage.getItem('auth_token')
 
-    await axios.post(
-      `${API_URL}/channels/${channelId}/invite`,
-      { nickname: targetName },
+    // 🔎 nagy probléma: először meg kell találni a user ID-t!
+    const users = await axios.get<AppUser[]>(
+      `${API_URL}/users`,
       { headers: { Authorization: `Bearer ${token}` } }
     )
 
-    $q.notify({ type: 'positive', message: `Invite sent to "${targetName}"` })
+    const targetUser = users.data.find(
+      u => u.nickName.toLowerCase() === targetName.toLowerCase()
+    )
+
+    if (!targetUser) {
+      return $q.notify({ type: 'negative', message: 'User not found!' })
+    }
+
+    // 🔥 HELYES → userId kell, nem nickname
+    await axios.post(
+      `${API_URL}/channels/${channelId}/invite`,
+      { userId: targetUser.id },
+      { headers: { Authorization: `Bearer ${token}` } }
+    )
+
+    $q.notify({
+      type: 'positive',
+      message: `Invite sent to "${targetName}"`
+    })
+
   } catch (err) {
     console.error(err)
     $q.notify({ type: 'negative', message: 'Failed to invite user!' })
@@ -723,6 +817,10 @@ if (command === '/invite') {
 
 if (command === '/revoke') {
   return await handleRevokeCommand(parts)
+}
+
+if (command === '/kick') {
+  return await handleKickCommand(parts)
 }
 
   // Unknown command
