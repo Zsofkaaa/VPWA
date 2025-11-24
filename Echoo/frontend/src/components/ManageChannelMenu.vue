@@ -68,7 +68,7 @@
         <q-separator v-if="props.userRole === 'admin'" dark />
 
         <!-- Spravovať notifikácie -->
-        <q-item clickable v-ripple @click="manageNotifications">
+        <q-item clickable v-ripple @click="openNotificationSettings">
           <q-item-section avatar>
             <q-icon name="notifications" color="white" />
           </q-item-section>
@@ -113,30 +113,38 @@
       </q-list>
     </q-menu>
 
-      <AddUserDialog
-        :visible="showAddUserDialog"
-        :channel-id="props.channel.id"
-        :available-users="availableUsers"
-        :current-members="props.channel.members?.map(m => m.userId) || []"
-        @update:visible="showAddUserDialog = $event"
-        @add-users="addUsers"
-      />
+    <AddUserDialog
+      :visible="showAddUserDialog"
+      :channel-id="props.channel.id"
+      :available-users="availableUsers"
+      :current-members="props.channel.members?.map(m => m.userId) || []"
+      @update:visible="showAddUserDialog = $event"
+      @add-users="addUsers"
+    />
 
-      <KickUserDialog
-        :visible="showKickUserDialog"
-        :channel-id="props.channel.id"
-        :members="mappedMembers"
-        @update:visible="showKickUserDialog = $event"
-        @kick-users="kickUsers"
-      />
+    <KickUserDialog
+      :visible="showKickUserDialog"
+      :channel-id="props.channel.id"
+      :members="mappedMembers"
+      @update:visible="showKickUserDialog = $event"
+      @kick-users="kickUsers"
+    />
 
-      <BanUserDialog
-        :visible="showBanUserDialog"
-        :channel-id="props.channel.id"
-        :members="mappedMembers"
-        @update:visible="showBanUserDialog = $event"
-        @ban-users="banUsers"
-      />
+    <BanUserDialog
+      :visible="showBanUserDialog"
+      :channel-id="props.channel.id"
+      :members="mappedMembers"
+      @update:visible="showBanUserDialog = $event"
+      @ban-users="banUsers"
+    />
+
+    <NotificationSettingsDialog
+      :visible="showNotificationDialog"
+      :channel-id="props.channel.id"
+      :current-setting="currentNotificationSetting"
+      @save="handleNotificationSettingsSaved"
+      @update:visible="showNotificationDialog = $event"
+    />
 
   </div>
 </template>
@@ -147,10 +155,11 @@
 import axios from 'axios'
 import { useRouter } from 'vue-router'
 import { useQuasar } from 'quasar'
-import { ref , computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import AddUserDialog from './AddUserDialog.vue'
 import KickUserDialog from './KickUserDialog.vue'
 import BanUserDialog from './BanUserDialog.vue'
+import NotificationSettingsDialog from './NotificationSettingsDialog.vue'
 
 interface Member {
   userId: number
@@ -180,17 +189,17 @@ const props = defineProps<{
   userRole: 'admin' | 'member'
 }>()
 
-console.log(props.channel.name)
-
 const router = useRouter()
 const $q = useQuasar()
 
 const showAddUserDialog = ref(false)
 const showKickUserDialog = ref(false)
 const showBanUserDialog = ref(false)
+const showNotificationDialog = ref(false)
 
 const availableUsers = ref<{ label: string; value: number }[]>([])
 const currentUserId = ref<number | null>(null)
+const currentNotificationSetting = ref('all')
 
 const API_URL = 'http://localhost:3333'
 const token = localStorage.getItem('auth_token')
@@ -201,17 +210,31 @@ const mappedMembers = computed(() =>
   channelMembers.value.map(user => ({ id: user.id, nickName: user.nickName }))
 )
 
-// Premenná, ktorá určuje, či je menu otvorené
 const menu = ref(false)
 
 const emit = defineEmits<{
   'leftChannel': [channelId: number]
+  'notification-setting-changed': [channelId: number, newSetting: string]  // ← PRIDAŤ!
 }>()
+
+onMounted(async () => {
+  await loadCurrentUser()
+  await loadNotificationSettings()
+})
 
 function openAddUserDialog() {
   menu.value = false
   void loadAvailableUsers(props.channel.id)
   showAddUserDialog.value = true
+}
+
+function handleNotificationSettingsSaved(newSetting: string) {
+  // Aktualizuj lokálne nastavenie
+  currentNotificationSetting.value = newSetting
+  console.log(`[CHANNEL MANAGE] Updated notification setting to: ${newSetting}`)
+  
+  // EMIT event do rodičovského komponentu (ChatLayout.vue)
+  emit('notification-setting-changed', props.channel.id, newSetting)
 }
 
 async function openKickUserDialog() {
@@ -246,6 +269,11 @@ async function openBanUserDialog() {
   showBanUserDialog.value = true
 }
 
+function openNotificationSettings() {
+  menu.value = false
+  showNotificationDialog.value = true
+}
+
 async function loadCurrentUser() {
   try {
     const res = await axios.get<{ id: number; nickName: string }>(
@@ -255,6 +283,20 @@ async function loadCurrentUser() {
     currentUserId.value = res.data.id
   } catch (err) {
     console.error('Failed to load current user', err)
+  }
+}
+
+async function loadNotificationSettings() {
+  if (!currentUserId.value) return
+  
+  try {
+    const res = await axios.get<{ notificationSettings: string }>(
+      `${API_URL}/user_channel/${currentUserId.value}/${props.channel.id}`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    )
+    currentNotificationSetting.value = res.data.notificationSettings || 'all'
+  } catch (err) {
+    console.error('Failed to load notification settings', err)
   }
 }
 
@@ -274,7 +316,6 @@ async function loadChannelMembers() {
 
     // 3️⃣ Szűrjük ki a saját userünket
     channelMembers.value = res.data.filter(u => u.id !== currentUserId.value)
-    console.log('Channel members for Kick/Ban:', channelMembers.value)
   } catch (err) {
     console.error('Failed to load channel members', err)
   }
@@ -296,11 +337,9 @@ async function loadAvailableUsers(channelId: number) {
 
     // 3️⃣ Kivonjuk a csatorna tagjait az összes felhasználóból
     availableUsers.value = allUsers
-      .filter(u => u.id !== currentUserId.value)      // saját user kihagyása
+      .filter(u => u.id !== currentUserId.value)
       .filter(u => !channelUsers.some(m => m.id === u.id))
       .map(u => ({ label: u.nickName, value: u.id }))
-
-    console.log('Available users for AddUserDialog:', availableUsers.value)
   } catch (err) {
     console.error('Failed to load available users', err)
   }
@@ -337,14 +376,14 @@ async function kickUsers(userIds: number[]) {
 
   for (const userId of userIds) {
     try {
-  const res = await axios.delete<{ message?: string; error?: string }>(
-    `${API_URL}/channels/${props.channel.id}/kick/${userId}`,
-    { headers: { Authorization: `Bearer ${token}` } }
-  )
+      const res = await axios.delete<{ message?: string; error?: string }>(
+        `${API_URL}/channels/${props.channel.id}/kick/${userId}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      )
 
-  if (res.data.message) {
-    $q.notify({ type: 'positive', message: res.data.message })
-  }
+      if (res.data.message) {
+        $q.notify({ type: 'positive', message: res.data.message })
+      }
     } catch (err: unknown) {
       // Biztosítsuk, hogy err egy objektum és van benne response
       if (typeof err === 'object' && err !== null && 'response' in err) {
@@ -385,12 +424,6 @@ async function banUsers(userIds: number[]) {
     console.error('Ban failed', err)
     $q.notify({ type: 'negative', message: 'Failed to ban users' })
   }
-}
-
-// Funkcia na správu notifikácií
-function manageNotifications() {
-  menu.value = false
-  console.log('Manage notifications clicked')
 }
 
 // Funkcia na vymazanie kanála
@@ -443,13 +476,14 @@ async function leaveChannel() {
     })
 
     emit('leftChannel', props.channel.id)
-
     await router.push('/chat')
 
   } catch (err) {
     console.error('Leave failed:', err)
-    $q.notify({ type: 'negative',
-    message: 'Failed to leave channel' })
+    $q.notify({ 
+      type: 'negative',
+      message: 'Failed to leave channel' 
+    })
   }
 }
 

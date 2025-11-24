@@ -126,3 +126,22 @@ router
     return controllerInstance.kick(ctx)
   })
   .middleware([middleware.auth()])
+
+// ROUTES PRE NOTIFICATION SETTINGS
+router
+  .get('/user_channel/:userId/:channelId', async (ctx) => {
+    const module = await UserChannelController()
+    const ControllerClass = module.default
+    const controllerInstance = new ControllerClass()
+    return controllerInstance.getNotificationSettings(ctx)
+  })
+  .middleware([middleware.auth()])
+
+router
+  .put('/user_channel/:userId/:channelId', async (ctx) => {
+    const module = await UserChannelController()
+    const ControllerClass = module.default
+    const controllerInstance = new ControllerClass()
+    return controllerInstance.updateNotificationSettings(ctx)
+  })
+  .middleware([middleware.auth()])

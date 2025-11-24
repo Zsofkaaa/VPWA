@@ -31,6 +31,54 @@ export default class UserChannelController {
     return response.ok(members)
   }
 
+  // NOVÝ: Získanie notifikačných nastavení pre používateľa v kanáli
+  public async getNotificationSettings({ params, response }: HttpContext) {
+    const userId = Number(params.userId)
+    const channelId = Number(params.channelId)
+
+    const userChannel = await UserChannel.query()
+      .where('userId', userId)
+      .andWhere('channelId', channelId)
+      .first()
+
+    if (!userChannel) {
+      return response.notFound({ error: 'User is not a member of this channel' })
+    }
+
+    return response.ok({
+      notificationSettings: userChannel.notificationSettings || 'all',
+    })
+  }
+
+  // NOVÝ: Aktualizácia notifikačných nastavení
+  public async updateNotificationSettings({ params, request, response }: HttpContext) {
+    const userId = Number(params.userId)
+    const channelId = Number(params.channelId)
+    const { notificationSettings } = request.only(['notificationSettings'])
+
+    const userChannel = await UserChannel.query()
+      .where('userId', userId)
+      .andWhere('channelId', channelId)
+      .first()
+
+    if (!userChannel) {
+      return response.notFound({ error: 'User is not a member of this channel' })
+    }
+
+    // Validácia
+    if (!['all', 'mentions', 'none'].includes(notificationSettings)) {
+      return response.badRequest({ error: 'Invalid notification setting' })
+    }
+
+    userChannel.notificationSettings = notificationSettings
+    await userChannel.save()
+
+    return response.ok({
+      message: 'Notification settings updated',
+      notificationSettings: userChannel.notificationSettings,
+    })
+  }
+
   public async leave({ params, auth, response }: HttpContext) {
     const user = auth.user
     if (!user) return response.unauthorized({ error: 'Unauthorized' })
@@ -39,7 +87,6 @@ export default class UserChannelController {
 
     const userModel = auth.user as unknown as { id: number }
 
-    // Ellenőrizzük, hogy benne van-e a csatornában
     const record = await UserChannel.query()
       .where('userId', userModel.id)
       .andWhere('channelId', channelId)
@@ -67,9 +114,10 @@ export default class UserChannelController {
         channelsMap.set(uc.channel.id, {
           id: uc.channel.id,
           name: uc.channel.name,
-          type: uc.channel.type, // 👈 MOST MÁR VAN
+          type: uc.channel.type,
           path: `/chat/${uc.channel.id}`,
           role: uc.role,
+          notificationSettings: uc.notificationSettings || 'all',
         })
       }
     })
@@ -100,7 +148,6 @@ export default class UserChannelController {
     const targetUserId = Number(params.userId)
     const kickerUser = auth.user as { id: number }
 
-    // 1. A user benne van-e a csatornában?
     const record = await UserChannel.query()
       .where('channelId', channelId)
       .andWhere('userId', targetUserId)
@@ -110,7 +157,6 @@ export default class UserChannelController {
       return response.notFound({ error: 'User is not in this channel' })
     }
 
-    // 2. Ellenőrizzük, hogy kicker már kickelte-e
     const alreadyKicked = await KickLog.query()
       .where('channelId', channelId)
       .andWhere('targetUserId', targetUserId)
@@ -121,21 +167,18 @@ export default class UserChannelController {
       return response.badRequest({ error: 'You already kicked this user' })
     }
 
-    // 3. Kick logolása
     await KickLog.create({
       channelId,
       targetUserId,
       kickerUserId: kickerUser.id,
     })
 
-    // 4. Megszámoljuk, hány különböző user kickelte
     const kicks = await KickLog.query()
       .where('channelId', channelId)
       .andWhere('targetUserId', targetUserId)
 
     const uniqueKickCount = kicks.length
 
-    // 5. Ha elérte a 3 különböző kicket → ban
     if (uniqueKickCount >= 3) {
       await record.delete()
       return response.ok({

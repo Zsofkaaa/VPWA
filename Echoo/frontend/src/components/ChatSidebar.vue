@@ -62,7 +62,8 @@
             v-if="ch.path === props.activeChannelPath && ch.role"
             :channel="{ id: ch.id, name: ch.name, type: ch.type, members: ch.members }"
             :userRole="ch.role"
-            @leftChannel="emit('leftChannel', ch.id)"
+            @leftChannel="handleLeftChannel"
+            @notification-setting-changed="handleNotificationSettingChanged"
           />
         </div>
       </div>
@@ -86,7 +87,8 @@
             v-if="ch.path === props.activeChannelPath && ch.role"
             :channel="{ id: ch.id, name: ch.name, type: ch.type, members: ch.members }"
             :userRole="ch.role"
-            @leftChannel="emit('leftChannel', ch.id)"
+            @leftChannel="handleLeftChannel"
+            @notification-setting-changed="handleNotificationSettingChanged"
           />
         </div>
       </div>
@@ -152,6 +154,7 @@ interface Channel {
   role?: 'admin' | 'member'
   type: 'private' | 'public'
   members?: { userId: number; username: string }[]
+  notificationSettings?: string
 }
 
 interface ChannelData {
@@ -166,7 +169,7 @@ const props = defineProps<{
   drawerOpen: boolean
   privateChannels: Channel[]
   publicChannels: Channel[]
-  activeChannelPath: string   // ← ez új
+  activeChannelPath: string
 }>()
 
 /* UDALOSTI, KTORÉ KOMPONENT VYSIELA */
@@ -175,11 +178,9 @@ const emit = defineEmits<{
   'goToChannel': [channel: Channel]
   'logout': []
   'createChannel': [data: ChannelData]
-  'leftChannel': [channelId: number]   // ← ide kell
+  'leftChannel': [channelId: number]
+  'notification-setting-changed': [channelId: number, newSetting: string]
 }>()
-
-/* AKTUÁLNE VYBRANÝ KANÁL */
-//const activeChannelPath = ref<string>('')
 
 /* OVLÁDANIE ZOBRAZENIA DIALÓGU NA PRIDANIE KANÁLU */
 const showAddChannelDialog = ref(false)
@@ -192,17 +193,29 @@ const allChannelNames = computed(() => {
 /* LOGIKA PRE POZVÁNKY */
 const inviteDialog = ref(false)
 const inviteAccepted = ref(false)
-const invitedChannel: Channel = { id: 1, name: 'Channel', path: '/chat/invite-channel', type: 'public' }  //AZ ID-T MAJD KI KELL JAVÍTANI
+const invitedChannel: Channel = { id: 1, name: 'Channel', path: '/chat/invite-channel', type: 'public' }
 
 /* FUNKCIA NA VÝBER KANÁLU */
 function selectChannel(ch: Channel) {
-  emit('goToChannel', ch) // a parent kezeli az activeChannelPath frissítését
+  emit('goToChannel', ch)
 }
 
 /* FUNKCIA NA VYTVORENIE NOVÉHO KANÁLU */
 function handleCreateChannel(data: ChannelData) {
   console.log('Creating channel:', data)
   emit('createChannel', data)
+}
+
+/* FUNKCIA NA OPUSTENIE KANÁLU */
+function handleLeftChannel(channelId: number) {
+  console.log(`[SIDEBAR] Propagating leftChannel event for channel ${channelId}`)
+  emit('leftChannel', channelId)
+}
+
+/* FUNKCIA NA PROPAGOVANIE ZMENY NOTIFIKAČNÝCH NASTAVENÍ */
+function handleNotificationSettingChanged(channelId: number, newSetting: string) {
+  console.log(`[SIDEBAR] Propagating notification setting change: channel ${channelId} -> ${newSetting}`)
+  emit('notification-setting-changed', channelId, newSetting)
 }
 
 /* OTVORENIE DIALÓGU PRI KLIKNUTÍ NA INVITE */

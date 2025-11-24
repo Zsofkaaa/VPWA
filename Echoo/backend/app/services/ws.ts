@@ -25,6 +25,11 @@ class Ws {
         console.log(`[WS] Joined room: ${room}`)
       })
 
+      socket.on('leave', (room: string) => {
+        socket.leave(room)
+        console.log(`[WS] Left room: ${room}`)
+      })
+
       socket.on('message', async (data) => {
         const { channelId, userId, text } = data
 
@@ -53,7 +58,7 @@ class Ws {
             sentAt: DateTime.now(),
           })
 
-          // Ak sú nemenovaní používatelia, uložíme ich do MessageMention tabuľky
+          // Ak sú spomenutí používatelia, uložíme ich do MessageMention tabuľky
           if (mentionedUserIds.length > 0) {
             const mentions = mentionedUserIds.map((mentionedUserId) => ({
               messageId: message.id,
@@ -65,8 +70,8 @@ class Ws {
           // Načítame údaje o pošilateľovi (meno, priezvisko, prezývka)
           await message.load('sender')
 
-          // Pošleme správu všetkým klientom v kanáli
-          this.io?.to(`channel_${channelId}`).emit('newMessage', {
+          // Pripravíme payload pre klientov
+          const messagePayload = {
             id: message.id,
             text: message.content,
             userId: message.senderId,
@@ -74,25 +79,34 @@ class Ws {
               message.sender.nickName || `${message.sender.firstName} ${message.sender.lastName}`,
             channelId: channelId,
             sentAt: message.sentAt,
-            mentionedUserIds: mentionedUserIds,
-          })
+            isPing: mentionedUserIds.length > 0, // ← PRIDANÉ: flag či správa obsahuje mentions
+            mentionedUserIds: mentionedUserIds, // ← Zoznam ID spomenutých používateľov
+          }
+
+          // Pošleme správu všetkým klientom v kanáli
+          this.io?.to(`channel_${channelId}`).emit('newMessage', messagePayload)
 
           console.log(`[WS] Message sent`, {
             content: message.content,
             mentions: mentionedNicknames,
             mentionedUserIds: mentionedUserIds,
+            isPing: messagePayload.isPing, // ← Debug log
           })
         } catch (error) {
           console.error('[WS] Sending error:', error)
           socket.emit('error', { message: 'Message cannot be sent' })
         }
       })
+
+      socket.on('disconnect', () => {
+        console.log(`[WS] Client disconnected: ${socket.id}`)
+      })
     })
 
     console.log('[WS] WebSocket server is running')
   }
 
-  // Funkcia na extrakciu @nickname-ov zo textu
+  // Extrahuje všetky @nickname z textu správy
   // Príklad: "Ahoj @janko a @marko!" -> ['janko', 'marko']
   private extractMentions(text: string): string[] {
     const mentionRegex = /@(\w+)/g

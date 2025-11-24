@@ -2,10 +2,12 @@
   "name": "echoo",
   "private": true,
   "scripts": {
-    "dev": "concurrently \"npm run dev --prefix backend\" \"npm run dev --prefix frontend\""
+    "dev": "concurrently \"npm run dev --prefix backend\" \"npm run dev --prefix frontend\"",
+    "clean": "rimraf dist .quasar"  
   },
   "devDependencies": {
-    "concurrently": "^9.2.1"
+    "concurrently": "^9.2.1",
+    "rimraf": "^6.1.2"
   },
   "dependencies": {
     "@adonisjs/auth": "^9.5.1",
