@@ -30,13 +30,13 @@
       <div class="q-pa-sm sidebar-subtitle">Invites</div>
 
       <div class="channel-list">
-        <div class="channel-wrapper">
+        <div v-for="invite in props.invites" :key="invite.id" class="channel-wrapper">
           <q-item
-          clickable
-          @click="openInviteDialog"
-          class="sidebar-item active-invite"
+            clickable
+            @click="openInviteDialog(invite)"
+            class="sidebar-item active-invite"
           >
-            <q-item-section>Channel</q-item-section>
+            <q-item-section>{{ invite.channel.name }}</q-item-section>
             <div class="invite-badge"></div>
           </q-item>
         </div>
@@ -123,11 +123,14 @@
         <q-card-section class="text-h6 text-center q-pt-md">
           Join Channel?
         </q-card-section>
+
         <q-card-section class="q-pt-none text-center">
-          You have been invited to <strong>{{ invitedChannel.name }}</strong>
+          You have been invited to <strong>{{ selectedInvite?.channel?.name }}</strong>
         </q-card-section>
+
         <q-card-actions align="center">
-          <q-btn flat label="Join" color="white" @click="joinChannel" />
+          <q-btn flat label="Accept" color="white" @click="acceptInvite" />
+          <q-btn flat label="Reject" color="white" @click="rejectInvite" />
           <q-btn flat label="Cancel" color="white" @click="inviteDialog = false" />
         </q-card-actions>
       </q-card>
@@ -144,6 +147,8 @@ import { ref, computed } from 'vue'
 import ManageChannelMenu from './ManageChannelMenu.vue'
 import AddChannelDialog from './AddChannelDialog.vue'
 import { useQuasar } from 'quasar'
+import axios from 'axios'
+
 const $q = useQuasar()
 
 /* ROZHRANIA PRE DÁTA O KANÁLOCH */
@@ -164,12 +169,26 @@ interface ChannelData {
   notificationSettings: string
 }
 
+interface Invite {
+  id: number
+  channel_id: number
+  channel: {
+    id: number
+    name: string
+  }
+}
+
 /* PROPS - ÚDAJE ZO ZVYŠKU APLIKÁCIE */
 const props = defineProps<{
   drawerOpen: boolean
   privateChannels: Channel[]
   publicChannels: Channel[]
   activeChannelPath: string
+  invites: Array<{
+    id: number
+    channel_id: number
+    channel: { id: number, name: string }
+  }>
 }>()
 
 /* UDALOSTI, KTORÉ KOMPONENT VYSIELA */
@@ -179,6 +198,7 @@ const emit = defineEmits<{
   'logout': []
   'createChannel': [data: ChannelData]
   'leftChannel': [channelId: number]
+  'invite-updated': []
   'notification-setting-changed': [channelId: number, newSetting: string]
 }>()
 
@@ -192,8 +212,51 @@ const allChannelNames = computed(() => {
 
 /* LOGIKA PRE POZVÁNKY */
 const inviteDialog = ref(false)
-const inviteAccepted = ref(false)
-const invitedChannel: Channel = { id: 1, name: 'Channel', path: '/chat/invite-channel', type: 'public' }
+const selectedInvite = ref<Invite | null>(null)
+//const inviteAccepted = ref(false)
+//const invitedChannel: Channel = { id: 1, name: 'Channel', path: '/chat/invite-channel', type: 'public' }  //AZ ID-T MAJD KI KELL JAVÍTANI
+
+async function acceptInvite() {
+  try {
+    const token = localStorage.getItem('auth_token')
+    await axios.post(
+      `http://localhost:3333/invites/${selectedInvite.value!.id}/accept`,
+      {},
+      { headers: { Authorization: `Bearer ${token}` } }
+    )
+
+    inviteDialog.value = false
+
+    // értesítjük a parentet, hogy frissítse a meghívókat
+    emit('invite-updated')
+
+    // navigálás a csatornába
+    emit('goToChannel', {
+      id: selectedInvite.value!.channel.id,
+      name: selectedInvite.value!.channel.name,
+      type: 'private',
+      path: `/chat/${selectedInvite.value!.channel.id}`
+    })
+  } catch (err) {
+    console.error('Invite accept failed', err)
+  }
+}
+
+async function rejectInvite() {
+  try {
+    const token = localStorage.getItem('auth_token')
+    await axios.post(
+      `http://localhost:3333/invites/${selectedInvite.value!.id}/reject`,
+      {},
+      { headers: { Authorization: `Bearer ${token}` } }
+    )
+
+    inviteDialog.value = false
+    emit('invite-updated')
+  } catch (err) {
+    console.error('Invite reject failed', err)
+  }
+}
 
 /* FUNKCIA NA VÝBER KANÁLU */
 function selectChannel(ch: Channel) {
@@ -219,20 +282,19 @@ function handleNotificationSettingChanged(channelId: number, newSetting: string)
 }
 
 /* OTVORENIE DIALÓGU PRI KLIKNUTÍ NA INVITE */
-function openInviteDialog() {
-  if (!inviteAccepted.value) {
-    inviteDialog.value = true
-  } else {
-    selectChannel(invitedChannel)
-  }
+function openInviteDialog(invite: Invite) {
+  selectedInvite.value = invite
+  inviteDialog.value = true
 }
 
 /* POTVRDENIE POZVÁNKY (JOIN CHANNEL) */
+/*
 function joinChannel() {
   inviteAccepted.value = true
   inviteDialog.value = false
   selectChannel(invitedChannel)
 }
+  */
 
 </script>
 
@@ -335,21 +397,21 @@ function joinChannel() {
   border-left: 3px solid #FFFFFF;
 }
 
-/* AKTÍVNA POZVÁNKA */
-.active-invite {
-  font-weight: bold;
-}
-
 /* MALÝ BADGE PRE NOVÉ POZVÁNKY */
 .invite-badge {
   width: 10px;
   height: 10px;
-  background-color: red;
+  background-color: orange;  /* ← itt változtattuk a színt */
   border-radius: 50%;
   position: absolute;
   right: 12px;
   top: 50%;
   transform: translateY(-50%);
+}
+
+/* Invite-k kiemelése kerettel */
+.active-invite {
+  background-color: rgba(255, 166, 0, 0.15); /* halvány háttér színnel még látványosabb */
 }
 
 /* ROZDEĽOVACIA ČIARA MEDZI SEKCIAMI */

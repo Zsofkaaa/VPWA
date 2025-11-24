@@ -169,6 +169,7 @@ interface Member {
 interface User {
   id: number
   nickName: string
+  role: 'admin' | 'member'
 }
 
 interface AxiosErrorLike {
@@ -188,7 +189,6 @@ const props = defineProps<{
   }
   userRole: 'admin' | 'member'
 }>()
-
 const router = useRouter()
 const $q = useQuasar()
 
@@ -302,6 +302,7 @@ async function loadNotificationSettings() {
 
 async function loadChannelMembers() {
   if (!props.channel.id) return
+
   try {
     // 1️⃣ Lekérjük a saját user ID-t
     if (!currentUserId.value) {
@@ -315,7 +316,10 @@ async function loadChannelMembers() {
     )
 
     // 3️⃣ Szűrjük ki a saját userünket
-    channelMembers.value = res.data.filter(u => u.id !== currentUserId.value)
+     channelMembers.value = res.data
+      .filter(u => u.id !== currentUserId.value)       // saját magad
+      .filter(u => u.role !== 'admin')                 // admin védelem
+    console.log('Channel members for Kick/Ban:', channelMembers.value)
   } catch (err) {
     console.error('Failed to load channel members', err)
   }
@@ -351,17 +355,12 @@ async function addUsers(userIds: number[]) {
   try {
     for (const userId of userIds) {
       await axios.post(
-        `http://localhost:3333/user_channel`,
-        {
-          channelId: props.channel.id,
-          userId,
-          role: 'member',
-          notificationSettings: 'all'
-        },
+        `${API_URL}/channels/${props.channel.id}/invite`,
+        { userId },
         { headers: { Authorization: `Bearer ${token}` } }
       )
     }
-    $q.notify({ type: 'positive', message: 'Users added successfully' })
+    $q.notify({ type: 'positive', message: 'Invite(s) sent successfully' })
     showAddUserDialog.value = false
   } catch (err) {
     console.error('Failed to add users', err)

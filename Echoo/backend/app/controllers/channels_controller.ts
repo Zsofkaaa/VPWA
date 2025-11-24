@@ -3,29 +3,65 @@ import Channel from '#models/channel'
 import UserChannel from '#models/user_channel'
 import { DateTime } from 'luxon'
 import User from '#models/user'
+import ChannelInvite from '#models/channel_invite'
 
 export default class ChannelsController {
-  public async store({ request, auth, response }: HttpContext) {
+  public async store({ auth, request, response }: any) {
     try {
-      const user = auth.user as any
-      if (!user) {
-        return response.unauthorized('Not authenticated')
-      }
+      const { name, type, invitedMembers, notificationSettings } = request.only([
+        'name',
+        'type',
+        'invitedMembers',
+        'notificationSettings',
+      ])
 
-      const { name, type } = request.only(['name', 'type'])
-
-      // channel create
+      // 1️⃣ Új csatorna létrehozása
       const channel = await Channel.create({
         name,
         type,
-        createdBy: user.id,
+        createdBy: auth.user.id,
         lastActiveAt: DateTime.now(),
       })
 
-      return channel
-    } catch (error) {
-      console.error('Channel creation error:', error)
-      return response.badRequest('Failed to create channel')
+      // 2️⃣ Creator felvétele tagként
+      await UserChannel.create({
+        channelId: channel.id,
+        userId: auth.user.id,
+        role: 'admin',
+        notificationSettings: notificationSettings || 'all',
+      })
+
+      // 3️⃣ Invite-ok létrehozása a selected usereknek
+      if (Array.isArray(invitedMembers) && invitedMembers.length > 0) {
+        for (const userId of invitedMembers) {
+          // Már tag?
+          const exists = await UserChannel.query()
+            .where('channelId', channel.id)
+            .where('userId', userId)
+            .first()
+          if (exists) continue
+
+          // Már pending invite?
+          const pending = await ChannelInvite.query()
+            .where('channelId', channel.id)
+            .where('userId', userId)
+            .where('status', 'pending')
+            .first()
+          if (pending) continue
+
+          await ChannelInvite.create({
+            channelId: channel.id,
+            userId,
+            invitedBy: auth.user.id,
+            status: 'pending',
+          })
+        }
+      }
+
+      return response.ok(channel)
+    } catch (err) {
+      console.error(err)
+      return response.badRequest({ error: 'Failed to create channel' })
     }
   }
 

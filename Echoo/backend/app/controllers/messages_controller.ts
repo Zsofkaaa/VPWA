@@ -1,6 +1,7 @@
 import Message from '#models/message'
 import Channel from '#models/channel'
 import { DateTime } from 'luxon'
+//import UserChannel from '#models/user_channel'
 
 export default class MessagesController {
   // Kanál všetkých správ s informáciami o pingoch

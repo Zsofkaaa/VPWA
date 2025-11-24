@@ -15,6 +15,7 @@ const MessagesController = () => import('#controllers/messages_controller')
 const AuthController = () => import('#controllers/auth_controller')
 const ChannelsController = () => import('#controllers/channels_controller')
 const UserChannelController = () => import('#controllers/user_channel_controller')
+const InvitesController = () => import('#controllers/invites_controller')
 
 import UserControllerClass from '#controllers/user_controller'
 const userController = new UserControllerClass()
@@ -143,5 +144,41 @@ router
     const ControllerClass = module.default
     const controllerInstance = new ControllerClass()
     return controllerInstance.updateNotificationSettings(ctx)
+  })
+  .middleware([middleware.auth()])
+
+router
+  .post('/channels/:id/invite', async (ctx) => {
+    const module = await InvitesController()
+    const ControllerClass = module.default
+    const controller = new ControllerClass()
+    return controller.invite(ctx)
+  })
+  .middleware([middleware.auth()])
+
+router
+  .get('/invites/me', async (ctx) => {
+    const module = await InvitesController()
+    const ControllerClass = module.default
+    const controller = new ControllerClass()
+    return controller.myInvites(ctx)
+  })
+  .middleware([middleware.auth()])
+
+router
+  .post('/invites/:id/accept', async (ctx) => {
+    const module = await InvitesController()
+    const ControllerClass = module.default
+    const controller = new ControllerClass()
+    return controller.accept(ctx)
+  })
+  .middleware([middleware.auth()])
+
+router
+  .post('/invites/:id/reject', async (ctx) => {
+    const module = await InvitesController()
+    const ControllerClass = module.default
+    const controller = new ControllerClass()
+    return controller.reject(ctx)
   })
   .middleware([middleware.auth()])
