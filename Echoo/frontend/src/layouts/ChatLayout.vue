@@ -391,20 +391,12 @@ async function handleCreateChannel(data: ChannelData) {
   }
 }
 
-// Odošle správu cez socket pri stlačení Enter
-function onEnterPress(e: KeyboardEvent) {
-  if (e.key === 'Enter' && newMessage.value.trim() !== '') {
-    const content = newMessage.value.trim()
-
-    socket.emit("message", {
-      channelId: currentChannelId.value,
-      text: content,
-      userId: currentUserId.value
-    }
-  }
-}
-
 function sendMessage(text: string) {
+  if (!currentChannelId.value || !currentUserId.value) {
+    $q.notify({ type: 'negative', message: 'You are not in a channel or not authenticated' })
+    return
+  }
+
   socket.emit('message', {
     channelId: currentChannelId.value,
     text,
@@ -887,8 +879,52 @@ function onEnterPress(e: KeyboardEvent) {
   newMessage.value = ""
 }
 
+function handleIncomingMessage(msg: Message) {
+  // Pridaj správu do zoznamu ak patrí do aktuálneho kanála
+  if (msg.channelId === currentChannelId.value) {
+    messages.value.push(msg)
+  }
+
+  // Ignoruj notifikácie pre vlastné správy
+  if (msg.userId === currentUserId.value) return
+
+  // Ak je aplikácia viditeľná, neposielaj notifikáciu
+  if (isAppVisible.value) return
+
+  // Nájdi kanál v pamäti
+  const channel = [...privateChannels.value, ...publicChannels.value]
+    .find(ch => ch.id === msg.channelId)
+   
+  if (!channel) return
+
+  // Použij notifikačné nastavenia z pamäte
+  const notifSettings = channel.notificationSettings || 'all'
+    
+  // Rozhoduj či zobraziť notifikáciu podľa nastavení
+  let shouldNotify = false
+
+  switch (notifSettings) {
+    case 'none': shouldNotify = false; break
+    case 'mentions': shouldNotify = msg.isPing === true; break
+    case 'all':
+    default: shouldNotify = true
+  }
+
+  // Zobraz notifikáciu ak je to potrebné
+  if (shouldNotify) {      
+    notificationSender.value = `${msg.user} (#${channel.name})`
+    notificationMessage.value = msg.text
+    showNotification.value = true
+
+    // Skry notifikáciu po 5 sekundách
+    setTimeout(() => {
+      showNotification.value = false
+    }, 5000)
+  }
+}
+
 /* LOGIKA PRE DETEKCIU PÍSANIA SPRÁV */
-let typingTimeout: NodeJS.Timeout | null = null
+let typingTimeout: ReturnType<typeof setTimeout> | null = null
 watch(newMessage, (value) => {
   if (value !== '') {
     isTyping.value = true
@@ -997,83 +1033,11 @@ onMounted(async () => {
   }
 
   // Počúvaj nové správy zo socketu
-  socket.on('newMessage', (msg: Message) => {
-    // Pridaj správu do zoznamu ak patrí do aktuálneho kanála
-    if (msg.channelId === currentChannelId.value) {
-      messages.value.push(msg)
-    }
-
-    // Ignoruj notifikácie pre vlastné správy
-    if (msg.userId === currentUserId.value) {
-      console.log('Ignoring own message')
-      return
-    }
-
-    // Ak je aplikácia viditeľná, neposielaj notifikáciu
-    if (isAppVisible.value) {
-      console.log('App is visible, skipping notification')
-      return
-    }
-
-    // Nájdi kanál v pamäti
-    const channel = [...privateChannels.value, ...publicChannels.value]
-      .find(ch => ch.id === msg.channelId)
-    
-    if (!channel) {
-      console.warn('Channel not found for message', msg.channelId)
-      return
-    }
-
-    // Použij notifikačné nastavenia z pamäte
-    const notifSettings = channel.notificationSettings || 'all'
-    
-    console.log(`[NOTIFICATION DEBUG] Channel: ${channel.name}, Setting: ${notifSettings}`)
-
-    // Rozhoduj či zobraziť notifikáciu podľa nastavení
-    let shouldNotify = false
-
-    switch (notifSettings) {
-      case 'none':
-        shouldNotify = false
-        console.log(`[NOTIFICATION DEBUG] Setting is 'none' - NOT notifying`)
-        break
-
-      case 'mentions':
-        // Notifikuj len pri @mention
-        shouldNotify = msg.isPing === true
-        console.log(`[NOTIFICATION DEBUG] Setting is 'mentions' - isPing: ${msg.isPing} - ${shouldNotify ? 'NOTIFYING' : 'NOT notifying'}`)
-        break
-
-      case 'all':
-      default:
-        // Notifikuj pri každej správe
-        shouldNotify = true
-        console.log(`[NOTIFICATION DEBUG] Setting is 'all' - NOTIFYING`)
-    }
-
-    // Zobraz notifikáciu ak je to potrebné
-    if (shouldNotify) {
-      console.log(`[NOTIFICATION DEBUG] ✓ Showing notification`)
-      
-      const channelName = channel.name
-      notificationSender.value = `${msg.user} (#${channelName})`
-      notificationMessage.value = msg.text
-      showNotification.value = true
-
-      // Skry notifikáciu po 5 sekundách
-      setTimeout(() => {
-        showNotification.value = false
-      }, 5000)
-    } else {
-      console.log(`[NOTIFICATION DEBUG] ✗ Notification blocked by settings`)
-    }
-  })
+  socket.on('newMessage', handleIncomingMessage)
 })
 
 // Vyčisti listenery pri odstránení komponentu (zabráni duplicitným notifikáciám)
 onBeforeUnmount(() => {
-  console.log('[CHAT LAYOUT] Cleaning up...')
-  
   // Odstráň socket listenery
   if (socket) {
     socket.off('newMessage')
