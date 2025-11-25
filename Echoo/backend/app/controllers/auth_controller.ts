@@ -5,23 +5,18 @@ import Channel from '#models/channel'
 import UserChannel from '#models/user_channel'
 
 export default class AuthController {
+  // Prihlásenie
   public async login({ request, response }: HttpContext) {
     const { email, password } = request.only(['email', 'password'])
 
     const user = await User.findBy('email', email)
     if (!user) {
-      // NE használj .unauthorized(), csak sima response
-      return response.status(400).json({
-        message: 'Invalid email or password',
-      })
+      return response.status(400).json({ message: 'Invalid email or password' })
     }
 
     const isValid = await hash.verify(user.password, password)
-
     if (!isValid) {
-      return response.status(400).json({
-        message: 'Invalid email or password',
-      })
+      return response.status(400).json({ message: 'Invalid email or password' })
     }
 
     const token = await User.accessTokens.create(user)
@@ -33,6 +28,7 @@ export default class AuthController {
     })
   }
 
+  // Registrácia
   public async register({ request, response }: HttpContext) {
     const { firstName, lastName, nickname, email, password } = request.only([
       'firstName',
@@ -43,20 +39,14 @@ export default class AuthController {
     ])
 
     try {
-      // Ellenőrizd hogy létezik-e már az email
       const existingEmail = await User.findBy('email', email)
       if (existingEmail) {
-        return response.status(400).json({
-          message: 'This email is already registered',
-        })
+        return response.status(400).json({ message: 'This email is already registered' })
       }
 
-      // Ellenőrizd hogy létezik-e már a nickname
       const existingNickname = await User.findBy('nick_name', nickname)
       if (existingNickname) {
-        return response.status(400).json({
-          message: 'This nickname is already taken',
-        })
+        return response.status(400).json({ message: 'This nickname is already taken' })
       }
 
       const user = await User.create({
@@ -67,9 +57,8 @@ export default class AuthController {
         password,
       })
 
-      // Automatikus beléptetés minden public csatornába
+      // Automatické pridanie do všetkých public kanálov
       const publicChannels = await Channel.query().where('type', 'public')
-
       for (const channel of publicChannels) {
         await UserChannel.create({
           userId: user.id,
@@ -94,14 +83,13 @@ export default class AuthController {
     }
   }
 
-  // AuthController.ts
+  // Odhlásenie
   public async logout({ auth, response }: HttpContext) {
     try {
-      // TS hack: any-ként kezeljük, hogy ne dobjon hibát
       const apiAuth: any = auth.use('api')
 
       if (apiAuth.token) {
-        await apiAuth.token.delete() // token érvénytelenítése
+        await apiAuth.token.delete()
       }
 
       return response.json({ message: 'Logged out successfully' })

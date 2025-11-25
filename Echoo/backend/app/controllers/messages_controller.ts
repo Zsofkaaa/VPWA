@@ -1,14 +1,13 @@
 import Message from '#models/message'
 import Channel from '#models/channel'
 import { DateTime } from 'luxon'
-//import UserChannel from '#models/user_channel'
 
 export default class MessagesController {
-  // Kanál všetkých správ s informáciami o pingoch
+  // Získanie posledných správ z kanála
   public async index({ params }: { params: { id: number } }) {
     const channelId = params.id
 
-    // Načítame správy s autormi a nemenovanými používateľmi
+    // Načítame správy s autormi a mentions
     const messages = await Message.query()
       .where('channel_id', channelId)
       .preload('sender')
@@ -26,7 +25,7 @@ export default class MessagesController {
     }))
   }
 
-  // Vytvorenie novej správy (iba pre HTTP POST, socket to nepoužíva)
+  // Vytvorenie novej správy (HTTP POST)
   public async store({ auth, params, request }: any) {
     const channelId = Number(params.id)
     const { content } = request.only(['content'])
@@ -34,7 +33,7 @@ export default class MessagesController {
     const senderId = auth?.user?.id
     if (!senderId) throw new Error('Používateľ nie je autentifikovaný')
 
-    // Vyhľadáme kanál
+    // Načítame kanál
     const channel = await Channel.findOrFail(channelId)
 
     // Vytvoríme novú správu
@@ -49,7 +48,7 @@ export default class MessagesController {
     // Načítame autora správy
     await message.load('sender')
 
-    // Aktualizujeme čas poslednej aktivity v kanáli
+    // Aktualizujeme čas poslednej aktivity kanála
     channel.lastActiveAt = DateTime.now()
     await channel.save()
 

@@ -3,13 +3,14 @@ import Channel from '#models/channel'
 import { DateTime } from 'luxon'
 
 export function startCronJobs() {
-  // Minden nap éjfélkor fut
+  // Každú noc o polnoci
   cron.schedule('0 0 * * *', async () => {
     try {
-      console.log('[CRON] Running channel cleanup...')
+      console.log('[CRON] Channel cleanup started')
 
       const thirtyDaysAgo = DateTime.now().minus({ days: 30 })
 
+      // Odstrániť kanály, ktoré neboli aktívne viac ako 30 dní
       const deleted = await Channel.query()
         .where('last_active_at', '<', thirtyDaysAgo.toSQL())
         .delete()

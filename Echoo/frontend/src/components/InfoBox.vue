@@ -1,12 +1,13 @@
 <template>
-  <!-- Tlačidlo s ikonou informácií -->
+  <!-- Tlačidlo informácií -->
   <q-btn flat round dense icon="info" class="text-white info-btn">
-    <!-- Tooltip po prejdení kurzorom -->
+
+    <!-- Tooltip pre desktop -->
     <q-tooltip v-if="$q.screen.gt.sm" anchor="top middle" self="bottom middle">
       Commands
     </q-tooltip>
 
-    <!-- Menu s príkazmi (otvorí sa po kliknutí, nezatvára sa automaticky) -->
+    <!-- Menu s príkazmi -->
     <q-menu
       :auto-close="false"
       anchor="bottom middle"
@@ -16,17 +17,18 @@
       @before-show="loadCommands"
     >
       <div class="info-box-container" @click.stop>
-         <!-- Loading state -->
+
+        <!-- Načítavajúce sa dáta -->
         <div v-if="loading" class="text-center q-pa-md">
           <q-spinner color="white" size="sm" />
         </div>
 
-        <!-- Error state -->
+        <!-- Chyba načítania -->
         <div v-else-if="error" class="error-message">
           Failed to load commands
         </div>
 
-        <!-- Commands list -->
+        <!-- Zoznam príkazov -->
         <div v-else>
           <div
             v-for="command in commands"
@@ -35,7 +37,7 @@
           >
             {{ command.name }}
 
-            <!-- Tooltip a description megjelenítésére -->
+            <!-- Tooltip s popisom -->
             <q-tooltip
               anchor="center right"
               self="center left"
@@ -46,42 +48,43 @@
             </q-tooltip>
           </div>
         </div>
+
       </div>
     </q-menu>
   </q-btn>
 </template>
 
-
 <script lang="ts" setup>
 import { useQuasar } from 'quasar'
 import { ref } from 'vue'
 
+// Quasar objekt pre UI
 const $q = useQuasar()
 
+// Typ jedného príkazu
 interface Command {
   id: number
   name: string
   description: string
 }
 
+// Reaktívne stavy
 const commands = ref<Command[]>([])
 const loading = ref(false)
 const error = ref(false)
 
+// Funkcia načíta príkazy zo servera
 const loadCommands = async () => {
-  // Ha már betöltöttük, ne töltsük újra
+  // Ak sú už príkazy načítané, nenačítavaj znova
   if (commands.value.length > 0) return
 
   loading.value = true
   error.value = false
 
   try {
-    // Használd a teljes backend URL-t
     const response = await fetch('http://localhost:3333/api/commands')
 
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`)
-    }
+    if (!response.ok) throw new Error(`HTTP error: ${response.status}`)
 
     const data = await response.json()
 
@@ -99,9 +102,8 @@ const loadCommands = async () => {
 }
 </script>
 
-
 <style scoped>
-/* Štýl tlačidla s ikonou */
+/* Štýl info tlačidla */
 .q-btn {
   background-color: transparent;
   width: 36px;
@@ -112,35 +114,23 @@ const loadCommands = async () => {
   justify-content: center;
 }
 
-/* Štýl menu (transparentné pozadie) */
+/* Transparentné pozadie menu */
 .q-menu {
   background: transparent;
   min-width: 220px;
 }
 
-/* Kontajner s príkazmi */
+/* Kontajner príkazov */
 .info-box-container {
   background: #355070;
   color: white;
   padding: 10px;
+  border-radius: 6px;
 }
 
-/* Každý riadok s príkazom */
+/* Jeden riadok príkazu */
 .info-line {
   padding: 4px 0;
   font-size: 0.95rem;
 }
-
-/* Infobox Header štýl (Commands title) */
-.info-title {
-  font-weight: bold;
-  font-size: 1.05rem;
-  text-transform: uppercase;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.3);
-  margin-bottom: 6px;
-  padding-bottom: 4px;
-  text-align: center;
-  letter-spacing: 0.5px;
-}
-
 </style>

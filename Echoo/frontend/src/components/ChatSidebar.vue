@@ -1,50 +1,48 @@
 <template>
-
-  <!-- SIDEBAR -->
+  <!-- SIDEBAR HLAVNÝ KONTEJNER -->
   <q-drawer
-  :model-value="drawerOpen"
-  @update:model-value="$emit('update:drawerOpen', $event)"
-  show-if-above
-  side="left"
-  bordered
-  bg-color="#355070"
-  class="sidebar"
+    :model-value="drawerOpen"
+    @update:model-value="$emit('update:drawerOpen', $event)"
+    show-if-above
+    side="left"
+    bordered
+    bg-color="#355070"
+    class="sidebar"
   >
-    <!-- CHANNELS & Add Channel -->
+
+    <!-- ZÁHLAVIE: CHANNELS + ADD BUTTON -->
     <div class="sidebar-title-wrapper q-pa-md row items-center justify-between">
       <div class="text-bold sidebar-title">CHANNELS</div>
-      <q-btn flat dense round icon="add" color="white" @click="showAddChannelDialog = true" class="add-channel-btn" size="sm">
-        <!-- Tooltip (zobrazí sa pri prechode myšou) -->
+
+      <q-btn
+        flat dense round icon="add" color="white"
+        @click="showAddChannelDialog = true"
+        class="add-channel-btn" size="sm"
+      >
         <q-tooltip v-if="$q.screen.gt.sm" anchor="top middle" self="bottom middle">
           Add Channel
         </q-tooltip>
       </q-btn>
     </div>
 
-    <!-- SCROLLOVATEĽNÁ OBLASŤ SIDEBARU -->
+    <!-- SCROLLOVATEĽNÁ ČASŤ SIDEBARU -->
     <div class="sidebar-scrollable">
 
+      <!-- POZVÁNKY -->
       <div class="sidebar-divider"></div>
-
-      <!-- SEKCIÁ PRE POZVÁNKY -->
       <div class="q-pa-sm sidebar-subtitle">Invites</div>
 
       <div class="channel-list">
         <div v-for="invite in props.invites" :key="invite.id" class="channel-wrapper">
-          <q-item
-            clickable
-            @click="openInviteDialog(invite)"
-            class="sidebar-item active-invite"
-          >
+          <q-item clickable @click="openInviteDialog(invite)" class="sidebar-item active-invite">
             <q-item-section>{{ invite.channel.name }}</q-item-section>
             <div class="invite-badge"></div>
           </q-item>
         </div>
       </div>
 
+      <!-- PRIVÁTNE KANÁLY -->
       <div class="sidebar-divider"></div>
-
-      <!-- SÚKROMNÉ KANÁLY -->
       <div class="q-pa-sm sidebar-subtitle">Private Channels</div>
 
       <div class="channel-list">
@@ -56,7 +54,7 @@
           >
             <q-item-section>{{ ch.name }}</q-item-section>
             <div>{{ ch.role }}</div>
-        </q-item>
+          </q-item>
 
           <ManageChannelMenu
             v-if="ch.path === props.activeChannelPath && ch.role"
@@ -68,9 +66,8 @@
         </div>
       </div>
 
+      <!-- PUBLIC CHANNELS -->
       <div class="sidebar-divider"></div>
-
-      <!-- VEREJNÉ KANÁLY -->
       <div class="q-pa-sm sidebar-subtitle">Public Channels</div>
 
       <div class="channel-list">
@@ -83,6 +80,7 @@
             <q-item-section>{{ ch.name }}</q-item-section>
             <div>{{ ch.role }}</div>
           </q-item>
+
           <ManageChannelMenu
             v-if="ch.path === props.activeChannelPath && ch.role"
             :channel="{ id: ch.id, name: ch.name, type: ch.type, members: ch.members }"
@@ -93,28 +91,23 @@
         </div>
       </div>
 
-      <!-- PRÁZDNA MEDZERA POD ZOZNAMOM (ABY LOGOUT NEPREKRYL OBSAH) -->
       <div style="height: 80px;"></div>
-
     </div>
 
-    <!-- LOGOUT BUTTON -->
+    <!-- LOGOUT -->
     <div class="logout-wrapper">
       <q-btn
-      flat
-      color="red"
-      icon="logout"
-      label="Log Out"
-      class="logout-btn"
-      @click="$emit('logout')"
+        flat color="red" icon="logout" label="Log Out"
+        class="logout-btn"
+        @click="$emit('logout')"
       />
     </div>
 
-    <!-- DIALÓG NA PRIDANIE NOVÉHO KANÁLU -->
+    <!-- ADD CHANNEL DIALOG -->
     <AddChannelDialog
-    v-model:visible="showAddChannelDialog"
-    :existing-channels="allChannelNames"
-    @create="handleCreateChannel"
+      v-model:visible="showAddChannelDialog"
+      :existing-channels="allChannelNames"
+      @create="handleCreateChannel"
     />
 
     <!-- INVITE DIALOG -->
@@ -137,21 +130,16 @@
     </q-dialog>
 
   </q-drawer>
-
 </template>
-
-
 
 <script lang="ts" setup>
 import { ref, computed } from 'vue'
+import axios from 'axios'
 import ManageChannelMenu from './ManageChannelMenu.vue'
 import AddChannelDialog from './AddChannelDialog.vue'
 import { useQuasar } from 'quasar'
-import axios from 'axios'
 
-const $q = useQuasar()
-
-/* ROZHRANIA PRE DÁTA O KANÁLOCH */
+/* ROZHRANIA DÁT */
 interface Channel {
   id: number
   name: string
@@ -159,7 +147,6 @@ interface Channel {
   role?: 'admin' | 'member'
   type: 'private' | 'public'
   members?: { userId: number; username: string }[]
-  notificationSettings?: string
 }
 
 interface ChannelData {
@@ -172,132 +159,86 @@ interface ChannelData {
 interface Invite {
   id: number
   channel_id: number
-  channel: {
-    id: number
-    name: string
-  }
+  channel: { id: number; name: string }
 }
 
-/* PROPS - ÚDAJE ZO ZVYŠKU APLIKÁCIE */
+/* PROPS */
 const props = defineProps<{
   drawerOpen: boolean
   privateChannels: Channel[]
   publicChannels: Channel[]
   activeChannelPath: string
-  invites: Array<{
-    id: number
-    channel_id: number
-    channel: { id: number, name: string }
-  }>
+  invites: Invite[]
 }>()
 
-/* UDALOSTI, KTORÉ KOMPONENT VYSIELA */
+/* EMIT UDALOSTÍ */
 const emit = defineEmits<{
-  'update:drawerOpen': [value: boolean]
-  'goToChannel': [channel: Channel]
+  'update:drawerOpen': [boolean]
+  'goToChannel': [Channel]
   'logout': []
-  'createChannel': [data: ChannelData]
-  'leftChannel': [channelId: number]
+  'createChannel': [ChannelData]
+  'leftChannel': [number]
   'invite-updated': []
-  'notification-setting-changed': [channelId: number, newSetting: string]
+  'notification-setting-changed': [number, string]
 }>()
 
-/* OVLÁDANIE ZOBRAZENIA DIALÓGU NA PRIDANIE KANÁLU */
+/* OVLÁDANIE STAVOV */
+const $q = useQuasar()
 const showAddChannelDialog = ref(false)
-
-/* ZOZNAM VŠETKÝCH NÁZVOV KANÁLOV (PRE VALIDÁCIU NOVÉHO) */
-const allChannelNames = computed(() => {
-  return [...props.privateChannels, ...props.publicChannels].map(ch => ch.name)
-})
-
-/* LOGIKA PRE POZVÁNKY */
 const inviteDialog = ref(false)
 const selectedInvite = ref<Invite | null>(null)
-//const inviteAccepted = ref(false)
-//const invitedChannel: Channel = { id: 1, name: 'Channel', path: '/chat/invite-channel', type: 'public' }  //AZ ID-T MAJD KI KELL JAVÍTANI
 
-async function acceptInvite() {
-  try {
-    const token = localStorage.getItem('auth_token')
-    await axios.post(
-      `http://localhost:3333/invites/${selectedInvite.value!.id}/accept`,
-      {},
-      { headers: { Authorization: `Bearer ${token}` } }
-    )
+/* ZOZNAM VŠETKÝCH NÁZVOV KANÁLOV */
+const allChannelNames = computed(() => [...props.privateChannels, ...props.publicChannels].map(ch => ch.name))
 
-    inviteDialog.value = false
-
-    // értesítjük a parentet, hogy frissítse a meghívókat
-    emit('invite-updated')
-
-    // navigálás a csatornába
-    emit('goToChannel', {
-      id: selectedInvite.value!.channel.id,
-      name: selectedInvite.value!.channel.name,
-      type: 'private',
-      path: `/chat/${selectedInvite.value!.channel.id}`
-    })
-  } catch (err) {
-    console.error('Invite accept failed', err)
-  }
-}
-
-async function rejectInvite() {
-  try {
-    const token = localStorage.getItem('auth_token')
-    await axios.post(
-      `http://localhost:3333/invites/${selectedInvite.value!.id}/reject`,
-      {},
-      { headers: { Authorization: `Bearer ${token}` } }
-    )
-
-    inviteDialog.value = false
-    emit('invite-updated')
-  } catch (err) {
-    console.error('Invite reject failed', err)
-  }
-}
-
-/* FUNKCIA NA VÝBER KANÁLU */
-function selectChannel(ch: Channel) {
-  emit('goToChannel', ch)
-}
-
-/* FUNKCIA NA VYTVORENIE NOVÉHO KANÁLU */
-function handleCreateChannel(data: ChannelData) {
-  console.log('Creating channel:', data)
-  emit('createChannel', data)
-}
-
-/* FUNKCIA NA OPUSTENIE KANÁLU */
-function handleLeftChannel(channelId: number) {
-  console.log(`[SIDEBAR] Propagating leftChannel event for channel ${channelId}`)
-  emit('leftChannel', channelId)
-}
-
-/* FUNKCIA NA PROPAGOVANIE ZMENY NOTIFIKAČNÝCH NASTAVENÍ */
-function handleNotificationSettingChanged(channelId: number, newSetting: string) {
-  console.log(`[SIDEBAR] Propagating notification setting change: channel ${channelId} -> ${newSetting}`)
-  emit('notification-setting-changed', channelId, newSetting)
-}
-
-/* OTVORENIE DIALÓGU PRI KLIKNUTÍ NA INVITE */
+/* OTVORENIE INVITE DIALÓGU */
 function openInviteDialog(invite: Invite) {
   selectedInvite.value = invite
   inviteDialog.value = true
 }
 
-/* POTVRDENIE POZVÁNKY (JOIN CHANNEL) */
-/*
-function joinChannel() {
-  inviteAccepted.value = true
+/* POTVRDENIE INVITE */
+async function acceptInvite() {
+  const token = localStorage.getItem('auth_token')
+  await axios.post(`http://localhost:3333/invites/${selectedInvite.value!.id}/accept`, {}, { headers: { Authorization: `Bearer ${token}` } })
   inviteDialog.value = false
-  selectChannel(invitedChannel)
+  emit('invite-updated')
+  emit('goToChannel', {
+    id: selectedInvite.value!.channel.id,
+    name: selectedInvite.value!.channel.name,
+    type: 'private',
+    path: `/chat/${selectedInvite.value!.channel.id}`
+  })
 }
-  */
 
+/* ODMITNUTIE INVITE */
+async function rejectInvite() {
+  const token = localStorage.getItem('auth_token')
+  await axios.post(`http://localhost:3333/invites/${selectedInvite.value!.id}/reject`, {}, { headers: { Authorization: `Bearer ${token}` } })
+  inviteDialog.value = false
+  emit('invite-updated')
+}
+
+/* VÝBER KANÁLU */
+function selectChannel(ch: Channel) {
+  emit('goToChannel', ch)
+}
+
+/* VYTVORENIE KANÁLU */
+function handleCreateChannel(data: ChannelData) {
+  emit('createChannel', data)
+}
+
+/* OPUSTENIE KANÁLU */
+function handleLeftChannel(channelId: number) {
+  emit('leftChannel', channelId)
+}
+
+/* ZMENA NOTIFIKÁCIÍ */
+function handleNotificationSettingChanged(channelId: number, newSetting: string) {
+  emit('notification-setting-changed', channelId, newSetting)
+}
 </script>
-
 
 
 <style>
