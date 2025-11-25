@@ -15,6 +15,21 @@ export default class ChannelsController {
         'notificationSettings',
       ])
 
+      // 0️⃣ Név alapján megnézzük, létezik-e már ilyen csatorna
+      const sameNameChannels = await Channel.query().where('name', name)
+
+      if (sameNameChannels.length > 0) {
+        // Név egyezik → ellenőrizzük a típust
+        const sameTypeChannel = sameNameChannels.find((c) => c.type === type)
+
+        if (sameTypeChannel) {
+          return response.badRequest({
+            error: `A '${name}' nevű ${type} csatorna már létezik.`,
+          })
+        }
+        // Ha más típus → ENGEDJÜK
+      }
+
       // 1️⃣ Új csatorna létrehozása
       const channel = await Channel.create({
         name,
@@ -31,23 +46,23 @@ export default class ChannelsController {
         notificationSettings: notificationSettings || 'all',
       })
 
-      // 3️⃣ Invite-ok létrehozása a selected usereknek
+      // 3️⃣ Invite-ok létrehozása
       if (Array.isArray(invitedMembers) && invitedMembers.length > 0) {
         for (const userId of invitedMembers) {
-          // Már tag?
-          const exists = await UserChannel.query()
+          const alreadyMember = await UserChannel.query()
             .where('channelId', channel.id)
             .where('userId', userId)
             .first()
-          if (exists) continue
 
-          // Már pending invite?
-          const pending = await ChannelInvite.query()
+          if (alreadyMember) continue
+
+          const pendingInvite = await ChannelInvite.query()
             .where('channelId', channel.id)
             .where('userId', userId)
             .where('status', 'pending')
             .first()
-          if (pending) continue
+
+          if (pendingInvite) continue
 
           await ChannelInvite.create({
             channelId: channel.id,

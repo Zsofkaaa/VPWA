@@ -230,7 +230,7 @@ function handleChannelLeft(channelId: number) {
 // Aktualizuje notifikačné nastavenia v pamäti po zmene v dialógu
 function handleNotificationSettingChanged(channelId: number, newSetting: string) {
   console.log(`[CHAT LAYOUT] Updating notification setting for channel ${channelId} to: ${newSetting}`)
-  
+
   // Hľadaj v súkromných kanáloch
   const privateChannel = privateChannels.value.find(c => c.id === channelId)
   if (privateChannel) {
@@ -238,7 +238,7 @@ function handleNotificationSettingChanged(channelId: number, newSetting: string)
     console.log(`[CHAT LAYOUT] Updated private channel:`, privateChannel)
     return
   }
-  
+
   // Hľadaj vo verejných kanáloch
   const publicChannel = publicChannels.value.find(c => c.id === channelId)
   if (publicChannel) {
@@ -246,7 +246,7 @@ function handleNotificationSettingChanged(channelId: number, newSetting: string)
     console.log(`[CHAT LAYOUT] Updated public channel:`, publicChannel)
     return
   }
-  
+
   console.warn(`[CHAT LAYOUT] Channel ${channelId} not found in channels list`)
 }
 
@@ -311,17 +311,16 @@ async function handleCreateChannel(data: ChannelData) {
   const formattedName = data.name.replace(/^#/, '')
   const channelPath = `/chat/${data.type}-${data.name.toLowerCase().replace(/\s+/g, '-')}`
 
-  // Kontrola či kanál už existuje
-  const allChannelNames = [...privateChannels.value, ...publicChannels.value].map(ch => ch.name.toLowerCase())
+  // keby chceme aby channelname bol úplne unique (lehet ehhez még kellene valami)
+  /*
+  const allChannelNames = [...privateChannels.value, ...publicChannels.value]
+    .map(ch => ch.name.toLowerCase())
+
   if (allChannelNames.includes(formattedName.toLowerCase())) {
-    $q.notify({
-      type: 'negative',
-      message: `Channel "${formattedName}" already exists!`,
-      position: 'top',
-      timeout: 2000
-    })
+    $q.notify({ type: 'negative', message: `Channel already exists!` })
     return
   }
+  */
 
   try {
     const token = localStorage.getItem('auth_token')
@@ -472,35 +471,33 @@ async function handleCancelCommand() {
 async function handleJoinCommand(parts: string[]) {
   const isPrivate = parts.includes('[private]')
 
-  // kivesszük a parancs nevet + a [private] flaget
-  const nameParts = parts
-    .slice(1)
-    .filter(p => p !== '[private]')
-
+  const nameParts = parts.slice(1).filter(p => p !== '[private]')
   const channelName = nameParts.join(' ')
 
   if (!channelName) {
-    $q.notify({ type: 'negative', message: 'Channel name is required!' })
-    return
+    return $q.notify({ type: 'negative', message: 'Channel name is required!' })
   }
 
   try {
     const token = localStorage.getItem('auth_token')
     if (!token || !currentUserId.value) throw new Error('Not authenticated')
 
-    const channelList = isPrivate ? privateChannels.value : publicChannels.value
-    const existingChannel = channelList.find(
+    // 1️⃣ Lekérdezzük az összes csatornát globálisan
+    const allChannelsRes = await axios.get(`${API_URL}/channels`)
+    const allChannels = allChannelsRes.data as Channel[]
+
+    const existingChannelGlobal = allChannels.find(
       c => c.name.toLowerCase() === channelName.toLowerCase()
     )
 
     let channelId: number
 
-    if (existingChannel) {
-      // ---- CSATLAKOZÁS ----
+    if (existingChannelGlobal) {
+      // 2️⃣ CSATLAKOZÁS LÉTEZŐ CSATORNÁHOZ
       await axios.post(
         `${API_URL}/user_channel`,
         {
-          channelId: existingChannel.id,
+          channelId: existingChannelGlobal.id,
           userId: currentUserId.value,
           role: isPrivate ? 'admin' : 'member',
           notificationSettings: 'all'
@@ -508,17 +505,29 @@ async function handleJoinCommand(parts: string[]) {
         { headers: { Authorization: `Bearer ${token}` } }
       )
 
-      channelId = existingChannel.id
-      currentChannelName.value = existingChannel.name
-      currentChannelId.value = channelId
+      channelId = existingChannelGlobal.id
+
+      const newLocalChannel: UserChannel = {
+        id: channelId,
+        name: existingChannelGlobal.name,
+        path: `/chat/${channelId}`,
+        type: existingChannelGlobal.type,
+        role: isPrivate ? 'admin' : 'member'
+      }
+
+      // 3️⃣ helyi lista frissítése
+      if (existingChannelGlobal.type === 'private')
+        privateChannels.value.push(newLocalChannel)
+      else
+        publicChannels.value.push(newLocalChannel)
 
       $q.notify({
         type: 'positive',
-        message: `Joined channel "${existingChannel.name}"`
+        message: `Joined channel "${channelName}"`
       })
 
     } else {
-      // ---- LÉTREHOZÁS ----
+      // 4️⃣ LÉTREHOZÁS
       const res = await axios.post<ChannelResponse>(
         `${API_URL}/channels`,
         {
@@ -554,14 +563,14 @@ async function handleJoinCommand(parts: string[]) {
       if (isPrivate) privateChannels.value.push(newChannel)
       else publicChannels.value.push(newChannel)
 
-      currentChannelName.value = newChannel.name
-      currentChannelId.value = newChannel.id
-
       $q.notify({
         type: 'positive',
         message: `Channel "${channelName}" created!`
       })
     }
+
+    currentChannelName.value = channelName
+    currentChannelId.value = channelId
 
     void router.push(`/chat/${channelId}`)
 
@@ -894,12 +903,12 @@ function handleIncomingMessage(msg: Message) {
   // Nájdi kanál v pamäti
   const channel = [...privateChannels.value, ...publicChannels.value]
     .find(ch => ch.id === msg.channelId)
-   
+
   if (!channel) return
 
   // Použij notifikačné nastavenia z pamäte
   const notifSettings = channel.notificationSettings || 'all'
-    
+
   // Rozhoduj či zobraziť notifikáciu podľa nastavení
   let shouldNotify = false
 
@@ -911,7 +920,7 @@ function handleIncomingMessage(msg: Message) {
   }
 
   // Zobraz notifikáciu ak je to potrebné
-  if (shouldNotify) {      
+  if (shouldNotify) {
     notificationSender.value = `${msg.user} (#${channel.name})`
     notificationMessage.value = msg.text
     showNotification.value = true
@@ -982,7 +991,7 @@ watch(
 // Pri načítaní komponentu nastav všetko potrebné
 onMounted(async () => {
   console.log('[CHAT LAYOUT] Mounting component...')
-  
+
   // Načítaj ID používateľa z localStorage
   const savedUser = localStorage.getItem("user")
   if (savedUser) {
@@ -1045,7 +1054,7 @@ onBeforeUnmount(() => {
       socket.emit('leave', `channel_${currentChannelId.value}`)
     }
   }
-  
+
   // Odstráň visibility listener
   document.removeEventListener('visibilitychange', handleVisibilityChange)
 })
