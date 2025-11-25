@@ -1,6 +1,7 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import UserChannel from '#models/user_channel'
 import KickLog from '#models/kick_log'
+import ChannelBan from '#models/channel_ban'
 
 export default class UserChannelController {
   // Pridanie používateľa do kanála
@@ -8,6 +9,16 @@ export default class UserChannelController {
     const data = request.only(['userId', 'channelId', 'role', 'notificationSettings'])
     const user = auth.user
     if (!user) return { error: 'Unauthorized' }
+
+    const { userId, channelId } = data
+
+    // ❌ Ellenőrzés: bannolt-e a user?
+    const banned = await ChannelBan.query()
+      .where('channelId', channelId)
+      .andWhere('userId', userId)
+      .first()
+
+    if (banned) return { error: 'You are banned from this channel' }
 
     const userChannel = await UserChannel.create({ ...data })
     return userChannel
@@ -111,9 +122,10 @@ export default class UserChannelController {
   }
 
   // Ban používateľa z kanála
-  public async ban({ params, response }: HttpContext) {
+  public async ban({ params, auth, response }: HttpContext) {
     const channelId = Number(params.id)
     const userId = Number(params.userId)
+    const adminUser = auth.user as { id: number }
 
     const record = await UserChannel.query()
       .where('channelId', channelId)
@@ -122,7 +134,16 @@ export default class UserChannelController {
 
     if (!record) return response.notFound({ error: 'User is not in this channel' })
 
+    // 1) Töröljük a csatornatagságot
     await record.delete()
+
+    // 2) Mentjük a ban-t
+    await ChannelBan.create({
+      userId,
+      channelId,
+      bannedBy: adminUser.id,
+    })
+
     return response.ok({ message: 'User banned successfully' })
   }
 
@@ -174,7 +195,16 @@ export default class UserChannelController {
 
     // Po troch rôznych kickoch sa používateľ zabanne
     if (kicks.length >= 3) {
+      // 1) Töröljük a user_channel rekordot (a user már nem tag)
       await targetRecord.delete()
+
+      // 2) Létrehozunk egy ChannelBan rekordot
+      await ChannelBan.create({
+        userId: targetUserId,
+        channelId,
+        bannedBy: kickerUser.id, // admin/kickelő ID
+      })
+
       return response.ok({ message: 'User has been banned after 3 different users kicked them' })
     }
 
