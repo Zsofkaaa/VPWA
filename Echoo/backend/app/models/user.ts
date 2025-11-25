@@ -6,7 +6,7 @@ import UserMessageCommand from './user_message_command.js'
 import MessageMention from './message_mention.js'
 import UserChannel from './user_channel.js'
 import { DateTime } from 'luxon'
-import AccessToken from './access_token.js' // EZ LEHET NEM KELL MAJD!!!
+import AccessToken from './access_token.js'
 import hash from '@adonisjs/core/services/hash'
 import { DbAccessTokensProvider } from '@adonisjs/auth/access_tokens'
 

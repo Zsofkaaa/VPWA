@@ -2,18 +2,17 @@ import type { HttpContext } from '@adonisjs/core/http'
 import User from '#models/user'
 
 export default class UsersController {
+  // Získanie zoznamu používateľov s ID a prezývkou
   public async index({ response }: HttpContext) {
-    // VISSZAADJUK A VALÓS MEZŐKET
     const users = await User.query().select('id', 'nickName')
     return response.ok(users)
   }
 
+  // Získanie údajov o aktuálne prihlásenom používateľovi
   public async me({ auth, response }: HttpContext) {
     const user = auth.user as User | null
-
     if (!user) return response.unauthorized()
 
-    // ITT CSAK AZ ID ES A NICKNAME
     return response.ok({
       id: user.id,
       firstName: user.firstName,
@@ -23,16 +22,14 @@ export default class UsersController {
     })
   }
 
+  // Aktualizácia profilu používateľa
   public async update({ auth, request, response }: HttpContext) {
-    // castoljuk auth.user mint unknown -> User, így TS nem panaszkodik
     const user = auth.user as unknown as User | null
     if (!user) return response.unauthorized()
 
-    // Korlátozott, egyszerű típusellenőrzés: request.only visszaadása runtime objektum,
-    // így castoljuk 'any'-ra, majd ellenőrizzük a mezőket, mielőtt hozzárendelnénk.
     const payload = request.only(['firstName', 'lastName', 'nickName', 'email', 'password']) as any
 
-    // Csak akkor írjuk át, ha a beérkező érték string
+    // Len ak existujú a sú string, aktualizujeme polia
     if (typeof payload.firstName === 'string') {
       user.firstName = payload.firstName
     }
@@ -46,7 +43,7 @@ export default class UsersController {
       user.email = payload.email
     }
     if (typeof payload.password === 'string' && payload.password.length > 0) {
-      // a modell beforeSave() hook-ja hash-eli majd a jelszót
+      // beforeSave hook sa postará o hashovanie hesla
       user.password = payload.password
     }
 

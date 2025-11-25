@@ -3,7 +3,7 @@ import UserChannel from '#models/user_channel'
 import KickLog from '#models/kick_log'
 
 export default class UserChannelController {
-  // Prida používateľa do kanála
+  // Pridanie používateľa do kanála
   public async store({ request, auth }: { request: any; auth: any }) {
     const data = request.only(['userId', 'channelId', 'role', 'notificationSettings'])
     const user = auth.user
@@ -13,7 +13,7 @@ export default class UserChannelController {
     return userChannel
   }
 
-  // Získaj členov kanála
+  // Získanie členov kanála
   public async members({ params, response }: HttpContext) {
     const channelId = Number(params.id)
     const userChannels = await UserChannel.query().where('channelId', channelId).preload('user')
@@ -86,14 +86,14 @@ export default class UserChannelController {
     return response.ok({ message: 'Left the channel' })
   }
 
-  // Získanie kanálov používateľa
+  // Získanie všetkých kanálov používateľa
   public async getUserChannels({ auth, response }: HttpContext) {
     const user = auth.user as { id: number }
     if (!user) return response.unauthorized({ error: 'Unauthorized' })
 
     const userChannels = await UserChannel.query().where('userId', user.id).preload('channel')
-    const channelsMap = new Map<number, any>()
 
+    const channelsMap = new Map<number, any>()
     userChannels.forEach((uc) => {
       if (uc.channel && !channelsMap.has(uc.channel.id)) {
         channelsMap.set(uc.channel.id, {
@@ -149,8 +149,10 @@ export default class UserChannelController {
       .first()
 
     if (!kickerRecord) return response.unauthorized({ error: 'You are not in this channel' })
+
     const isAdmin = kickerRecord.role === 'admin'
 
+    // Ak admin, ban permanentne
     if (isAdmin) {
       await targetRecord.delete()
       return response.ok({ message: 'User permanently banned' })
@@ -170,6 +172,7 @@ export default class UserChannelController {
       .where('channelId', channelId)
       .andWhere('targetUserId', targetUserId)
 
+    // Po troch rôznych kickoch sa používateľ zabanne
     if (kicks.length >= 3) {
       await targetRecord.delete()
       return response.ok({ message: 'User has been banned after 3 different users kicked them' })

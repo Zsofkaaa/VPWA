@@ -6,6 +6,7 @@ import User from '#models/user'
 import ChannelInvite from '#models/channel_invite'
 
 export default class ChannelsController {
+  // Vytvorenie novej channel
   public async store({ auth, request, response }: any) {
     try {
       const { name, type, invitedMembers, notificationSettings } = request.only([
@@ -15,7 +16,7 @@ export default class ChannelsController {
         'notificationSettings',
       ])
 
-      // 1️⃣ Új csatorna létrehozása
+      // Vytvorenie kanála
       const channel = await Channel.create({
         name,
         type,
@@ -23,7 +24,7 @@ export default class ChannelsController {
         lastActiveAt: DateTime.now(),
       })
 
-      // 2️⃣ Creator felvétele tagként
+      // Pridanie tvorcu ako admina
       await UserChannel.create({
         channelId: channel.id,
         userId: auth.user.id,
@@ -31,17 +32,15 @@ export default class ChannelsController {
         notificationSettings: notificationSettings || 'all',
       })
 
-      // 3️⃣ Invite-ok létrehozása a selected usereknek
+      // Vytvorenie pozvánok pre ostatných používateľov
       if (Array.isArray(invitedMembers) && invitedMembers.length > 0) {
         for (const userId of invitedMembers) {
-          // Már tag?
           const exists = await UserChannel.query()
             .where('channelId', channel.id)
             .where('userId', userId)
             .first()
           if (exists) continue
 
-          // Már pending invite?
           const pending = await ChannelInvite.query()
             .where('channelId', channel.id)
             .where('userId', userId)
@@ -60,22 +59,23 @@ export default class ChannelsController {
 
       return response.ok(channel)
     } catch (err) {
-      console.error(err)
+      console.error('[ChannelsController] Error creating channel:', err)
       return response.badRequest({ error: 'Failed to create channel' })
     }
   }
 
+  // Zrušenie kanála
   public async destroy({ auth, params, response }: HttpContext) {
     const user = auth.user as User
-    const channelId = params.id
+    const channelId = Number(params.id)
 
-    // 1. Csatorna lekérése
+    // Získanie kanála
     const channel = await Channel.find(channelId)
     if (!channel) {
       return response.notFound({ message: 'Channel not found' })
     }
 
-    // 2. Jogosultság ellenőrzés (csak admin)
+    // Overenie, či je používateľ admin
     const userChannel = await UserChannel.query()
       .where('channel_id', channelId)
       .andWhere('user_id', user.id)
@@ -85,12 +85,12 @@ export default class ChannelsController {
       return response.unauthorized({ message: 'Only admins can terminate channel' })
     }
 
-    // 3. Minden user_channel törlése
+    // Odstránenie všetkých user_channel záznamov
     await UserChannel.query().where('channel_id', channelId).delete()
 
-    // 4. A channel törlése
+    // Odstránenie kanála
     await channel.delete()
 
-    return { message: 'Channel terminated successfully' }
+    return response.ok({ message: 'Channel terminated successfully' })
   }
 }

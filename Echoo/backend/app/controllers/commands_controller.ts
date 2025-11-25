@@ -1,12 +1,8 @@
-// app/controllers/commands_controller.ts
 import type { HttpContext } from '@adonisjs/core/http'
 import Command from '#models/command'
 
 export default class CommandsController {
-  /**
-   * GET /api/commands
-   * Visszaadja az összes parancsot
-   */
+  // Vráti všetky dostupné príkazy
   async index({ response }: HttpContext) {
     try {
       const commands = await Command.query()
