@@ -1094,63 +1094,6 @@ watch(
   { immediate: true }
 )
 
-// Pri načítaní komponentu nastav všetko potrebné
-onMounted(async () => {
-  console.log('[CHAT LAYOUT] Mounting component...')
-
-  // Načítaj ID používateľa z localStorage
-  const savedUser = localStorage.getItem("user")
-  if (savedUser) {
-    const user = JSON.parse(savedUser)
-    currentUserId.value = user.id
-  }
-
-  // Načítaj všetky kanály používateľa z backendu
-  try {
-    const token = localStorage.getItem('auth_token')
-    const userId = currentUserId.value
-    if (!token || !userId) return
-
-    const res = await axios.get<UserChannel[]>(
-      'http://localhost:3333/user/channels',
-      { headers: { Authorization: `Bearer ${token}` } }
-    )
-
-    // Pridaj cestu a predvolené notifikačné nastavenia
-    userChannels.value = res.data.map(ch => ({
-      ...ch,
-      path: `/chat/${ch.id}`,
-      notificationSettings: ch.notificationSettings ?? 'all'
-    }))
-
-    // Rozdeľ kanály na súkromné a verejné
-    privateChannels.value = userChannels.value.filter(ch => ch.type === 'private')
-    publicChannels.value = userChannels.value.filter(ch => ch.type === 'public')
-
-    // Ak používateľ je už na nejakej chat stránke, nastav aktívny kanál
-    const found = userChannels.value.find(ch => ch.path === route.path)
-    if (found) {
-      currentChannelId.value = found.id
-      currentChannelName.value = found.name
-      activeChannelPath.value = found.path
-    }
-
-  } catch (err) {
-    console.error('Failed to load user channels', err)
-  }
-
-  // Počúvaj zmeny viditeľnosti aplikácie (tab hidden/visible)
-  document.addEventListener('visibilitychange', handleVisibilityChange)
-
-  // Pripoj sa k socket roomke pre aktuálny kanál
-  if (currentChannelId.value) {
-    socket.emit('join', `channel_${currentChannelId.value}`)
-  }
-
-  // Počúvaj nové správy zo socketu
-  socket.on('newMessage', handleIncomingMessage)
-})
-
 // Vyčisti listenery pri odstránení komponentu (zabráni duplicitným notifikáciám)
 onBeforeUnmount(() => {
   // Odstráň socket listenery
