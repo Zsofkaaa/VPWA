@@ -137,16 +137,18 @@ import { ref, computed, onMounted } from 'vue'
 import { useQuasar } from 'quasar'
 import axios from 'axios'
 
+// Quasar notifikácie
 const $q = useQuasar()
+
+// API URL a token
 const API_URL = 'http://localhost:3333'
 const token = localStorage.getItem('auth_token')
 
-// Stav dialógu
+// Stav dialógu a zobrazenia hesla
 const showDialog = ref(false)
 const showPassword = ref(false)
 
-// Formulárové polia
-// "ref" robí premeny reaktívne — zmena hodnoty automaticky aktualizuje UI
+// Reaktívne polia formulára
 const firstName = ref('')
 const lastName = ref('')
 const nickname = ref('')
@@ -157,11 +159,11 @@ const confirmPassword = ref('')
 // Overenie platnosti formulára
 const isFormValid = computed(() => {
   const emailValid = email.value.length > 3
-  const passwordValid = !password.value || (password.value === confirmPassword.value && password.value.length >= 6)
-  return emailValid && passwordValid
+  const passValid = !password.value || (password.value === confirmPassword.value && password.value.length >= 8)
+  return emailValid && passValid
 })
 
-// Zatvorenie dialógu a resetovanie heslových polí
+// Zatvorenie dialógu a reset hesiel
 function closeDialog() {
   showDialog.value = false
   password.value = ''
@@ -169,7 +171,7 @@ function closeDialog() {
   showPassword.value = false
 }
 
-// Type for user data
+// Typ používateľa
 interface UserData {
   firstName: string
   lastName: string
@@ -177,51 +179,32 @@ interface UserData {
   email: string
 }
 
-// Uloženie zmien
-// Save
+// Uloženie zmien profilu
 async function saveSettings() {
   if (!isFormValid.value) return
-
   const payload: Partial<UserData> & { password?: string } = {
     firstName: firstName.value,
     lastName: lastName.value,
     nickName: nickname.value,
-    email: email.value,
+    email: email.value
   }
-
-  if (password.value) {
-    payload.password = password.value
-  }
+  if (password.value) payload.password = password.value
 
   try {
-    await axios.put(`${API_URL}/user/update`, payload, {
-      headers: { Authorization: `Bearer ${token}` }
-    })
-
-    $q.notify({
-      type: 'positive',
-      message: 'Profile updated successfully!'
-    })
-
+    await axios.put(`${API_URL}/user/update`, payload, { headers: { Authorization: `Bearer ${token}` } })
+    $q.notify({ type: 'positive', message: 'Profile updated successfully!' })
     closeDialog()
   } catch (err) {
     console.error(err)
-    $q.notify({
-      type: 'negative',
-      message: 'Failed to save profile settings.'
-    })
+    $q.notify({ type: 'negative', message: 'Failed to save profile settings.' })
   }
 }
 
-// Load current user
+// Načítanie údajov používateľa
 async function loadUserData() {
   try {
-    const res = await axios.get<UserData>(`${API_URL}/me`, {
-      headers: { Authorization: `Bearer ${token}` }
-    })
-
+    const res = await axios.get<UserData>(`${API_URL}/me`, { headers: { Authorization: `Bearer ${token}` } })
     const user = res.data
-
     firstName.value = user.firstName
     lastName.value = user.lastName
     nickname.value = user.nickName
@@ -231,9 +214,8 @@ async function loadUserData() {
   }
 }
 
-// Fix floating promise by using void
+// Lifecycle hook
 onMounted(() => { void loadUserData() })
-
 </script>
 
 
