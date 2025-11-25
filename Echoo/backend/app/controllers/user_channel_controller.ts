@@ -3,24 +3,20 @@ import UserChannel from '#models/user_channel'
 import KickLog from '#models/kick_log'
 
 export default class UserChannelController {
+  // Prida používateľa do kanála
   public async store({ request, auth }: { request: any; auth: any }) {
     const data = request.only(['userId', 'channelId', 'role', 'notificationSettings'])
-
     const user = auth.user
     if (!user) return { error: 'Unauthorized' }
 
-    const userChannel = await UserChannel.create({
-      ...data,
-    })
-
+    const userChannel = await UserChannel.create({ ...data })
     return userChannel
   }
 
+  // Získaj členov kanála
   public async members({ params, response }: HttpContext) {
     const channelId = Number(params.id)
     const userChannels = await UserChannel.query().where('channelId', channelId).preload('user')
-
-    console.log('UserChannels:', JSON.stringify(userChannels, null, 2))
 
     const members = userChannels.map((uc) => ({
       id: uc.user?.id ?? 0,
@@ -31,7 +27,7 @@ export default class UserChannelController {
     return response.ok(members)
   }
 
-  // NOVÝ: Získanie notifikačných nastavení pre používateľa v kanáli
+  // Získanie notifikačných nastavení používateľa
   public async getNotificationSettings({ params, response }: HttpContext) {
     const userId = Number(params.userId)
     const channelId = Number(params.channelId)
@@ -41,16 +37,14 @@ export default class UserChannelController {
       .andWhere('channelId', channelId)
       .first()
 
-    if (!userChannel) {
-      return response.notFound({ error: 'User is not a member of this channel' })
-    }
+    if (!userChannel) return response.notFound({ error: 'User is not a member of this channel' })
 
     return response.ok({
       notificationSettings: userChannel.notificationSettings || 'all',
     })
   }
 
-  // NOVÝ: Aktualizácia notifikačných nastavení
+  // Aktualizácia notifikačných nastavení
   public async updateNotificationSettings({ params, request, response }: HttpContext) {
     const userId = Number(params.userId)
     const channelId = Number(params.channelId)
@@ -61,11 +55,7 @@ export default class UserChannelController {
       .andWhere('channelId', channelId)
       .first()
 
-    if (!userChannel) {
-      return response.notFound({ error: 'User is not a member of this channel' })
-    }
-
-    // Validácia
+    if (!userChannel) return response.notFound({ error: 'User is not a member of this channel' })
     if (!['all', 'mentions', 'none'].includes(notificationSettings)) {
       return response.badRequest({ error: 'Invalid notification setting' })
     }
@@ -79,34 +69,29 @@ export default class UserChannelController {
     })
   }
 
+  // Odchod používateľa z kanála
   public async leave({ params, auth, response }: HttpContext) {
     const user = auth.user
     if (!user) return response.unauthorized({ error: 'Unauthorized' })
 
     const channelId = Number(params.id)
-
-    const userModel = auth.user as unknown as { id: number }
-
     const record = await UserChannel.query()
-      .where('userId', userModel.id)
+      .where('userId', (user as { id: number }).id)
       .andWhere('channelId', channelId)
       .first()
 
-    if (!record) {
-      return response.notFound({ error: 'You are not a member of this channel' })
-    }
+    if (!record) return response.notFound({ error: 'You are not a member of this channel' })
 
     await record.delete()
-
     return response.ok({ message: 'Left the channel' })
   }
 
+  // Získanie kanálov používateľa
   public async getUserChannels({ auth, response }: HttpContext) {
     const user = auth.user as { id: number }
     if (!user) return response.unauthorized({ error: 'Unauthorized' })
 
     const userChannels = await UserChannel.query().where('userId', user.id).preload('channel')
-
     const channelsMap = new Map<number, any>()
 
     userChannels.forEach((uc) => {
@@ -125,6 +110,7 @@ export default class UserChannelController {
     return response.ok(Array.from(channelsMap.values()))
   }
 
+  // Ban používateľa z kanála
   public async ban({ params, response }: HttpContext) {
     const channelId = Number(params.id)
     const userId = Number(params.userId)
@@ -134,39 +120,40 @@ export default class UserChannelController {
       .andWhere('userId', userId)
       .first()
 
-    if (!record) {
-      return response.notFound({ error: 'User is not in this channel' })
-    }
+    if (!record) return response.notFound({ error: 'User is not in this channel' })
 
     await record.delete()
-
     return response.ok({ message: 'User banned successfully' })
   }
 
+  // Kick používateľa z kanála
   public async kick({ params, auth, response }: HttpContext) {
     const channelId = Number(params.id)
     const targetUserId = Number(params.userId)
     const kickerUser = auth.user as { id: number }
 
-    const record = await UserChannel.query()
+    const targetRecord = await UserChannel.query()
       .where('channelId', channelId)
       .andWhere('userId', targetUserId)
       .first()
 
-    if (!record) {
-      return response.notFound({ error: 'User is not in this channel' })
-    }
+    if (!targetRecord) return response.notFound({ error: 'User is not in this channel' })
+    if (targetRecord.role === 'admin')
+      return response.unauthorized({ error: 'You cannot kick the channel admin' })
+    if (targetUserId === kickerUser.id)
+      return response.badRequest({ error: 'You cannot kick yourself' })
 
-    if (record.role === 'admin') {
-      return response.unauthorized({
-        error: 'You cannot kick the channel admin',
-      })
-    }
+    const kickerRecord = await UserChannel.query()
+      .where('channelId', channelId)
+      .andWhere('userId', kickerUser.id)
+      .first()
 
-    if (targetUserId === kickerUser.id) {
-      return response.badRequest({
-        error: 'You cannot kick yourself',
-      })
+    if (!kickerRecord) return response.unauthorized({ error: 'You are not in this channel' })
+    const isAdmin = kickerRecord.role === 'admin'
+
+    if (isAdmin) {
+      await targetRecord.delete()
+      return response.ok({ message: 'User permanently banned' })
     }
 
     const alreadyKicked = await KickLog.query()
@@ -175,31 +162,19 @@ export default class UserChannelController {
       .andWhere('kickerUserId', kickerUser.id)
       .first()
 
-    if (alreadyKicked) {
-      return response.badRequest({ error: 'You already kicked this user' })
-    }
+    if (alreadyKicked) return response.badRequest({ error: 'You already kicked this user' })
 
-    await KickLog.create({
-      channelId,
-      targetUserId,
-      kickerUserId: kickerUser.id,
-    })
+    await KickLog.create({ channelId, targetUserId, kickerUserId: kickerUser.id })
 
     const kicks = await KickLog.query()
       .where('channelId', channelId)
       .andWhere('targetUserId', targetUserId)
 
-    const uniqueKickCount = kicks.length
-
-    if (uniqueKickCount >= 3) {
-      await record.delete()
-      return response.ok({
-        message: 'User has been banned after 3 different users kicked them',
-      })
+    if (kicks.length >= 3) {
+      await targetRecord.delete()
+      return response.ok({ message: 'User has been banned after 3 different users kicked them' })
     }
 
-    return response.ok({
-      message: `User kicked successfully (${uniqueKickCount}/3)`,
-    })
+    return response.ok({ message: `User kicked successfully (${kicks.length}/3)` })
   }
 }
