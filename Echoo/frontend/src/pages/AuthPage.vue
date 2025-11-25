@@ -1,32 +1,34 @@
 <template>
-  <!-- Hlavná stránka autentifikácie -->
+  <!-- HLAVNÁ STRÁNKA AUTENTIFIKÁCIE -->
   <q-page class="auth-wrapper">
-    <!-- Ľavý pruh (vizuálny efekt) -->
+
+    <!-- ĽAVÝ FAREBNÝ PRUH PRE VIZUÁLNY EFEKT -->
     <div class="left-strip"></div>
 
-    <!-- Karta s prihlasovacím / registračným formulárom -->
+    <!-- KARTA S LOGIN/REGISTER FORMULÁROM -->
     <q-card class="auth-card">
       <h1 class="hero">{{ mode === 'login' ? 'WELCOME!' : 'REGISTRATION' }}</h1>
       <p class="lead">{{ mode === 'login' ? 'LOGIN HERE' : 'Create your account' }}</p>
 
-      <!-- Chybová správa -->
+      <!-- CHYBOVÁ SPRÁVA PRI AUTENTIFIKÁCII -->
       <q-banner v-if="authError" class="error-banner">
         {{ authError }}
       </q-banner>
 
-      <!-- Formulár, zabraňuje default submit -->
+      <!-- HLAVNÝ FORMULÁR (BLOCKUJE DEFAULT SUBMIT) -->
       <q-form @submit.prevent="onSubmit">
 
-        <!-- PRIHLÁSENIE -->
+        <!-- LOGIN FORMULÁR -->
         <div v-if="mode === 'login'" class="form-column">
           <q-input dense filled v-model="login.email" placeholder="Email" class="pill-input" :disabled="authLoading" />
           <q-input dense filled v-model="login.password" placeholder="Password" type="password" class="pill-input" :disabled="authLoading" />
+          
           <div class="row actions-row">
             <q-btn unelevated class="action-btn" label="Login" @click.prevent="onLogin" :loading="authLoading" :disabled="authLoading" />
           </div>
         </div>
 
-        <!-- REGISTRÁCIA -->
+        <!-- REGISTRAČNÝ FORMULÁR -->
         <div v-else class="form-grid">
           <q-input dense filled v-model="reg.firstName" placeholder="First name" class="pill-input" :disabled="authLoading" />
           <q-input dense filled v-model="reg.lastName" placeholder="Last name" class="pill-input" :disabled="authLoading" />
@@ -34,140 +36,136 @@
           <q-input dense filled v-model="reg.email" placeholder="Email" class="pill-input" :disabled="authLoading" />
           <q-input dense filled v-model="reg.password" placeholder="Password" type="password" class="pill-input" :disabled="authLoading" />
           <q-input dense filled v-model="reg.password2" placeholder="Password again" type="password" class="pill-input" :disabled="authLoading" />
+
           <div class="row actions-row">
             <q-btn unelevated class="action-btn" label="Register now!" @click.prevent="onRegister" :loading="authLoading" :disabled="authLoading" />
           </div>
         </div>
+
       </q-form>
 
-      <!-- Odkaz pre prepínanie medzi login a register -->
+      <!-- PREPÍNACÍ ODKAZ MEDZI LOGIN A REGISTER -->
       <div class="switch-link">
         <a @click.prevent="toggleMode">
           {{ mode === 'login' ? "DON'T HAVE AN ACCOUNT? CREATE YOUR ACCOUNT HERE" : 'ALREADY HAVE AN ACCOUNT? LOGIN HERE' }}
         </a>
       </div>
+
     </q-card>
   </q-page>
 </template>
 
 
-
 <script setup lang="ts">
-import { ref } from 'vue';
-import { useRouter } from 'vue-router';
-import { useAuth } from '../composables/useAuth';
-import { Notify, useQuasar } from 'quasar';
-const router = useRouter();
-const $q = useQuasar();
-const { login: authLogin, register: authRegister, loading: authLoading, error: authError } = useAuth();
+import { ref } from 'vue'
+import { useRouter } from 'vue-router'
+import { useAuth } from '../composables/useAuth'
+import { Notify, useQuasar } from 'quasar'
 
-const mode = ref<'login' | 'register'>('login');
+// router na presmerovanie po prihlásení
+const router = useRouter()
 
-const login = ref({ email: '', password: '' });
-const reg = ref({ 
-  firstName: '', 
-  lastName: '', 
-  nickname: '', 
-  email: '', 
-  password: '', 
-  password2: '' 
-});
+// quasar notifikácie
+const $q = useQuasar()
 
+// autentifikačné metódy
+const { login: authLogin, register: authRegister, loading: authLoading, error: authError } = useAuth()
+
+// režim stránky (login/register)
+const mode = ref<'login' | 'register'>('login')
+
+// hodnoty login formulára
+const login = ref({ email: '', password: '' })
+
+// hodnoty registračného formulára
+const reg = ref({
+  firstName: '',
+  lastName: '',
+  nickname: '',
+  email: '',
+  password: '',
+  password2: ''
+})
+
+// prepína režim login/register
 function toggleMode() {
-  mode.value = mode.value === 'login' ? 'register' : 'login';
-  authError.value = null; // Vyčistenie chybovej správy
+  mode.value = mode.value === 'login' ? 'register' : 'login'
+  authError.value = null
 }
 
+// validácia login formulára
 function validateLogin() {
   if (!login.value.email || !login.value.password) {
-    $q.notify({
-      type: 'negative',
-      message: 'Please fill email and password'
-    });
-    return false;
+    $q.notify({ type: 'negative', message: 'Please fill email and password' })
+    return false
   }
-  return true;
+  return true
 }
 
+// validuje formát emailu
 function validateEmail(email: string): boolean {
-  const emailRegex = /^[^\s@]{3,}@[^\s@]{3,}\.[^\s@]{2,}$/;
-  return emailRegex.test(email);
+  return /^[^\s@]{3,}@[^\s@]{3,}\.[^\s@]{2,}$/.test(email)
 }
 
+// validácia registračného formulára
 function validateRegister() {
-  if (!reg.value.firstName || !reg.value.lastName || !reg.value.nickname || 
+  if (!reg.value.firstName || !reg.value.lastName || !reg.value.nickname ||
       !reg.value.email || !reg.value.password) {
-    $q.notify({
-      type: 'negative',
-      message: 'Please fill all required fields'
-    });
-    return false;
+    $q.notify({ type: 'negative', message: 'Please fill all required fields' })
+    return false
   }
 
   if (!validateEmail(reg.value.email)) {
-    $q.notify({
-      type: 'negative',
-      message: 'Invalid email format'
-    });
-    return false;
+    $q.notify({ type: 'negative', message: 'Invalid email format' })
+    return false
   }
 
   if (reg.value.password.length < 8) {
-    $q.notify({
-      type: 'negative',
-      message: 'Password must be at least 8 characters long'
-    });
-    return false;
+    $q.notify({ type: 'negative', message: 'Password must be at least 8 characters long' })
+    return false
   }
 
   if (reg.value.password !== reg.value.password2) {
-    $q.notify({
-      type: 'negative',
-      message: "Passwords don't match"
-    });
-    return false;
+    $q.notify({ type: 'negative', message: 'Passwords don\'t match' })
+    return false
   }
-  return true;
+
+  return true
 }
 
+// spracovanie loginu
 async function onLogin() {
-  if (!validateLogin()) return;
-  
-  const success = await authLogin(login.value);
-  
+  if (!validateLogin()) return
+
+  const success = await authLogin(login.value)
+
   if (success) {
-    Notify.create({
-      type: 'positive',
-      message: 'Login successful!'
-    });
-    await router.push('/chat');
+    Notify.create({ type: 'positive', message: 'Login successful!' })
+    await router.push('/chat')
   }
-  // NE mutass error notification-t, mert már a banner mutatja
 }
 
+// spracovanie registrácie
 async function onRegister() {
-  if (!validateRegister()) return;
-  
+  if (!validateRegister()) return
+
   const registerData = {
     firstName: reg.value.firstName,
     lastName: reg.value.lastName,
     nickname: reg.value.nickname,
     email: reg.value.email,
     password: reg.value.password
-  };
-  
-  const success = await authRegister(registerData);
-  
+  }
+
+  const success = await authRegister(registerData)
+
   if (success) {
-    Notify.create({
-      type: 'positive',
-      message: 'Registration successful! Please log in.'
-    });
+    Notify.create({ type: 'positive', message: 'Registrácia úspešná, teraz sa prihlás' })
 
-    // 🌟 Visszaállunk login módra
-    mode.value = 'login';
+    // prepnutie späť na login
+    mode.value = 'login'
 
-    // 🌟 Töröljük a mezőket
+    // vyčistenie polí
     reg.value = {
       firstName: '',
       lastName: '',
@@ -175,14 +173,14 @@ async function onRegister() {
       email: '',
       password: '',
       password2: ''
-    };
+    }
 
-    // esetleg: email beírva maradhat automatikusan
-    login.value.email = registerData.email;
+    // predvyplní email po registrácii
+    login.value.email = registerData.email
   }
 }
 
-
+// odoslanie hlavného formulára
 async function onSubmit() {
   if (mode.value === 'login') {
     await onLogin();
@@ -195,10 +193,8 @@ async function onSubmit() {
 
 
 <style scoped>
-@import url('https://fonts.googleapis.com/css2?family=Alfa+Slab+One&family=Montserrat:wght@400;700&display=swap');
-
+/* HLAVNÝ WRAPPER STRÁNKY AUTENTIFIKÁCIE */
 .auth-wrapper {
-  /* Hlavný wrapper stránky autentifikácie */
   position: relative;
   display: flex;
   align-items: center;
@@ -209,7 +205,7 @@ async function onSubmit() {
   background: #e6eaee;
 }
 
-/* Ľavý farebný pruh */
+/* ĽAVÝ FAREBNÝ PRUH */
 .left-strip {
   position: absolute;
   top: 0;
@@ -220,7 +216,7 @@ async function onSubmit() {
   z-index: 1;
 }
 
-/* Karta formulára */
+/* HLAVNÁ KARTA FORMULÁRA */
 .auth-card {
   width: 820px;
   max-width: 92%;
@@ -229,28 +225,28 @@ async function onSubmit() {
   background: #36506a;
   color: #ffffff;
   box-shadow: 8px 10px 20px rgba(0,0,0,0.35);
-  z-index: 2; /* above left-strip */
-  font-size: 1rem; /* sets base for child scaling if needed */
+  z-index: 2;
+  font-size: 1rem;
 }
 
-/* Nadpis */
+/* HLAVNÝ NADPIS */
 .hero {
   font-family: 'Alfa Slab One', serif;
-  font-size: min(9vw, 72px); /* max 72px, scales down smoothly */
+  font-size: min(9vw, 72px);
   line-height: 1.1;
   text-align: center;
   letter-spacing: 1px;
   margin: 6px 0;
 }
 
-/* Podnadpis */
+/* PODNADPIS */
 .lead {
   font-family: 'Montserrat', sans-serif;
   font-weight: 700;
   text-align: center;
 }
 
-/* Štýl vstupov */
+/* ŠTÝL VSTUPNÝCH POLÍ */
 .pill-input {
   width: 54ch;
   max-width: 80%;
@@ -283,7 +279,7 @@ async function onSubmit() {
   box-sizing: border-box;
 }
 
-/* Riadok tlačidiel */
+/* RIADOK S TLAČIDLAMI */
 .actions-row {
   display: flex;
   justify-content: flex-end;
@@ -291,7 +287,7 @@ async function onSubmit() {
   margin-top: 6px;
 }
 
-/* Tlačidlá login/register */
+/* TLAČIDLÁ LOGIN/REGISTER */
 .action-btn {
   background: #1f364a;
   color: #fff;
@@ -300,7 +296,7 @@ async function onSubmit() {
   box-shadow: -6px 6px 0 rgba(0,0,0,0.12);
 }
 
-/* Link pre prepínanie medzi login a register */
+/* PREPÍNACÍ LINK MEDZI LOGIN/REGISTER */
 .switch-link {
   margin-top: 18px;
   text-align: right;
@@ -313,6 +309,7 @@ async function onSubmit() {
   text-decoration: underline;
 }
 
+/* BANNER PRE CHYBY */
 .error-banner {
   background: #ff0000ca !important;
   color: #ffffff !important;
