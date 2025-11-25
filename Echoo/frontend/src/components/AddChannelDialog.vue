@@ -7,18 +7,17 @@
     transition-show="slide-up"
     transition-hide="slide-down"
   >
-    <!-- Hlavný obsah karty -->
-    <q-card style="background-color: #2d4a6b; color: white; display: flex; flex-direction: column; height: 100%;">
-      <!-- Header s názvom a tlačidlom zatvoriť -->
-      <q-card-section class="row items-center q-pb-none" style="flex: 0 0 auto;">
+    <q-card class="dialog-card">
+      <!-- Header -->
+      <q-card-section class="row items-center q-pb-none header-section">
         <div class="text-h6">Create New Channel</div>
         <q-space />
         <q-btn icon="close" flat round dense @click="closeDialog" />
       </q-card-section>
 
-      <!-- Sekcia s formulárom -->
-      <q-card-section class="q-pa-md" style="flex: 1 1 auto; overflow-y: auto;">
-        <!-- Názov kanála -->
+      <!-- Form section -->
+      <q-card-section class="form-section">
+        <!-- Channel name -->
         <div class="q-mb-md">
           <label class="text-weight-medium q-mb-xs block">Channel Name</label>
           <q-input
@@ -37,7 +36,7 @@
           </q-input>
         </div>
 
-        <!-- Viditeľnosť kanála -->
+        <!-- Visibility -->
         <div class="q-mb-md">
           <label class="text-weight-medium q-mb-xs block">Visibility</label>
           <q-select
@@ -57,7 +56,7 @@
           </q-select>
         </div>
 
-        <!-- Výber členov na pozvanie -->
+        <!-- Invite members -->
         <div class="q-mb-md">
           <label class="text-weight-medium q-mb-xs block">Invite Members (Optional)</label>
           <q-select
@@ -80,7 +79,7 @@
           </q-select>
         </div>
 
-        <!-- Nastavenia notifikácií -->
+        <!-- Notification settings -->
         <div class="q-mb-md">
           <label class="text-weight-medium q-mb-xs block">Notification Settings</label>
           <q-option-group
@@ -93,15 +92,9 @@
         </div>
       </q-card-section>
 
-      <!-- Akcie v spodnej časti -->
-      <q-card-actions align="right" class="q-px-md q-pb-md sticky-footer" style="flex: 0 0 auto;">
-        <q-btn
-          flat
-          label="Cancel"
-          color="white"
-          @click="closeDialog"
-          class="cancel-btn"
-        />
+      <!-- Actions -->
+      <q-card-actions align="right" class="q-px-md q-pb-md sticky-footer">
+        <q-btn flat label="Cancel" color="white" @click="closeDialog" class="cancel-btn" />
         <q-btn
           unelevated
           label="Create Channel"
@@ -115,48 +108,47 @@
   </q-dialog>
 </template>
 
-
-
 <script lang="ts" setup>
-import { ref, watch, onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import axios from 'axios'
 
-// Stav formulára
+// Form state
 const channelName = ref('')
 const type = ref<'private' | 'public'>('public')
 const invitedMembers = ref<number[]>([])
 const notificationSettings = ref<'all' | 'mentions' | 'muted'>('all')
 const availableMembers = ref<{ label: string, value: number }[]>([])
-const currentUserId = ref<number | null>(null) // a saját user ID
+const currentUserId = ref<number | null>(null)
+
 const API_URL = 'http://localhost:3333'
 const token = localStorage.getItem('auth_token')
 
-// Možnosti viditeľnosti
+// Visibility options
 const visibilityOptions = [
   { label: 'Public', value: 'public', icon: 'public' },
   { label: 'Private', value: 'private', icon: 'lock' }
 ]
 
-// Možnosti notifikácií
+// Notification options
 const notificationOptions = [
   { label: 'All Messages', value: 'all' },
   { label: 'Mentions Only', value: 'mentions' },
   { label: 'Muted', value: 'muted' }
 ]
 
-// Emits: udalosti, ktoré komponent vysiela
+// Emits
 const emit = defineEmits<{
-  'update:visible': [value: boolean]
-  'create': [data: ChannelData]
+  'update:visible': [boolean]
+  'create': [ChannelData]
 }>()
 
-// Props: vstupné vlastnosti komponentu
+// Props
 defineProps<{
   visible: boolean
   existingChannels?: string[]
 }>()
 
-// Typ dát kanála
+// Channel data type
 interface ChannelData {
   name: string
   type: 'private' | 'public'
@@ -175,26 +167,24 @@ interface User {
   nickName: string
 }
 
-// Zatvorenie dialógu a reset formulára
+// Close dialog and reset form
 function closeDialog() {
   emit('update:visible', false)
   resetForm()
 }
 
-// Vytvorenie kanála a emit udalosti
+// Create channel
 function createChannel() {
-  const channelData: ChannelData = {
+  emit('create', {
     name: channelName.value,
     type: type.value,
     invitedMembers: invitedMembers.value,
     notificationSettings: notificationSettings.value
-  }
-
-  emit('create', channelData)
+  })
   closeDialog()
 }
 
-// Reset všetkých polí formulára
+// Reset form
 function resetForm() {
   channelName.value = ''
   type.value = 'public'
@@ -202,64 +192,59 @@ function resetForm() {
   notificationSettings.value = 'all'
 }
 
-// Reset formulára pri zmene emit (alebo zatvorení)
-watch(() => emit, () => { resetForm() })
-
 // Load users on mount
 onMounted(async () => {
   try {
-    // 1️⃣ get current user (/me)
-    const authResponse = await axios.get<MeResponse>(`${API_URL}/me`, {
+    const me = await axios.get<MeResponse>(`${API_URL}/me`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+    currentUserId.value = me.data.id
+
+    const users = await axios.get<User[]>(`${API_URL}/users`, {
       headers: { Authorization: `Bearer ${token}` }
     })
 
-    currentUserId.value = authResponse.data.id
-
-    // 2️⃣ get all users (/users)
-    const response = await axios.get<User[]>(`${API_URL}/users`, {
-      headers: { Authorization: `Bearer ${token}` }
-    })
-
-    // 3️⃣ fill available members except current user
-    availableMembers.value = response.data
-      .filter(user => user.id !== currentUserId.value)
-      .map(user => ({
-        label: user.nickName,
-        value: user.id
-      }))
-
+    availableMembers.value = users.data
+      .filter(u => u.id !== currentUserId.value)
+      .map(u => ({ label: u.nickName, value: u.id }))
   } catch (error) {
     console.error('Failed to load users', error)
   }
 })
-
 </script>
 
-
-
-<style>
-.block {
-  display: block; /* zaberá celú šírku a zalomí riadok */
+<style scoped>
+.dialog-card {
+  background-color: #2d4a6b;
+  color: white;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 }
 
-/* Pozadie spodnej časti dialogu */
+.header-section {
+  flex: 0 0 auto;
+}
+
+.form-section {
+  flex: 1 1 auto;
+  overflow-y: auto;
+}
+
 .sticky-footer {
   background-color: #2d4a6b;
   border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-/* Tlačidlo Zrušiť – základný štýl */
 .cancel-btn {
   background-color: rgba(255, 255, 255, 0.1);
   border-radius: 6px;
 }
 
-/* Hover efekt tlačidla Zrušiť */
 .cancel-btn:hover {
   background-color: rgba(255, 255, 255, 0.2);
 }
 
-/* Tlačidlo Vytvoriť – základná farba */
 .create-btn {
   background-color: #4CAF50;
   color: white;
@@ -267,20 +252,20 @@ onMounted(async () => {
   font-weight: bold;
 }
 
-/* Hover efekt tlačidla Vytvoriť */
 .create-btn:hover {
   background-color: #45a049;
 }
 
-/* Zakázané tlačidlo Vytvoriť */
 .create-btn:disabled {
   background-color: rgba(76, 175, 80, 0.5);
 }
 
-/* QSelect chips (invited members) - better contrast */
 .q-field--dark .q-chip {
   background-color: #1e3b5c !important;
   color: #ffffff !important;
 }
 
+.block {
+  display: block;
+}
 </style>
