@@ -34,7 +34,10 @@ router.get('/channels', async () => {
 router.get('/channels/:id/messages', async (ctx) => {
   const module = await MessagesController()
   const controller = new module.default()
-  return controller.index({ params: { id: Number(ctx.params.id) } })
+  return controller.index({
+    params: { id: Number(ctx.params.id) },
+    request: ctx.request,
+  })
 })
 
 // Commands

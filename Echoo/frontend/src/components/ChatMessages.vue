@@ -1,64 +1,41 @@
 <template>
-
-  <!-- HLAVNÁ SEKCIA PRE ZOBRAZENIE SPRÁV -->
   <div ref="messagesContainer" class="chat-messages">
-
-    <!-- INFINITE SCROLL (BEZ REVERSE PRE SPRÁVNE PORADIE) -->
     <q-infinite-scroll
-    :offset="100"
-    @load="onLoad"
-    spinner-color="white"
+      :offset="500"
+      :disable="isLoadingOlder || !hasMoreMessages"
+      @load="onLoad"
+      reverse
     >
       <template v-slot:loading>
         <div class="row justify-center q-my-md">
-          <q-spinner-tail color="blue" size="40px" />
+          <q-spinner-dots color="white" size="40px" />
         </div>
       </template>
 
-      <!-- CYKLUS PRE ZOBRAZENIE KAŽDEJ SPRÁVY -->
-      <div
-      v-for="msg in localMessages"
-      :key="msg.id"
-      class="q-mb-md"
-      >
-
-        <!-- MENO POUŽÍVATEĽA -->
+      <div v-for="msg in localMessages" :key="msg.id" class="q-mb-md">
         <div class="text-bold">
           {{ msg.user }}
           <span v-if="currentUserId === msg.userId" class="you-label">(You)</span>
         </div>
-
-        <!-- OBSAH SPRÁVY (S KONTROLOU NA PING) -->
         <div
-        class="message-content q-pa-sm q-mt-xs"
-        :class="{ 'ping-message': isPingedMessage(msg) }"
+          class="message-content q-pa-sm q-mt-xs"
+          :class="{ 'ping-message': isPingedMessage(msg) }"
         >
-          <!-- FORMÁTOVANÝ TEXT - S MODRÝM ZVÝRAZNENÍM @NICKNAME -->
           <span v-html="formatMessage(msg.text)"></span>
         </div>
-
       </div>
 
-      <!-- DUMMY ELEMENT PRE SCROLLOVANIE NA SPODOK -->
       <div ref="bottomElement"></div>
-
     </q-infinite-scroll>
-
   </div>
-
 </template>
 
-
-
 <script lang="ts" setup>
+import { nextTick, ref, watch, onMounted, inject, type Ref } from 'vue'
 
-import { nextTick, ref, watch, onMounted } from 'vue'
-import { inject } from 'vue'
-
-// Získame ID aktuálneho používateľa z providera
 const currentUserId = inject<number>('currentUserId')
+const currentChannelId = inject<Ref<number | null>>('currentChannelId')
 
-// Rozhranie pre správu
 interface Message {
   id: number
   userId: number
@@ -67,26 +44,18 @@ interface Message {
   mentionedUserIds?: number[]
 }
 
-// Props z rodičovskej komponenty
 const props = defineProps<{ messages: Message[] }>()
 
-// Lokálne pole správ
+const isLoadingOlder = ref(false)
+const hasMoreMessages = ref(true)
 const localMessages = ref<Message[]>([])
-
-// Referencia na kontajner s správami
 const messagesContainer = ref<HTMLElement | null>(null)
-
-// Referencia na spodný element
 const bottomElement = ref<HTMLElement | null>(null)
-
-// Sledujeme, či používateľ scrolluje hore
 const userScrolledUp = ref(false)
 
-// Získame nickname aktuálneho používateľa z localStorage
 function getCurrentUserNickname(): string | null {
   const savedUser = localStorage.getItem('user')
   if (!savedUser) return null
-  
   try {
     const user = JSON.parse(savedUser)
     return user.nickName?.toLowerCase() || null
@@ -95,7 +64,6 @@ function getCurrentUserNickname(): string | null {
   }
 }
 
-// Extrahuje všetky @mentions zo správy
 function extractMentions(text: string): string[] {
   const mentionRegex = /@(\w+)/g
   const matches = text.matchAll(mentionRegex)
@@ -104,116 +72,210 @@ function extractMentions(text: string): string[] {
     .map(m => m.toLowerCase())
 }
 
-// Infinite scroll - načítanie starších správ
 function onLoad(index: number, done: (stop?: boolean) => void) {
-  // TODO: Implementácia načítania starších správ z backendu
-  setTimeout(() => {
-    done(true)
-  }, 500)
+  const ts = () => new Date().toISOString()
+  console.log(`${ts()} [INFINITE SCROLL] onLoad() called — index:`, index)
+
+  // Odloženie aby Quasar infinite-scroll "pustil" renderovanie
+  // eslint-disable-next-line @typescript-eslint/no-misused-promises
+  setTimeout(async () => {
+    console.log(`${ts()} [INFINITE SCROLL] setTimeout fired`)
+
+    // rýchle podmienky
+    console.log(`${ts()} [INFINITE SCROLL] isLoadingOlder:`, isLoadingOlder.value,
+      'hasMoreMessages:', hasMoreMessages.value,
+      'currentChannelId:', currentChannelId?.value)
+
+    if (isLoadingOlder.value) {
+      console.log(`${ts()} [INFINITE SCROLL] Aborting: already loading older messages`)
+      done(true)
+      return
+    }
+
+    if (!hasMoreMessages.value) {
+      console.log(`${ts()} [INFINITE SCROLL] Aborting: no more messages flag set`)
+      done(true)
+      return
+    }
+
+    if (!currentChannelId?.value) {
+      console.log(`${ts()} [INFINITE SCROLL] Aborting: no currentChannelId`)
+      done(true)
+      return
+    }
+
+    const oldestMessageId = localMessages.value[0]?.id
+    console.log(`${ts()} [INFINITE SCROLL] oldestMessageId:`, oldestMessageId)
+
+    if (!oldestMessageId) {
+      console.log(`${ts()} [INFINITE SCROLL] Aborting: no oldestMessageId (nothing to load before)`)
+      done(true)
+      return
+    }
+
+    isLoadingOlder.value = true
+    console.log(`${ts()} [INFINITE SCROLL] Set isLoadingOlder = true`)
+
+    try {
+      const token = localStorage.getItem('auth_token')
+      const url = `http://localhost:3333/channels/${currentChannelId.value}/messages?before=${oldestMessageId}&limit=20`
+      console.log(`${ts()} [INFINITE SCROLL] Fetch URL:`, url, 'token exists:', !!token)
+
+      const response = await fetch(url, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+
+      console.log(`${ts()} [INFINITE SCROLL] fetch returned, status:`, response.status)
+
+      if (!response.ok) {
+        console.warn(`${ts()} [INFINITE SCROLL] Fetch not ok — status:`, response.status)
+        // ak 500 alebo iný error, zastavujeme ďalšie pokusy
+        hasMoreMessages.value = false
+        console.log(`${ts()} [INFINITE SCROLL] Set hasMoreMessages = false due to fetch error`)
+        done(true)
+        return
+      }
+
+      const olderMessages: Message[] = await response.json()
+      console.log(`${ts()} [INFINITE SCROLL] Parsed JSON — count:`, Array.isArray(olderMessages) ? olderMessages.length : 'not-array', olderMessages)
+
+      if (!Array.isArray(olderMessages)) {
+        console.error(`${ts()} [INFINITE SCROLL] Unexpected payload (not array)`, olderMessages)
+        hasMoreMessages.value = false
+        done(true)
+        return
+      }
+
+      if (olderMessages.length === 0) {
+        console.log(`${ts()} [INFINITE SCROLL] No older messages returned — marking hasMoreMessages = false`)
+        hasMoreMessages.value = false
+        done(true)
+        return
+      }
+
+      // bezpečná referencia na container pred prependingom
+      const container = messagesContainer.value
+      if (!container) {
+        console.warn(`${ts()} [INFINITE SCROLL] messagesContainer is null — cannot preserve scroll position`)
+        // aj tak pridáme správy (bez korektného scroll-posunu) aby užívateľ ich videl pri ďalšom manuálnom skrolle
+        localMessages.value = [...olderMessages.reverse(), ...localMessages.value]
+        await nextTick()
+        done()
+        return
+      }
+
+      const oldHeight = container.scrollHeight
+      console.log(`${ts()} [INFINITE SCROLL] old scrollHeight:`, oldHeight)
+
+      // prepend správy (reverzujeme order, aby staršie boli prv)
+      localMessages.value = [...olderMessages.reverse(), ...localMessages.value]
+      console.log(`${ts()} [INFINITE SCROLL] prepended ${olderMessages.length} messages — localMessages length:`, localMessages.value.length)
+
+      // počkáme na DOM update
+      await nextTick()
+      console.log(`${ts()} [INFINITE SCROLL] nextTick resolved`)
+
+      // znovu overíme container po aktualizácii DOM
+      const containerAfter = messagesContainer.value
+      if (!containerAfter) {
+        console.warn(`${ts()} [INFINITE SCROLL] messagesContainer became null after update`)
+        done(true)
+        return
+      }
+
+      const newHeight = containerAfter.scrollHeight
+      console.log(`${ts()} [INFINITE SCROLL] new scrollHeight:`, newHeight, 'oldHeight:', oldHeight)
+
+      const delta = newHeight - oldHeight
+      console.log(`${ts()} [INFINITE SCROLL] Adjusting scrollTop by delta:`, delta)
+
+      // upravíme scrollTop tak, aby viewport zostal na rovnakom obsahu
+      containerAfter.scrollTop += delta
+
+      console.log(`${ts()} [INFINITE SCROLL] scrollTop after adjust:`, containerAfter.scrollTop)
+
+      done() // successful continue
+      console.log(`${ts()} [INFINITE SCROLL] done() called — load finished successfully`)
+    } catch (err) {
+      console.error(`${ts()} [INFINITE SCROLL] Exception while loading older messages:`, err)
+      hasMoreMessages.value = false
+      done(true)
+    } finally {
+      isLoadingOlder.value = false
+      console.log(`${ts()} [INFINITE SCROLL] Set isLoadingOlder = false (finally)`)
+    }
+  }, 2000) // small delay so infinite-scroll can settle
 }
 
-// Formátuje správu - zvýrazní @nickname na modro
+
 function formatMessage(text: string): string {
-  // Všetky @slová zvýrazníme modrou farbou
   return text.replace(/(@\w+)/g, '<span class="ping-highlight">$1</span>')
 }
 
-// Určuje, či je správa pingovaná (či je aktuálny používateľ spomenutý)
 function isPingedMessage(msg: Message): boolean {
-  // Ak správu poslal aktuálny používateľ, nikdy nie je pingovaná
-  if (msg.userId === currentUserId) {
-    return false
-  }
-
-  // Kontrola cez mentionedUserIds (ak backend poslal)
+  if (msg.userId === currentUserId) return false
   if (msg.mentionedUserIds && msg.mentionedUserIds.length > 0) {
-    if (msg.mentionedUserIds.includes(currentUserId as number)) {
-      return true
-    }
+    if (msg.mentionedUserIds.includes(currentUserId as number)) return true
   }
-
-  // Fallback: kontrola priamo v texte správy
   const currentNickname = getCurrentUserNickname()
   if (!currentNickname) return false
-
   const mentions = extractMentions(msg.text)
   return mentions.includes(currentNickname)
 }
 
-// Skontroluje, či je používateľ na spodku chatu
-function isAtBottom() {
+function isAtBottom(): boolean {
   const el = messagesContainer.value
   if (!el) return true
   const threshold = 100
-  return Math.abs(el.scrollHeight - el.scrollTop - el.clientHeight) <= threshold
+  return el.scrollHeight - el.scrollTop - el.clientHeight <= threshold
 }
 
-// Automaticky scrolluje na spodok
 function scrollToBottom() {
   const el = bottomElement.value
   if (!el) return
   el.scrollIntoView({ behavior: 'smooth', block: 'start' })
 }
 
-// Sleduje manuálne scrollovanie používateľa
 function handleScroll() {
-  const el = messagesContainer.value
-  if (!el) return
   userScrolledUp.value = !isAtBottom()
 }
 
-// Sleduje zmeny v správach
+// Sledovanie zmien správ
 watch(
   () => props.messages,
-  async (newVal, oldVal) => {
-
+  async (newVal) => {
     const wasBottom = isAtBottom()
+    
+    if (JSON.stringify(newVal) !== JSON.stringify(localMessages.value)) {
+      localMessages.value = [...newVal]
+      hasMoreMessages.value = true
+      isLoadingOlder.value = false
+    }
 
-    const isNewMessage = newVal.length > (oldVal?.length || 0)
-
-    localMessages.value = [...newVal]
-
-    // Čakáme na vykreslenie DOM
     await nextTick()
 
-    // Automatický scroll, ak bol používateľ na spodku alebo prišla nová správa
-    if (wasBottom || (isNewMessage && !userScrolledUp.value)) {
-      setTimeout(() => {
-        scrollToBottom()
-        userScrolledUp.value = false
-      }, 100)
+    if (wasBottom || !userScrolledUp.value) {
+      setTimeout(scrollToBottom, 100)
     }
   },
   { immediate: true, deep: true }
 )
 
-// Pri načítaní komponenty
 onMounted(() => {
-  // Pridáme listener pre scrollovanie
   const el = messagesContainer.value
   if (el) {
     el.addEventListener('scroll', handleScroll)
   }
-
-  // Počiatočný scroll na spodok
-  setTimeout(() => {
-    scrollToBottom()
-  }, 200)
+  setTimeout(scrollToBottom, 500)
 })
-
 </script>
 
-
-
 <style>
-
-/* Modrá farba pre @nickname slová */
 .ping-highlight {
   color: #00aff4 !important;
   font-weight: 700;
 }
 
-/* Hlavný kontajner pre správy */
 .chat-messages {
   flex: 1;
   overflow-y: auto;
@@ -223,21 +285,18 @@ onMounted(() => {
   flex-direction: column;
 }
 
-/* Základný štýl pre správy */
 .message-content {
   border-radius: 8px;
   background-color: #2d2d2d;
   color: white;
 }
 
-/* Štýl pre pingovanú správu - modrý background a border */
 .ping-message {
   background-color: rgba(88, 101, 242, 0.15) !important;
   border: 2px solid #5865f2;
   font-weight: 600;
 }
 
-/* Štýl pre "You" označenie */
 .you-label {
   display: inline-block;
   background-color: #355377;
@@ -249,5 +308,4 @@ onMounted(() => {
   margin-left: 6px;
   vertical-align: middle;
 }
-
 </style>

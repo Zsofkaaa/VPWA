@@ -3,26 +3,46 @@ import Channel from '#models/channel'
 import { DateTime } from 'luxon'
 
 export default class MessagesController {
-  // Získanie posledných správ z kanála
-  public async index({ params }: { params: { id: number } }) {
+  // Získanie posledných správ z kanála s podporou infinite scroll
+  public async index({ params, request }: { params: { id: number }; request: any }) {
     const channelId = params.id
 
-    // Načítame správy s autormi a mentions
-    const messages = await Message.query()
+    // Parametre pre pagination
+    const before = request.input('before') // ID správy, pred ktorou chceme načítať staršie
+    const limit = Number(request.input('limit', 30)) // Počet správ (default 30)
+
+    console.log('[MESSAGES CONTROLLER] Loading messages:', {
+      channelId,
+      before,
+      limit,
+    })
+
+    let query = Message.query()
       .where('channel_id', channelId)
       .preload('sender')
       .preload('mentions', (q) => q.select('mentionedUserId'))
       .orderBy('id', 'desc')
-      .limit(30)
+      .limit(limit)
+
+    // Ak je zadané before, načítame len správy staršie ako táto
+    if (before) {
+      query = query.where('id', '<', Number(before))
+    }
+
+    const messages = await query
+    console.log('[MESSAGES CONTROLLER] Found messages:', messages.length)
 
     // Transformujeme do formátu pre frontend
-    return messages.map((msg) => ({
+    const result = messages.map((msg) => ({
       id: msg.id,
       userId: msg.senderId,
       user: msg.sender.nickName,
       text: msg.content,
       mentionedUserIds: msg.mentions.map((m) => m.mentionedUserId),
     }))
+
+    console.log('[MESSAGES CONTROLLER] Returning messages:', result.length)
+    return result
   }
 
   // Vytvorenie novej správy (HTTP POST)
