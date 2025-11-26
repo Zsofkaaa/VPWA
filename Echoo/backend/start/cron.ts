@@ -4,10 +4,12 @@ import { DateTime } from 'luxon'
 
 export function startCronJobs() {
   // Každú noc o polnoci
+  //cron.schedule('* * * * *', async () => {
   cron.schedule('0 0 * * *', async () => {
     try {
       console.log('[CRON] Channel cleanup started')
 
+      //const thirtyDaysAgo = DateTime.now().minus({ minutes: 1 })
       const thirtyDaysAgo = DateTime.now().minus({ days: 30 })
 
       // Odstrániť kanály, ktoré neboli aktívne viac ako 30 dní

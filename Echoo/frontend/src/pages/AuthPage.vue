@@ -22,7 +22,7 @@
         <div v-if="mode === 'login'" class="form-column">
           <q-input dense filled v-model="login.email" placeholder="Email" class="pill-input" :disabled="authLoading" />
           <q-input dense filled v-model="login.password" placeholder="Password" type="password" class="pill-input" :disabled="authLoading" />
-          
+
           <div class="row actions-row">
             <q-btn unelevated class="action-btn" label="Login" @click.prevent="onLogin" :loading="authLoading" :disabled="authLoading" />
           </div>
@@ -231,8 +231,9 @@ async function onSubmit() {
 
 /* HLAVNÝ NADPIS */
 .hero {
-  font-family: 'Alfa Slab One', serif;
   font-size: min(9vw, 72px);
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 900;
   line-height: 1.1;
   text-align: center;
   letter-spacing: 1px;
