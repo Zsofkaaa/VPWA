@@ -33,7 +33,9 @@
 <script lang="ts" setup>
 import { nextTick, ref, watch, onMounted, inject, type Ref } from 'vue'
 
+// Získame ID aktuálneho používateľa z rodiča
 const currentUserId = inject<number>('currentUserId')
+// Získame aktuálny kanál z rodiča ako reaktívnu referenciu
 const currentChannelId = inject<Ref<number | null>>('currentChannelId')
 
 interface Message {
@@ -44,15 +46,17 @@ interface Message {
   mentionedUserIds?: number[]
 }
 
+// Prijímame správy ako prop
 const props = defineProps<{ messages: Message[] }>()
 
-const isLoadingOlder = ref(false)
-const hasMoreMessages = ref(true)
-const localMessages = ref<Message[]>([])
-const messagesContainer = ref<HTMLElement | null>(null)
-const bottomElement = ref<HTMLElement | null>(null)
-const userScrolledUp = ref(false)
+const isLoadingOlder = ref(false)  // Stav načítania starších správ
+const hasMoreMessages = ref(true)  // Indikuje, či sú ďalšie správy na načítanie
+const localMessages = ref<Message[]>([]) // Lokálna kópia správ pre zobrazenie
+const messagesContainer = ref<HTMLElement | null>(null) // Ref na kontajner správ
+const bottomElement = ref<HTMLElement | null>(null) // Ref na spodný element pre scroll
+const userScrolledUp = ref(false) // Sleduje, či používateľ scrolloval hore
 
+// Získanie prezývky používateľa zo storage
 function getCurrentUserNickname(): string | null {
   const savedUser = localStorage.getItem('user')
   if (!savedUser) return null
@@ -64,6 +68,7 @@ function getCurrentUserNickname(): string | null {
   }
 }
 
+// Vyextrahovanie zmienok v texte správy
 function extractMentions(text: string): string[] {
   const mentionRegex = /@(\w+)/g
   const matches = text.matchAll(mentionRegex)
@@ -72,146 +77,64 @@ function extractMentions(text: string): string[] {
     .map(m => m.toLowerCase())
 }
 
+const oldestMessageId = ref<number | null>(null) // ID najstaršej načítanej správy
+
+// Funkcia na načítanie starších správ pri infinite scroll
 function onLoad(index: number, done: (stop?: boolean) => void) {
-  const ts = () => new Date().toISOString()
-  console.log(`${ts()} [INFINITE SCROLL] onLoad() called — index:`, index)
+  if (!currentChannelId?.value) {
+    console.warn("No channel selected.")
+    done(true)
+    return
+  }
 
-  // Odloženie aby Quasar infinite-scroll "pustil" renderovanie
-  // eslint-disable-next-line @typescript-eslint/no-misused-promises
-  setTimeout(async () => {
-    console.log(`${ts()} [INFINITE SCROLL] setTimeout fired`)
+  const token = localStorage.getItem('auth_token')
+  const url = `http://localhost:3333/channels/${currentChannelId.value}/messages?before=${oldestMessageId.value ?? ''}&limit=20`
 
-    // rýchle podmienky
-    console.log(`${ts()} [INFINITE SCROLL] isLoadingOlder:`, isLoadingOlder.value,
-      'hasMoreMessages:', hasMoreMessages.value,
-      'currentChannelId:', currentChannelId?.value)
+  console.log(`[INFINITE SCROLL] Fetch URL:`, url)
 
-    if (isLoadingOlder.value) {
-      console.log(`${ts()} [INFINITE SCROLL] Aborting: already loading older messages`)
-      done(true)
-      return
-    }
+  setTimeout(() => {
+    void (async () => {
+      try {
+        const response = await fetch(url, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
 
-    if (!hasMoreMessages.value) {
-      console.log(`${ts()} [INFINITE SCROLL] Aborting: no more messages flag set`)
-      done(true)
-      return
-    }
+        if (!response.ok) {
+          console.error('Failed to fetch messages')
+          done(true)
+          return
+        }
 
-    if (!currentChannelId?.value) {
-      console.log(`${ts()} [INFINITE SCROLL] Aborting: no currentChannelId`)
-      done(true)
-      return
-    }
+        const newMessages: Message[] = await response.json()
 
-    const oldestMessageId = localMessages.value[0]?.id
-    console.log(`${ts()} [INFINITE SCROLL] oldestMessageId:`, oldestMessageId)
+        if (newMessages.length === 0) {
+          hasMoreMessages.value = false
+          done(true)
+          return
+        }
 
-    if (!oldestMessageId) {
-      console.log(`${ts()} [INFINITE SCROLL] Aborting: no oldestMessageId (nothing to load before)`)
-      done(true)
-      return
-    }
+        // Pridáme nové správy na začiatok zoznamu
+        localMessages.value.unshift(...newMessages)
 
-    isLoadingOlder.value = true
-    console.log(`${ts()} [INFINITE SCROLL] Set isLoadingOlder = true`)
+        // Aktualizujeme ID najstaršej správy
+        oldestMessageId.value = newMessages[newMessages.length - 1]!.id
 
-    try {
-      const token = localStorage.getItem('auth_token')
-      const url = `http://localhost:3333/channels/${currentChannelId.value}/messages?before=${oldestMessageId}&limit=20`
-      console.log(`${ts()} [INFINITE SCROLL] Fetch URL:`, url, 'token exists:', !!token)
-
-      const response = await fetch(url, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-
-      console.log(`${ts()} [INFINITE SCROLL] fetch returned, status:`, response.status)
-
-      if (!response.ok) {
-        console.warn(`${ts()} [INFINITE SCROLL] Fetch not ok — status:`, response.status)
-        // ak 500 alebo iný error, zastavujeme ďalšie pokusy
-        hasMoreMessages.value = false
-        console.log(`${ts()} [INFINITE SCROLL] Set hasMoreMessages = false due to fetch error`)
-        done(true)
-        return
-      }
-
-      const olderMessages: Message[] = await response.json()
-      console.log(`${ts()} [INFINITE SCROLL] Parsed JSON — count:`, Array.isArray(olderMessages) ? olderMessages.length : 'not-array', olderMessages)
-
-      if (!Array.isArray(olderMessages)) {
-        console.error(`${ts()} [INFINITE SCROLL] Unexpected payload (not array)`, olderMessages)
-        hasMoreMessages.value = false
-        done(true)
-        return
-      }
-
-      if (olderMessages.length === 0) {
-        console.log(`${ts()} [INFINITE SCROLL] No older messages returned — marking hasMoreMessages = false`)
-        hasMoreMessages.value = false
-        done(true)
-        return
-      }
-
-      // bezpečná referencia na container pred prependingom
-      const container = messagesContainer.value
-      if (!container) {
-        console.warn(`${ts()} [INFINITE SCROLL] messagesContainer is null — cannot preserve scroll position`)
-        // aj tak pridáme správy (bez korektného scroll-posunu) aby užívateľ ich videl pri ďalšom manuálnom skrolle
-        localMessages.value = [...olderMessages.reverse(), ...localMessages.value]
-        await nextTick()
         done()
-        return
-      }
 
-      const oldHeight = container.scrollHeight
-      console.log(`${ts()} [INFINITE SCROLL] old scrollHeight:`, oldHeight)
-
-      // prepend správy (reverzujeme order, aby staršie boli prv)
-      localMessages.value = [...olderMessages.reverse(), ...localMessages.value]
-      console.log(`${ts()} [INFINITE SCROLL] prepended ${olderMessages.length} messages — localMessages length:`, localMessages.value.length)
-
-      // počkáme na DOM update
-      await nextTick()
-      console.log(`${ts()} [INFINITE SCROLL] nextTick resolved`)
-
-      // znovu overíme container po aktualizácii DOM
-      const containerAfter = messagesContainer.value
-      if (!containerAfter) {
-        console.warn(`${ts()} [INFINITE SCROLL] messagesContainer became null after update`)
+      } catch (err) {
+        console.error("Fetch error:", err)
         done(true)
-        return
       }
-
-      const newHeight = containerAfter.scrollHeight
-      console.log(`${ts()} [INFINITE SCROLL] new scrollHeight:`, newHeight, 'oldHeight:', oldHeight)
-
-      const delta = newHeight - oldHeight
-      console.log(`${ts()} [INFINITE SCROLL] Adjusting scrollTop by delta:`, delta)
-
-      // upravíme scrollTop tak, aby viewport zostal na rovnakom obsahu
-      containerAfter.scrollTop += delta
-
-      console.log(`${ts()} [INFINITE SCROLL] scrollTop after adjust:`, containerAfter.scrollTop)
-
-      done() // successful continue
-      console.log(`${ts()} [INFINITE SCROLL] done() called — load finished successfully`)
-    } catch (err) {
-      console.error(`${ts()} [INFINITE SCROLL] Exception while loading older messages:`, err)
-      hasMoreMessages.value = false
-      done(true)
-    } finally {
-      isLoadingOlder.value = false
-      console.log(`${ts()} [INFINITE SCROLL] Set isLoadingOlder = false (finally)`)
-    }
-  }, 2000) // small delay so infinite-scroll can settle
+    })()
+  }, 1000)
 }
 
-
+// Formátovanie správy s vyznačením zmienok
 function formatMessage(text: string): string {
   return text.replace(/(@\w+)/g, '<span class="ping-highlight">$1</span>')
 }
 
+// Kontrola, či správa obsahuje zmienku na aktuálneho používateľa
 function isPingedMessage(msg: Message): boolean {
   if (msg.userId === currentUserId) return false
   if (msg.mentionedUserIds && msg.mentionedUserIds.length > 0) {
@@ -223,6 +146,7 @@ function isPingedMessage(msg: Message): boolean {
   return mentions.includes(currentNickname)
 }
 
+// Zistenie, či je scroll na spodku
 function isAtBottom(): boolean {
   const el = messagesContainer.value
   if (!el) return true
@@ -230,17 +154,19 @@ function isAtBottom(): boolean {
   return el.scrollHeight - el.scrollTop - el.clientHeight <= threshold
 }
 
+// Posunutie scrollu na spodok
 function scrollToBottom() {
   const el = bottomElement.value
   if (!el) return
   el.scrollIntoView({ behavior: 'smooth', block: 'start' })
 }
 
+// Ošetrenie scroll eventu, zisťujeme, či používateľ scrolloval hore
 function handleScroll() {
   userScrolledUp.value = !isAtBottom()
 }
 
-// Sledovanie zmien správ
+// Sledujeme zmeny správ a automaticky scrollujeme, ak je treba
 watch(
   () => props.messages,
   async (newVal) => {
@@ -261,6 +187,7 @@ watch(
   { immediate: true, deep: true }
 )
 
+// Pridáme event listener na scroll po mountnutí
 onMounted(() => {
   const el = messagesContainer.value
   if (el) {
