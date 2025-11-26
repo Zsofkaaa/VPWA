@@ -38,7 +38,12 @@
         <q-separator v-if="!(props.channel.type === 'private' && props.userRole !== 'admin')" dark />
 
         <!-- Kick User -->
-        <q-item clickable v-ripple @click="openKickUserDialog">
+        <q-item
+          v-if="props.userRole === 'member'"
+          clickable
+          v-ripple
+          @click="openKickUserDialog"
+        >
           <q-item-section avatar>
             <q-icon name="sports_martial_arts" color="white" />
           </q-item-section>
@@ -47,7 +52,7 @@
           </q-item-section>
         </q-item>
 
-        <q-separator dark />
+        <q-separator v-if="props.userRole === 'member'" dark />
 
         <!-- Ban User (len admin) -->
         <q-item
