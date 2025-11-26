@@ -4,47 +4,55 @@ import ChannelBan from '#models/channel_ban'
 
 // a HttpContextContract helyett használjunk any-t
 export default class InvitesController {
-  public async invite({ auth, request, params }: any) {
+  public async invite({ auth, request, params, response }: any) {
     const channelId = Number(params.id)
     const invitedUserId = Number(request.input('userId'))
     const inviterId = auth.user.id
 
-    // 1) Lekérdezzük az inviter role-ját
+    // 1) inviter role
     const inviterChannel = await UserChannel.query()
       .where('channelId', channelId)
       .andWhere('userId', inviterId)
       .first()
 
-    if (!inviterChannel) return { error: 'You are not in this channel' }
+    if (!inviterChannel) {
+      return response.status(403).json({ error: 'You are not in this channel' })
+    }
 
     const inviterRole = inviterChannel.role
 
-    // 2) Ellenőrizzük, hogy a meghívott bannolt-e
+    // 2) banned?
     const banned = await ChannelBan.query()
       .where('channelId', channelId)
       .andWhere('userId', invitedUserId)
       .first()
 
     if (banned && inviterRole !== 'admin') {
-      return { error: 'You cannot invite a banned user' }
+      return response.status(403).json({ error: 'User is banned from channel' })
     }
 
-    // 3) Már tag?
+    // 3) already member?
     const exists = await UserChannel.query()
       .where('channelId', channelId)
-      .where('userId', invitedUserId)
+      .andWhere('userId', invitedUserId)
       .first()
-    if (exists) return { error: 'User already in channel' }
 
-    // 4) Már van pending invite?
+    if (exists) {
+      return response.status(409).json({ error: 'User already in channel' })
+    }
+
+    // 4) pending invite?
     const pending = await ChannelInvite.query()
       .where('channelId', channelId)
       .where('userId', invitedUserId)
       .where('status', 'pending')
       .first()
-    if (pending) return { error: 'Invite already sent' }
 
-    // 5) Létrehozzuk az invite-ot
+    if (pending) {
+      return response.status(409).json({ error: 'Invite already sent' })
+    }
+
+    // 5) create invite
     await ChannelInvite.create({
       channelId,
       userId: invitedUserId,
@@ -52,7 +60,7 @@ export default class InvitesController {
       status: 'pending',
     })
 
-    return { message: 'Invitation sent' }
+    return response.status(200).json({ message: 'Invitation sent' })
   }
 
   public async myInvites({ auth }: any) {
@@ -70,6 +78,11 @@ export default class InvitesController {
 
     invite.status = 'accepted'
     await invite.save()
+
+    await ChannelBan.query()
+      .where('channelId', invite.channelId)
+      .andWhere('userId', invite.userId)
+      .delete()
 
     await UserChannel.create({
       userId: auth.user.id,

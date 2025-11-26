@@ -306,15 +306,24 @@ async function loadAvailableUsers(channelId: number) {
 async function addUsers(userIds: number[]) {
   try {
     for (const userId of userIds) {
-      await axios.post(`${API_URL}/channels/${props.channel.id}/invite`, { userId }, { headers: { Authorization: `Bearer ${token}` } })
+      await axios.post(
+        `${API_URL}/channels/${props.channel.id}/invite`,
+        { userId },
+        { headers: { Authorization: `Bearer ${token}` } }
+      )
     }
+
     $q.notify({ type: 'positive', message: 'Invite(s) sent successfully' })
     showAddUserDialog.value = false
-  } catch (err) {
-    console.error('Failed to add users', err)
-    $q.notify({ type: 'negative', message: 'Failed to add users' })
+
+  } catch {
+    $q.notify({
+      type: 'negative',
+      message: 'Invite failed'
+    })
   }
 }
+
 async function kickUsers(userIds: number[]) {
   if (!currentUserId.value) await loadCurrentUser()
 

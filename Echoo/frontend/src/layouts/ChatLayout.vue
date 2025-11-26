@@ -408,16 +408,28 @@ async function handleKickCommand(parts: string[]) {
       return
     }
 
-    // Použitie existujúceho endpointu
-    await axios.delete(
-      `${API_URL}/channels/${channelId}/kick/${targetUser.id}`,
-      { headers: { Authorization: `Bearer ${token}` } }
-    )
+    let endpoint = ''
+
+    if (channel.role === 'admin') {
+      // Admin → BAN
+      endpoint = `${API_URL}/channels/${channelId}/ban/${targetUser.id}`
+    } else {
+      // Member → KICK
+      endpoint = `${API_URL}/channels/${channelId}/kick/${targetUser.id}`
+    }
+
+    await axios.delete(endpoint, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
 
     $q.notify({
       type: 'positive',
-      message: `User "${targetName}" kicked successfully`
+      message:
+        channel.role === 'admin'
+          ? `User "${targetName}" has been banned`
+          : `User "${targetName}" has been kicked`
     })
+
   } catch (err) {
     console.error(err)
     $q.notify({ type: 'negative', message: 'Failed to kick user!' })
