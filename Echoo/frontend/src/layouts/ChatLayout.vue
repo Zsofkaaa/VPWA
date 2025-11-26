@@ -588,7 +588,6 @@ function handleIncomingMessage(msg: Message) {
   }
 
   if (msg.userId === currentUserId.value) return
-  if (isAppVisible.value) return
 
   const channel = [...privateChannels.value, ...publicChannels.value]
     .find(ch => ch.id === msg.channelId)
@@ -605,14 +604,38 @@ function handleIncomingMessage(msg: Message) {
     default: shouldNotify = true
   }
 
-  if (shouldNotify) {
-    notificationSender.value = `${msg.user} (#${channel.name})`
-    notificationMessage.value = msg.text
-    showNotification.value = true
+  if (!shouldNotify) return
 
-    setTimeout(() => {
-      showNotification.value = false
-    }, 5000)
+  if (shouldNotify) {
+    // Ak je aplikácia viditeľná, použi in-app popup
+    if (isAppVisible.value) {
+      notificationSender.value = `${msg.user} (#${channel.name})`
+      notificationMessage.value = msg.text
+      showNotification.value = true
+
+      setTimeout(() => {
+        showNotification.value = false
+      }, 5000)
+    }
+    // Ak je aplikácia na pozadí, zobraz systémovú notifikáciu
+    else if ('Notification' in window && Notification.permission === 'granted') {
+      const notification = new Notification(`${msg.user} (#${channel.name})`, {
+        body: msg.text.length > 100 ? msg.text.substring(0, 100) + '...' : msg.text,
+        icon: '/pictures/logo.jpg',
+        tag: `channel-${msg.channelId}`, // Zabráni duplicitám
+        requireInteraction: false
+      })
+
+      // Kliknutím na notifikáciu otvor aplikáciu
+      notification.onclick = () => {
+        window.focus()
+        void router.push(`/chat/${msg.channelId}`)
+        notification.close()
+      }
+
+      // Automaticky zavrieť po 5 sekundách
+      setTimeout(() => notification.close(), 5000)
+    }
   }
 }
 
@@ -671,6 +694,10 @@ watch(currentChannelId, (id, oldId) => {
 // Lifecycle hooks
 onMounted(async () => {
   console.log('[CHAT LAYOUT] Mounting component...')
+
+  if ('Notification' in window && Notification.permission === 'default') {
+    await Notification.requestPermission()
+  }
 
   const savedUser = localStorage.getItem("user")
   if (savedUser) {
