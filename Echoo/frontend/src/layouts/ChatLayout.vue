@@ -67,7 +67,6 @@ import Header from 'components/ChatHeader.vue'
 import Sidebar from 'components/ChatSidebar.vue'
 import ChatFooter from 'components/ChatFooter.vue'
 import TypingStatus from 'components/TypingStatus.vue'
-import NotificationService from 'src/services/NotificationService'
 
 // Rozhrania pre typy
 interface Invite {
@@ -132,12 +131,6 @@ interface AppUser {
 // Konštanta API URL
 const API_URL = 'http://localhost:3333'
 
-const {
-  showNotification,
-  notificationSender,
-  notificationMessage
-} = NotificationService.expose()
-
 // Vue a utility
 const router = useRouter()
 const route = useRoute()
@@ -154,7 +147,10 @@ const messages = ref<Message[]>([])
 const drawerOpen = ref($q.screen.gt.sm)
 const newMessage = ref('')
 const isTyping = ref(false)
+const showNotification = ref(false)
 const currentChannelName = ref('')
+const notificationSender = ref('')
+const notificationMessage = ref('')
 const isAppVisible = ref(!document.hidden)
 const currentUserId = ref<number | null>(null)
 const currentChannelId = ref<number | null>(null)
@@ -592,7 +588,6 @@ function handleIncomingMessage(msg: Message) {
   }
 
   if (msg.userId === currentUserId.value) return
-
   if (isAppVisible.value) return
 
   const channel = [...privateChannels.value, ...publicChannels.value]
@@ -601,21 +596,24 @@ function handleIncomingMessage(msg: Message) {
   if (!channel) return
 
   const notifSettings = channel.notificationSettings || 'all'
-
   let shouldNotify = false
 
   switch (notifSettings) {
     case 'none': shouldNotify = false; break
     case 'mentions': shouldNotify = msg.isPing === true; break
-    //case 'all':
+    case 'all':
     default: shouldNotify = true
   }
 
-  // 6) Ha nem kell értesítés → return
-  if (!shouldNotify) return
+  if (shouldNotify) {
+    notificationSender.value = `${msg.user} (#${channel.name})`
+    notificationMessage.value = msg.text
+    showNotification.value = true
 
-  // 7) Értesítés indítása
-  NotificationService.triggerNotification(`${msg.user} (#${channel.name})`, msg.text)
+    setTimeout(() => {
+      showNotification.value = false
+    }, 5000)
+  }
 }
 
 watch(
