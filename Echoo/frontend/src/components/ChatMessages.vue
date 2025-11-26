@@ -33,7 +33,9 @@
 <script lang="ts" setup>
 import { nextTick, ref, watch, onMounted, inject, type Ref } from 'vue'
 
+// Získame ID aktuálneho používateľa z rodiča
 const currentUserId = inject<number>('currentUserId')
+// Získame aktuálny kanál z rodiča ako reaktívnu referenciu
 const currentChannelId = inject<Ref<number | null>>('currentChannelId')
 
 interface Message {
@@ -44,15 +46,17 @@ interface Message {
   mentionedUserIds?: number[]
 }
 
+// Prijímame správy ako prop
 const props = defineProps<{ messages: Message[] }>()
 
-const isLoadingOlder = ref(false)
-const hasMoreMessages = ref(true)
-const localMessages = ref<Message[]>([])
-const messagesContainer = ref<HTMLElement | null>(null)
-const bottomElement = ref<HTMLElement | null>(null)
-const userScrolledUp = ref(false)
+const isLoadingOlder = ref(false)  // Stav načítania starších správ
+const hasMoreMessages = ref(true)  // Indikuje, či sú ďalšie správy na načítanie
+const localMessages = ref<Message[]>([]) // Lokálna kópia správ pre zobrazenie
+const messagesContainer = ref<HTMLElement | null>(null) // Ref na kontajner správ
+const bottomElement = ref<HTMLElement | null>(null) // Ref na spodný element pre scroll
+const userScrolledUp = ref(false) // Sleduje, či používateľ scrolloval hore
 
+// Získanie prezývky používateľa zo storage
 function getCurrentUserNickname(): string | null {
   const savedUser = localStorage.getItem('user')
   if (!savedUser) return null
@@ -64,6 +68,7 @@ function getCurrentUserNickname(): string | null {
   }
 }
 
+// Vyextrahovanie zmienok v texte správy
 function extractMentions(text: string): string[] {
   const mentionRegex = /@(\w+)/g
   const matches = text.matchAll(mentionRegex)
@@ -72,8 +77,9 @@ function extractMentions(text: string): string[] {
     .map(m => m.toLowerCase())
 }
 
-const oldestMessageId = ref<number | null>(null)
+const oldestMessageId = ref<number | null>(null) // ID najstaršej načítanej správy
 
+// Funkcia na načítanie starších správ pri infinite scroll
 function onLoad(index: number, done: (stop?: boolean) => void) {
   if (!currentChannelId?.value) {
     console.warn("No channel selected.")
@@ -87,7 +93,6 @@ function onLoad(index: number, done: (stop?: boolean) => void) {
   console.log(`[INFINITE SCROLL] Fetch URL:`, url)
 
   setTimeout(() => {
-    // 🔥 FIX: void = žiaden floating promise
     void (async () => {
       try {
         const response = await fetch(url, {
@@ -108,12 +113,11 @@ function onLoad(index: number, done: (stop?: boolean) => void) {
           return
         }
 
-        // vložiť staršie správy na začiatok
+        // Pridáme nové správy na začiatok zoznamu
         localMessages.value.unshift(...newMessages)
 
-        // aktualizovať ID najstaršej správy
-        oldestMessageId.value =
-          newMessages[newMessages.length - 1]!.id
+        // Aktualizujeme ID najstaršej správy
+        oldestMessageId.value = newMessages[newMessages.length - 1]!.id
 
         done()
 
@@ -125,13 +129,12 @@ function onLoad(index: number, done: (stop?: boolean) => void) {
   }, 1000)
 }
 
-
-
-
+// Formátovanie správy s vyznačením zmienok
 function formatMessage(text: string): string {
   return text.replace(/(@\w+)/g, '<span class="ping-highlight">$1</span>')
 }
 
+// Kontrola, či správa obsahuje zmienku na aktuálneho používateľa
 function isPingedMessage(msg: Message): boolean {
   if (msg.userId === currentUserId) return false
   if (msg.mentionedUserIds && msg.mentionedUserIds.length > 0) {
@@ -143,6 +146,7 @@ function isPingedMessage(msg: Message): boolean {
   return mentions.includes(currentNickname)
 }
 
+// Zistenie, či je scroll na spodku
 function isAtBottom(): boolean {
   const el = messagesContainer.value
   if (!el) return true
@@ -150,17 +154,19 @@ function isAtBottom(): boolean {
   return el.scrollHeight - el.scrollTop - el.clientHeight <= threshold
 }
 
+// Posunutie scrollu na spodok
 function scrollToBottom() {
   const el = bottomElement.value
   if (!el) return
   el.scrollIntoView({ behavior: 'smooth', block: 'start' })
 }
 
+// Ošetrenie scroll eventu, zisťujeme, či používateľ scrolloval hore
 function handleScroll() {
   userScrolledUp.value = !isAtBottom()
 }
 
-// Sledovanie zmien správ
+// Sledujeme zmeny správ a automaticky scrollujeme, ak je treba
 watch(
   () => props.messages,
   async (newVal) => {
@@ -181,6 +187,7 @@ watch(
   { immediate: true, deep: true }
 )
 
+// Pridáme event listener na scroll po mountnutí
 onMounted(() => {
   const el = messagesContainer.value
   if (el) {
