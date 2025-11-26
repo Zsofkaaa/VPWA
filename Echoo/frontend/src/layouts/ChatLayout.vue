@@ -62,7 +62,7 @@ import { useAuth } from '../composables/useAuth'
 import axios from 'axios'
 
 // Komponenty
-import NotificationPopUp from 'components/NotificationPopUp.vue'
+//import NotificationPopUp from 'components/NotificationPopUp.vue'
 import Header from 'components/ChatHeader.vue'
 import Sidebar from 'components/ChatSidebar.vue'
 import ChatFooter from 'components/ChatFooter.vue'
