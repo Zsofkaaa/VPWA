@@ -213,7 +213,7 @@ onMounted(async () => {
 })
 </script>
 
-<style scoped>
+<style>
 .dialog-card {
   background-color: #2d4a6b;
   color: white;
@@ -267,5 +267,17 @@ onMounted(async () => {
 
 .block {
   display: block;
+}
+
+/* Invite chips silnejsi kontrast */
+.q-field--dark .q-chip {
+  background-color: rgba(255, 255, 255, 0.2) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.35) !important;
+  font-weight: 600 !important;
+}
+
+.q-field--dark .q-chip .q-chip__icon {
+  color: #fff !important;
 }
 </style>

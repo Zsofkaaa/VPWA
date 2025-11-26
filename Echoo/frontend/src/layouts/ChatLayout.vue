@@ -206,19 +206,21 @@ function handleChannelLeft(channelId: number) {
 
 function handleNotificationSettingChanged(channelId: number, newSetting: string) {
   console.log(`[CHAT LAYOUT] Updating notification setting for channel ${channelId} to: ${newSetting}`)
-  
+
+  // Hľadaj v súkromných kanáloch
   const privateChannel = privateChannels.value.find(c => c.id === channelId)
   if (privateChannel) {
     privateChannel.notificationSettings = newSetting
     return
   }
-  
+
+  // Hľadaj vo verejných kanáloch
   const publicChannel = publicChannels.value.find(c => c.id === channelId)
   if (publicChannel) {
     publicChannel.notificationSettings = newSetting
     return
   }
-  
+
   console.warn(`[CHAT LAYOUT] Channel ${channelId} not found in channels list`)
 }
 
@@ -551,6 +553,12 @@ async function handleCommand(cmd: string) {
     await handleInviteCommand(parts)
   } else if (command === '/ban') {
     await handleBanCommand(parts)
+  } else if (command === '/quit') {
+    await handleQuitCommand()
+  } else if (command === '/join') {
+    await handleJoinCommand(parts)
+  } else if (command === '/revoke') {
+    await handleRevokeCommand(parts)
   } else {
     $q.notify({ type: 'warning', message: 'Unknown command' })
   }
@@ -572,7 +580,7 @@ function handleIncomingMessage(msg: Message) {
 
   const channel = [...privateChannels.value, ...publicChannels.value]
     .find(ch => ch.id === msg.channelId)
-   
+
   if (!channel) return
 
   const notifSettings = channel.notificationSettings || 'all'
@@ -585,7 +593,7 @@ function handleIncomingMessage(msg: Message) {
     default: shouldNotify = true
   }
 
-  if (shouldNotify) {      
+  if (shouldNotify) {
     notificationSender.value = `${msg.user} (#${channel.name})`
     notificationMessage.value = msg.text
     showNotification.value = true
@@ -595,20 +603,6 @@ function handleIncomingMessage(msg: Message) {
     }, 5000)
   }
 }
-
-// Watchers
-let typingTimeout: ReturnType<typeof setTimeout> | null = null
-watch(newMessage, (value) => {
-  if (value !== '') {
-    isTyping.value = true
-    if (typingTimeout) clearTimeout(typingTimeout)
-    typingTimeout = setTimeout(() => {
-      isTyping.value = false
-    }, 1000)
-  } else {
-    isTyping.value = false
-  }
-})
 
 watch(
   () => $q.screen.name,
@@ -665,7 +659,7 @@ watch(currentChannelId, (id, oldId) => {
 // Lifecycle hooks
 onMounted(async () => {
   console.log('[CHAT LAYOUT] Mounting component...')
-  
+
   const savedUser = localStorage.getItem("user")
   if (savedUser) {
     const user = JSON.parse(savedUser)
@@ -716,7 +710,7 @@ onBeforeUnmount(() => {
       socket.emit('leave', `channel_${currentChannelId.value}`)
     }
   }
-  
+
   document.removeEventListener('visibilitychange', handleVisibilityChange)
 })
 
@@ -733,16 +727,16 @@ async function handleCreateChannel(data: ChannelData) {
   const formattedName = data.name.replace(/^#/, '')
   const channelPath = `/chat/${data.type}-${data.name.toLowerCase().replace(/\s+/g, '-')}`
 
-  const allChannelNames = [...privateChannels.value, ...publicChannels.value].map(ch => ch.name.toLowerCase())
+  // keby chceme aby channelname bol úplne unique (lehet ehhez még kellene valami)
+  /*
+  const allChannelNames = [...privateChannels.value, ...publicChannels.value]
+    .map(ch => ch.name.toLowerCase())
+
   if (allChannelNames.includes(formattedName.toLowerCase())) {
-    $q.notify({
-      type: 'negative',
-      message: `Channel "${formattedName}" already exists!`,
-      position: 'top',
-      timeout: 2000
-    })
+    $q.notify({ type: 'negative', message: `Channel already exists!` })
     return
   }
+  */
 
   try {
     const token = localStorage.getItem('auth_token')
@@ -750,7 +744,7 @@ async function handleCreateChannel(data: ChannelData) {
 
     const res = await axios.post<ChannelResponse>(
       'http://localhost:3333/channels',
-      { 
+      {
         name: formattedName,
         type: data.type,
         invitedMembers: data.invitedMembers || [],
@@ -811,7 +805,330 @@ async function handleCreateChannel(data: ChannelData) {
   }
 }
 
-defineOptions({ name: 'ChatLayout' })
+async function handleJoinCommand(parts: string[]) {
+  const isPrivate = parts.includes('[private]')
+
+  const nameParts = parts.slice(1).filter(p => p !== '[private]')
+  const channelName = nameParts.join(' ')
+
+  if (!channelName) {
+    return $q.notify({ type: 'negative', message: 'Channel name is required!' })
+  }
+
+  try {
+    const token = localStorage.getItem('auth_token')
+    if (!token || !currentUserId.value) throw new Error('Not authenticated')
+
+    // 1️⃣ Lekérdezzük az összes csatornát globálisan
+    const allChannelsRes = await axios.get(`${API_URL}/channels`)
+    const allChannels = allChannelsRes.data as Channel[]
+
+    const existingChannelGlobal = allChannels.find(
+      c => c.name.toLowerCase() === channelName.toLowerCase()
+    )
+
+    let channelId: number
+
+    if (existingChannelGlobal) {
+      // 2️⃣ CSATLAKOZÁS LÉTEZŐ CSATORNÁHOZ
+      await axios.post(
+        `${API_URL}/user_channel`,
+        {
+          channelId: existingChannelGlobal.id,
+          userId: currentUserId.value,
+          role: isPrivate ? 'admin' : 'member',
+          notificationSettings: 'all'
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
+      )
+
+      channelId = existingChannelGlobal.id
+
+      const newLocalChannel: UserChannel = {
+        id: channelId,
+        name: existingChannelGlobal.name,
+        path: `/chat/${channelId}`,
+        type: existingChannelGlobal.type,
+        role: isPrivate ? 'admin' : 'member'
+      }
+
+      // 3️⃣ helyi lista frissítése
+      if (existingChannelGlobal.type === 'private')
+        privateChannels.value.push(newLocalChannel)
+      else
+        publicChannels.value.push(newLocalChannel)
+
+      $q.notify({
+        type: 'positive',
+        message: `Joined channel "${channelName}"`
+      })
+
+    } else {
+      // 4️⃣ LÉTREHOZÁS
+      const res = await axios.post<ChannelResponse>(
+        `${API_URL}/channels`,
+        {
+          name: channelName,
+          type: isPrivate ? 'private' : 'public',
+          invitedMembers: [],
+          notificationSettings: 'all'
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
+      )
+
+      channelId = res.data.id
+
+      await axios.post(
+        `${API_URL}/user_channel`,
+        {
+          channelId,
+          userId: currentUserId.value,
+          role: isPrivate ? 'admin' : 'member',
+          notificationSettings: 'all'
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
+      )
+
+      const newChannel: UserChannel = {
+        id: channelId,
+        name: channelName,
+        path: `/chat/${channelId}`,
+        type: isPrivate ? 'private' : 'public',
+        role: isPrivate ? 'admin' : 'member'
+      }
+
+      if (isPrivate) privateChannels.value.push(newChannel)
+      else publicChannels.value.push(newChannel)
+
+      $q.notify({
+        type: 'positive',
+        message: `Channel "${channelName}" created!`
+      })
+    }
+
+    currentChannelName.value = channelName
+    currentChannelId.value = channelId
+
+    void router.push(`/chat/${channelId}`)
+
+  } catch (err) {
+    console.error(err)
+    $q.notify({
+      type: 'negative',
+      message: 'Failed to join or create channel!'
+    })
+  }
+}
+
+async function handleQuitCommand() {
+  if (!currentChannelId.value) {
+    $q.notify({
+      type: 'negative',
+      message: 'You are not in any channel!'
+    })
+    return
+  }
+
+  const channelId = currentChannelId.value
+  const allChannels = [...privateChannels.value, ...publicChannels.value]
+  const channel = allChannels.find(ch => ch.id === channelId)
+
+  if (!channel) {
+    $q.notify({
+      type: 'negative',
+      message: 'Channel not found!'
+    })
+    return
+  }
+
+  // 🔒 ADMIN ELLENŐRZÉS
+  if (channel.role !== 'admin') {
+    $q.notify({
+      type: 'negative',
+      message: 'You cannot use this command, you are not the admin!'
+    })
+    return
+  }
+
+  const token = localStorage.getItem('auth_token')
+
+  try {
+    // 💣 Csatorna törlése
+    await axios.delete(`${API_URL}/channels/${channelId}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+
+    // törlés frontendből
+    privateChannels.value = privateChannels.value.filter(c => c.id !== channelId)
+    publicChannels.value = publicChannels.value.filter(c => c.id !== channelId)
+
+    $q.notify({
+      type: 'positive',
+      message: `Channel "${channel.name}" deleted.`
+    })
+
+    // UI reset
+    currentChannelId.value = null
+    currentChannelName.value = ''
+    messages.value = []
+    activeChannelPath.value = ''
+
+    void router.push('/')
+
+  } catch (err) {
+    console.error(err)
+    $q.notify({
+      type: 'negative',
+      message: 'Failed to delete channel!'
+    })
+  }
+}
+
+async function handleRevokeCommand(parts: string[]) {
+  if (!currentChannelId.value) {
+    return $q.notify({ type: 'negative', message: 'You are not in any channel!' })
+  }
+
+  const channelId = currentChannelId.value
+  const targetName = parts[1]
+
+  if (!targetName) {
+    return $q.notify({ type: 'negative', message: 'Usage: /revoke nickName' })
+  }
+
+  const allChannels = [...privateChannels.value, ...publicChannels.value]
+  const channel = allChannels.find(c => c.id === channelId)
+
+  if (!channel) {
+    return $q.notify({ type: 'negative', message: 'Channel not found!' })
+  }
+
+  const isAdmin = channel.role === 'admin'
+
+  if (!isAdmin) {
+    return $q.notify({ type: 'negative', message: 'Only admin can revoke users!' })
+  }
+
+  try {
+    const token = localStorage.getItem('auth_token')
+
+    const users = await axios.get<AppUser[]>(
+      `${API_URL}/users`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    )
+
+    const targetUser = users.data.find(
+      (u) => u.nickName.toLowerCase() === targetName.toLowerCase()
+    )
+
+    if (!targetUser) {
+      return $q.notify({ type: 'negative', message: 'User not found!' })
+    }
+
+    await axios.delete(
+      `${API_URL}/channels/${channelId}/ban/${targetUser.id}`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    )
+
+    $q.notify({ type: 'positive', message: `${targetName} removed from channel` })
+
+  } catch (err) {
+    console.error(err)
+    $q.notify({ type: 'negative', message: 'Failed to revoke user!' })
+  }
+}
+
+/* LOGIKA PRE DETEKCIU PÍSANIA SPRÁV */
+let typingTimeout: ReturnType<typeof setTimeout> | null = null
+watch(newMessage, (value) => {
+  if (value !== '') {
+    isTyping.value = true
+    if (typingTimeout) clearTimeout(typingTimeout)
+    typingTimeout = setTimeout(() => {
+      isTyping.value = false
+    }, 1000)
+  } else {
+    isTyping.value = false
+  }
+})
+
+// Pri zmene veľkosti obrazovky z malej na veľkú, reštartuj sidebar
+watch(
+  () => $q.screen.name,
+  (newSize, oldSize) => {
+    if ((oldSize === 'xs' || oldSize === 'sm') && (newSize === 'md' || newSize === 'lg' || newSize === 'xl')) {
+      drawerOpen.value = false
+
+      setTimeout(() => {
+        drawerOpen.value = true
+      }, 150)
+    }
+  }
+)
+
+// Sleduje zmenu URL a načíta správy pre nový kanál
+watch(
+  () => route.path,
+  async (newPath) => {
+    const allChannels = [...privateChannels.value, ...publicChannels.value]
+    const found = allChannels.find(ch => ch.path === newPath)
+
+    if (found) {
+      currentChannelName.value = found.name
+      currentChannelId.value = found.id
+      activeChannelPath.value = found.path
+
+      if (typeof currentUserId.value !== 'number' || typeof currentChannelId.value !== 'number') {
+        console.warn('Invalid IDs, skip backend query', currentUserId.value, currentChannelId.value)
+        return
+      }
+
+      await loadMessages(newPath)
+    } else {
+      currentChannelName.value = ''
+      currentChannelId.value = null
+      activeChannelPath.value = ''
+      messages.value = []
+    }
+  },
+  { immediate: true }
+)
+
+// Vyčisti listenery pri odstránení komponentu (zabráni duplicitným notifikáciám)
+onBeforeUnmount(() => {
+  // Odstráň socket listenery
+  if (socket) {
+    socket.off('newMessage')
+    if (currentChannelId.value) {
+      socket.emit('leave', `channel_${currentChannelId.value}`)
+    }
+  }
+
+  // Odstráň visibility listener
+  document.removeEventListener('visibilitychange', handleVisibilityChange)
+})
+
+// Pri zmene kanála opusť starú roomku a pripoj sa k novej
+watch(currentChannelId, (id, oldId) => {
+  if (!socket) return
+
+  if (oldId) {
+    console.log('Leaving room:', `channel_${oldId}`)
+    socket.emit('leave', `channel_${oldId}`)
+  }
+  if (id) {
+    socket.emit('join', `channel_${id}`)
+  }
+})
+
+// Poskytni dáta všetkým child komponentom cez provide/inject
+provide('messages', messages)
+provide("currentUserId", currentUserId)
+provide('userChannels', userChannels)
+provide('currentChannelId', currentChannelId)
+provide('currentChannelName', currentChannelName)
+provide('activeChannelPath', activeChannelPath)
+
 </script>
 
 <style scoped>
