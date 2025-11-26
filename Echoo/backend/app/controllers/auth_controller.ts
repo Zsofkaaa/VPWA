@@ -57,9 +57,13 @@ export default class AuthController {
         password,
       })
 
-      // Automatické pridanie do všetkých public kanálov
-      const publicChannels = await Channel.query().where('type', 'public')
-      for (const channel of publicChannels) {
+      // Automatické pridanie do General a Development kanálov
+      const targetChannelNames = ['General', 'Development']
+      const targetChannels = await Channel.query()
+        .whereIn('name', targetChannelNames)
+        .andWhere('type', 'public')
+
+      for (const channel of targetChannels) {
         await UserChannel.create({
           userId: user.id,
           channelId: channel.id,

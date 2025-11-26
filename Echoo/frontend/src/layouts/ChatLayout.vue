@@ -826,7 +826,8 @@ async function handleJoinCommand(parts: string[]) {
     const allChannels = allChannelsRes.data as Channel[]
 
     const existingChannelGlobal = allChannels.find(
-      c => c.name.toLowerCase() === channelName.toLowerCase()
+      c => c.name.toLowerCase() === channelName.toLowerCase() &&
+           c.type === (isPrivate ? 'private' : 'public')
     )
 
     let channelId: number
@@ -854,15 +855,27 @@ async function handleJoinCommand(parts: string[]) {
         role: isPrivate ? 'admin' : 'member'
       }
 
-      // 3️⃣ helyi lista frissítése
-      if (existingChannelGlobal.type === 'private')
-        privateChannels.value.push(newLocalChannel)
-      else
-        publicChannels.value.push(newLocalChannel)
+      let alreadyJoined = false
+
+      if (existingChannelGlobal.type === 'private') {
+        if (!privateChannels.value.some(c => c.id === channelId)) {
+          privateChannels.value.push(newLocalChannel)
+        } else {
+          alreadyJoined = true
+        }
+      } else {
+        if (!publicChannels.value.some(c => c.id === channelId)) {
+          publicChannels.value.push(newLocalChannel)
+        } else {
+          alreadyJoined = true
+        }
+      }
 
       $q.notify({
-        type: 'positive',
-        message: `Joined channel "${channelName}"`
+        type: alreadyJoined ? 'info' : 'positive',
+        message: alreadyJoined
+          ? `You are already a member of "${channelName}"`
+          : `Joined channel "${channelName}"`
       })
 
     } else {
@@ -880,12 +893,12 @@ async function handleJoinCommand(parts: string[]) {
 
       channelId = res.data.id
 
-      await axios.post(
+      const userChannelRes = await axios.post<UserChannel>(
         `${API_URL}/user_channel`,
         {
           channelId,
           userId: currentUserId.value,
-          role: isPrivate ? 'admin' : 'member',
+          role: 'admin', // backend szerint mindig admin
           notificationSettings: 'all'
         },
         { headers: { Authorization: `Bearer ${token}` } }
@@ -896,7 +909,7 @@ async function handleJoinCommand(parts: string[]) {
         name: channelName,
         path: `/chat/${channelId}`,
         type: isPrivate ? 'private' : 'public',
-        role: isPrivate ? 'admin' : 'member'
+        role: userChannelRes.data.role
       }
 
       if (isPrivate) privateChannels.value.push(newChannel)
