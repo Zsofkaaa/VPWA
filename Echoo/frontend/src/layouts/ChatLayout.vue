@@ -609,6 +609,7 @@ function handleIncomingMessage(msg: Message) {
   if (shouldNotify) {
     // Ak je aplikácia viditeľná, použi in-app popup
     if (isAppVisible.value) {
+      /*
       notificationSender.value = `${msg.user} (#${channel.name})`
       notificationMessage.value = msg.text
       showNotification.value = true
@@ -616,6 +617,8 @@ function handleIncomingMessage(msg: Message) {
       setTimeout(() => {
         showNotification.value = false
       }, 5000)
+      */
+      return    // AK MAS VLASTNY POP UP TAK TOTO ODKOMENTUJ
     }
     // Ak je aplikácia na pozadí, zobraz systémovú notifikáciu
     else if ('Notification' in window && Notification.permission === 'granted') {
