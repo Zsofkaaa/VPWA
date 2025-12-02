@@ -11,11 +11,13 @@ export default class MessagesController {
     const before = request.input('before') // ID správy, pred ktorou chceme načítať staršie
     const limit = Number(request.input('limit', 30)) // Počet správ (default 30)
 
+    /*
     console.log('[MESSAGES CONTROLLER] Loading messages:', {
       channelId,
       before,
       limit,
     })
+    */
 
     let query = Message.query()
       .where('channel_id', channelId)
@@ -30,7 +32,7 @@ export default class MessagesController {
     }
 
     const messages = await query
-    console.log('[MESSAGES CONTROLLER] Found messages:', messages.length)
+    // console.log('[MESSAGES CONTROLLER] Found messages:', messages.length)
 
     // Transformujeme do formátu pre frontend
     const result = messages.map((msg) => ({
@@ -41,7 +43,7 @@ export default class MessagesController {
       mentionedUserIds: msg.mentions.map((m) => m.mentionedUserId),
     }))
 
-    console.log('[MESSAGES CONTROLLER] Returning messages:', result.length)
+    // console.log('[MESSAGES CONTROLLER] Returning messages:', result.length)
     return result
   }
 

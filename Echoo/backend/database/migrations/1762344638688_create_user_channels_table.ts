@@ -17,6 +17,7 @@ export default class extends BaseSchema {
       table.string('notification_settings').defaultTo('all')
       table.timestamp('created_at')
       table.timestamp('updated_at')
+      table.unique(['user_id', 'channel_id'])
     })
   }
 

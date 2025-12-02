@@ -12,6 +12,16 @@ export default class UserChannelController {
 
     const { userId, channelId } = data
 
+    // ❗ Ellenőrzés: már a csatorna tagja?
+    const exists = await UserChannel.query()
+      .where('userId', userId)
+      .andWhere('channelId', channelId)
+      .first()
+
+    if (exists) {
+      return exists // nem hozunk létre új rekordot
+    }
+
     // ❌ Ellenőrzés: bannolt-e a user?
     const banned = await ChannelBan.query()
       .where('channelId', channelId)

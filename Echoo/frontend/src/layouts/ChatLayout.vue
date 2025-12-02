@@ -441,7 +441,7 @@ async function handleKickCommand(parts: string[]) {
           ? `User "${targetName}" has been banned`
           : `User "${targetName}" has been kicked`
     })
-          */
+    */
 
   } catch (err) {
     console.error(err)
@@ -570,6 +570,43 @@ async function handleBanCommand(parts: string[]) {
   }
 }
 
+async function handleListCommand() {
+  if (!currentChannelId.value) {
+    return $q.notify({ type: 'negative', message: 'You are not in any channel!' })
+  }
+
+  try {
+    const token = localStorage.getItem('auth_token')
+
+    const res = await axios.get(
+      `${API_URL}/channels/${currentChannelId.value}/members`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    )
+
+    const members = res.data as { id: number, nickName: string, role: string }[]
+
+    if (!members.length) {
+      return $q.notify({ type: 'info', message: 'This channel has no members.' })
+    }
+
+    const formatted = members
+      .map(m => `• ${m.nickName} (${m.role})`)
+      .join('<br>')
+
+    $q.notify({
+      message: `Members:<br>${formatted}`,
+      html: true,
+      color: 'blue',
+      textColor: 'white',
+      timeout: 0
+    })
+
+  } catch (err) {
+    console.error(err)
+    return $q.notify({ type: 'negative', message: 'Failed to load members!' })
+  }
+}
+
 async function handleCommand(cmd: string) {
   const parts = cmd.trim().split(' ')
   const command = parts[0]
@@ -588,6 +625,8 @@ async function handleCommand(cmd: string) {
     await handleJoinCommand(parts)
   } else if (command === '/revoke') {
     await handleRevokeCommand(parts)
+  } else if (command === '/list') {
+    await handleListCommand()
   } else {
     $q.notify({ type: 'warning', message: 'Unknown command' })
   }
