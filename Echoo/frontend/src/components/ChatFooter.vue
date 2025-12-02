@@ -8,14 +8,15 @@
 
     <!-- VSTUPNÉ (INPUT) POLE PRE PÍSANIE NOVEJ SPRÁVY -->
     <q-input
-    :model-value="newMessage"
-    @update:model-value="$emit('update:newMessage', $event)"
-    placeholder="Start writing..."
-    class="col chat-input"
-    dense
-    outlined
-    borderless
-    @keydown="$emit('enterPress', $event)"
+      :model-value="newMessage"
+      @update:model-value="$emit('update:newMessage', $event)"
+      @input="$emit('typing')"
+      placeholder="Start writing..."
+      class="col chat-input"
+      dense
+      outlined
+      borderless
+      @keydown="$emit('enterPress', $event)"
     />
 
   </footer>
@@ -36,6 +37,7 @@ defineProps<{
 defineEmits<{
   'update:newMessage': [value: string | number | null]
   'enterPress': [event: KeyboardEvent]
+  'typing': []
 }>()
 
 </script>
@@ -52,7 +54,7 @@ defineEmits<{
   display: flex;
   align-items: center;
   padding: 0 16px;
-  position: relative; 
+  position: relative;
   border-top: 1px solid #333;
   flex-shrink: 0;
 }

@@ -32,6 +32,7 @@
       <!-- Indikátor písania správy -->
       <TypingStatus
         v-if="isTyping"
+        :typing-user="typingUser"
         :typing-status-style="typingStatusStyle"
       />
 
@@ -41,6 +42,7 @@
         v-model:new-message="newMessage"
         :footer-style="footerStyle"
         @enter-press="onEnterPress"
+        @typing="handleTyping"
       />
     </div>
 
@@ -53,6 +55,8 @@
     />
   </q-layout>
 </template>
+
+
 
 <script lang="ts" setup>
 import { ref, computed, watch, provide, onMounted, onBeforeUnmount, getCurrentInstance } from 'vue'
@@ -160,6 +164,7 @@ const currentUserId = ref<number | null>(null)
 const currentChannelId = ref<number | null>(null)
 const activeChannelPath = ref<string>('')
 const invites = ref<Invite[]>([])
+const typingUser = ref<string | null>(null)
 
 // Computed properties
 const isChatPage = computed(() => route.path.startsWith('/chat/'))
@@ -181,6 +186,16 @@ const typingStatusStyle = computed(() => ({
   fontStyle: 'italic',
   zIndex: 2150
 }))
+
+const handleTyping = () => {
+  const savedUser = localStorage.getItem("user")
+  const user = savedUser ? JSON.parse(savedUser) : null
+  if (!currentChannelId.value || !user) return
+  socket.emit("typing", {
+    channelId: currentChannelId.value,
+    user: user.nickName
+  })
+}
 
 // Metódy pre správu kanálov
 async function loadInvites() {
@@ -758,11 +773,14 @@ onMounted(async () => {
     await Notification.requestPermission()
   }
 
-  const savedUser = localStorage.getItem("user")
-  if (savedUser) {
-    const user = JSON.parse(savedUser)
-    currentUserId.value = user.id
-  }
+  const currentUser = ref<{ id: number; nickName: string } | null>(null)
+
+const savedUser = localStorage.getItem("user")
+if (savedUser) {
+  const user = JSON.parse(savedUser)
+  currentUser.value = user
+  currentUserId.value = user.id
+}
 
   try {
     const token = localStorage.getItem('auth_token')
@@ -799,11 +817,29 @@ onMounted(async () => {
 
   socket.on('newMessage', handleIncomingMessage)
   void loadInvites()
+
+  socket.on("user_typing", (data: { user: string }) => {
+    typingUser.value = data.user
+    isTyping.value = true
+
+    // 5 mp után automatikus reset fall-back
+    setTimeout(() => {
+      isTyping.value = false
+      typingUser.value = null
+    }, 5000)
+  })
+
+  socket.on("user_stop_typing", () => {
+    isTyping.value = false
+    typingUser.value = null
+  })
 })
 
 onBeforeUnmount(() => {
   if (socket) {
     socket.off('newMessage')
+    socket.off("user_typing")
+    socket.off("user_stop_typing")
     if (currentChannelId.value) {
       socket.emit('leave', `channel_${currentChannelId.value}`)
     }

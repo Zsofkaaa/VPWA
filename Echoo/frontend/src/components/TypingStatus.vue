@@ -1,30 +1,27 @@
 <template>
-
-  <!-- ZOBRAZENIE INDIKÁTORA PÍSANIA SPRÁVY -->
-  <div class="typing-status-fixed" :style="typingStatusStyle">
-    User 1 is typing...
+  <div class="typing-status" :style="typingStatusStyle">
+    {{ typingUser ? `${typingUser} is typing...` : 'Someone is typing...' }}
   </div>
-
 </template>
 
-
-
-<script lang="ts" setup>
-
-/* PRIJÍMANÉ PROPS, ŠTÝL PRE POZÍCIU */
+<script setup lang="ts">
 defineProps<{
+  typingUser?: string | null
   typingStatusStyle: Record<string, string | number>
 }>()
-
 </script>
 
-
-
 <style scoped>
-
-/* HLAVNÝ ŠTÝL */
-.typing-status-fixed {
-  background: transparent;
+.typing-status {
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(6px);
+  color: white;
+  padding: 8px 14px;
+  border-radius: 12px;
+  font-size: 14px;
+  width: fit-content;
+  max-width: 90%;
+  white-space: nowrap;
+  margin-left: 15px;
 }
-
 </style>
