@@ -59,7 +59,7 @@ export function useAuth() {
       return true
     } catch (err: unknown) {
       console.error('Login error:', err)
-      
+
       // Check if it's an Axios error
       if (isAxiosError(err) && err.response?.data) {
         const errorData = err.response.data
@@ -69,7 +69,7 @@ export function useAuth() {
       } else {
         error.value = 'An unexpected error occurred'
       }
-      
+
       return false
     } finally {
       loading.value = false
@@ -91,7 +91,7 @@ export function useAuth() {
       return true
     } catch (err: unknown) {
       console.error('Registration error:', err)
-      
+
       // Check if it's an Axios error
       if (isAxiosError(err) && err.response?.data) {
         const errorData = err.response.data
@@ -101,7 +101,7 @@ export function useAuth() {
       } else {
         error.value = 'An unexpected error occurred'
       }
-      
+
       return false
     } finally {
       loading.value = false
