@@ -128,6 +128,10 @@ interface AppUser {
   nickName: string
 }
 
+interface KickResponse {
+  message: string
+}
+
 // Konštanta API URL
 const API_URL = 'http://localhost:3333'
 
@@ -406,6 +410,18 @@ async function handleKickCommand(parts: string[]) {
 
     let endpoint = ''
 
+    if (channel.role === 'admin') { // Admin → BAN
+    endpoint = `${API_URL}/channels/${channelId}/ban/${targetUser.id}`
+    const res = await axios.delete<KickResponse>(endpoint, { headers: { Authorization: `Bearer ${token}` } })
+    $q.notify({ type: 'positive', message: res.data.message || `User "${targetName}" has been banned` })
+
+    } else { // Member → KICK
+    endpoint = `${API_URL}/channels/${channelId}/kick/${targetUser.id}`
+    const res = await axios.delete<KickResponse>(endpoint, { headers: { Authorization: `Bearer ${token}` } })
+    $q.notify({ type: 'positive', message: res.data.message })
+    }
+
+   /*
     if (channel.role === 'admin') {
       // Admin → BAN
       endpoint = `${API_URL}/channels/${channelId}/ban/${targetUser.id}`
@@ -425,6 +441,7 @@ async function handleKickCommand(parts: string[]) {
           ? `User "${targetName}" has been banned`
           : `User "${targetName}" has been kicked`
     })
+          */
 
   } catch (err) {
     console.error(err)
