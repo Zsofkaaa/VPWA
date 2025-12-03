@@ -53,6 +53,7 @@
       :message="notificationMessage"
       logo="/pictures/logo.jpg"
     />
+
   </q-layout>
 </template>
 
@@ -371,58 +372,6 @@ function handleIncomingMessage(msg: Message) {
   }
 }
 
-watch(
-  () => $q.screen.name,
-  (newSize, oldSize) => {
-    if ((oldSize === 'xs' || oldSize === 'sm') && (newSize === 'md' || newSize === 'lg' || newSize === 'xl')) {
-      drawerOpen.value = false
-
-      setTimeout(() => {
-        drawerOpen.value = true
-      }, 150)
-    }
-  }
-)
-
-watch(
-  () => route.path,
-  async (newPath) => {
-    const allChannels = [...privateChannels.value, ...publicChannels.value]
-    const found = allChannels.find(ch => ch.path === newPath)
-
-    if (found) {
-      currentChannelName.value = found.name
-      currentChannelId.value = found.id
-      activeChannelPath.value = found.path
-
-      if (typeof currentUserId.value !== 'number' || typeof currentChannelId.value !== 'number') {
-        console.warn('Invalid IDs, skip backend query', currentUserId.value, currentChannelId.value)
-        return
-      }
-
-      await loadMessages(newPath)
-    } else {
-      currentChannelName.value = ''
-      currentChannelId.value = null
-      activeChannelPath.value = ''
-      messages.value = []
-    }
-  },
-  { immediate: true }
-)
-
-watch(currentChannelId, (id, oldId) => {
-  if (!socket) return
-
-  if (oldId) {
-    console.log('Leaving room:', `channel_${oldId}`)
-    socket.emit('leave', `channel_${oldId}`)
-  }
-  if (id) {
-    socket.emit('join', `channel_${id}`)
-  }
-})
-
 // Lifecycle hooks
 onMounted(async () => {
   console.log('[CHAT LAYOUT] Mounting component...')
@@ -505,14 +454,6 @@ onBeforeUnmount(() => {
 
   document.removeEventListener('visibilitychange', handleVisibilityChange)
 })
-
-// Provide/inject
-provide('messages', messages)
-provide("currentUserId", currentUserId)
-provide('userChannels', userChannels)
-provide('currentChannelId', currentChannelId)
-provide('currentChannelName', currentChannelName)
-provide('activeChannelPath', activeChannelPath)
 
 // Vytvorenie kanála
 async function handleCreateChannel(data: ChannelData) {
@@ -652,20 +593,6 @@ watch(
   },
   { immediate: true }
 )
-
-// Vyčisti listenery pri odstránení komponentu (zabráni duplicitným notifikáciám)
-onBeforeUnmount(() => {
-  // Odstráň socket listenery
-  if (socket) {
-    socket.off('newMessage')
-    if (currentChannelId.value) {
-      socket.emit('leave', `channel_${currentChannelId.value}`)
-    }
-  }
-
-  // Odstráň visibility listener
-  document.removeEventListener('visibilitychange', handleVisibilityChange)
-})
 
 // Pri zmene kanála opusť starú roomku a pripoj sa k novej
 watch(currentChannelId, (id, oldId) => {

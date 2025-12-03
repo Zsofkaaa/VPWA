@@ -1,9 +1,9 @@
 // Configuration for your app
 // https://v2.quasar.dev/quasar-cli-vite/quasar-config-file
 
-//import { defineConfig } from '#q-app/wrappers';
+import { configure } from 'quasar/wrappers';
 
-export default {
+export default configure((/* ctx */) => ({
     // https://v2.quasar.dev/quasar-cli-vite/prefetch-feature
     // preFetch: true,
 
@@ -241,4 +241,4 @@ export default {
        */
       extraScripts: [],
     },
-  };
+}));
