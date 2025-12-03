@@ -31,6 +31,36 @@ class Ws {
         // console.log(`[WS] Left room: ${room}`)
       })
 
+      socket.on('typing', (data: { channelId: number; user: string }) => {
+        const room = `channel_${data.channelId}`
+        console.log('TYPING EVENT:', data, ' -> broadcasting to ', room)
+
+        // Broadcast mindenki másnak a roomban, kivéve a küldőt
+        socket.to(room).emit('user_typing', { user: data.user, channelId: data.channelId })
+
+        // Opció: automatikus stop 5 másodperc után, ha nem jön új gépelés
+        setTimeout(() => {
+          socket.to(room).emit('user_stop_typing')
+        }, 5000)
+      })
+
+      socket.on('stop_typing', (data: { channelId: number }) => {
+        const room = `channel_${data.channelId}`
+        socket.to(room).emit('user_stop_typing')
+      })
+
+      socket.on('typing_content', (data: { channelId: number; user: string; content: string }) => {
+        const room = `channel_${data.channelId}`
+        console.log('[WS] Typing content from', data.user, ':', data.content)
+
+        // Broadcast everyone else in the room
+        socket.to(room).emit('user_typing_content', {
+          user: data.user,
+          channelId: data.channelId,
+          content: data.content,
+        })
+      })
+
       socket.on('message', async (data) => {
         const { channelId, userId, text } = data
 

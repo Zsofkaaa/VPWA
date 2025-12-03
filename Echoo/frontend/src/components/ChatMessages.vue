@@ -171,7 +171,7 @@ watch(
   () => props.messages,
   async (newVal) => {
     const wasBottom = isAtBottom()
-    
+
     if (JSON.stringify(newVal) !== JSON.stringify(localMessages.value)) {
       localMessages.value = [...newVal]
       hasMoreMessages.value = true

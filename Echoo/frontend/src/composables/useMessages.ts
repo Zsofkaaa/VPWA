@@ -1,5 +1,5 @@
 import { ref, type Ref } from 'vue'
-import type { Message, Channel } from '@/types'
+import type { Message, Channel, UserChannel } from '@/types'
 import axios from 'axios'
 import type { QVueGlobals } from 'quasar'
 import type io from "socket.io-client"
@@ -7,8 +7,8 @@ import type io from "socket.io-client"
 export function useMessages(
   currentChannelId: Ref<number | null>,
   currentUserId: Ref<number | null>,
-  privateChannels: Ref<Channel[]>,
-  publicChannels: Ref<Channel[]>,
+  privateChannels: Ref<UserChannel[]>,
+  publicChannels: Ref<UserChannel[]>,
   $q: QVueGlobals,
   socket: ReturnType<typeof io>
   ){

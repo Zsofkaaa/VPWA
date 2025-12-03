@@ -1,16 +1,11 @@
 <template>
-
-  <!-- FOOTER SEKCIA -->
   <footer
-  class="chat-footer row items-center q-pa-sm"
-  :style="footerStyle"
+    class="chat-footer row items-center q-pa-sm"
+    :style="footerStyle"
   >
-
-    <!-- VSTUPNÉ (INPUT) POLE PRE PÍSANIE NOVEJ SPRÁVY -->
     <q-input
       :model-value="newMessage"
-      @update:model-value="$emit('update:newMessage', $event)"
-      @input="$emit('typing')"
+      @update:model-value="handleInput"
       placeholder="Start writing..."
       class="col chat-input"
       dense
@@ -18,28 +13,29 @@
       borderless
       @keydown="$emit('enterPress', $event)"
     />
-
   </footer>
-
 </template>
 
-
-
 <script lang="ts" setup>
-
-/* ÚDAJE PRICHÁDZAJÚCE Z NAHRADENEJ KOMPONENTY */
 defineProps<{
   newMessage: string
   footerStyle: Record<string, string | number>
 }>()
 
-/* DEFINOVANIE UDALOSTÍ, KTORÉ KOMPONENT VYSIELA SPÄť */
-defineEmits<{
+const emit = defineEmits<{
   'update:newMessage': [value: string | number | null]
   'enterPress': [event: KeyboardEvent]
   'typing': []
+  'typingContent': [content: string]
 }>()
 
+function handleInput(value: string | number | null) {
+  console.log('[CHATFOOTER] 🔥 Input triggered! Emitting typing event...') // DEBUG
+  emit('update:newMessage', value)
+  emit('typing')
+  //console.log('[CHATFOOTER] ✅ Typing event emitted!')
+  emit('typingContent', String(value || ''))
+}
 </script>
 
 

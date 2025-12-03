@@ -1,5 +1,6 @@
 export interface TypingData {
   user: string
+  channelId: number
 }
 
 export interface UserChannel {
@@ -64,4 +65,10 @@ export interface ChannelData {
 export interface AxiosErrorLike {
   isAxiosError: boolean
   response?: { status: number }
+}
+
+export interface TypingContentData {
+  user: string
+  channelId: number
+  content: string
 }
