@@ -1,9 +1,14 @@
+export interface TypingData {
+  user: string
+}
+
 export interface UserChannel {
   id: number
   name: string
+  type: 'private' | 'public'
   path: string
-  type: 'public' | 'private'
-  role: string
+  role: 'admin' | 'member'
+  notificationSettings?: string
 }
 
 export interface AppUser {
@@ -37,4 +42,26 @@ export interface Channel {
   type: 'private' | 'public'
   createdBy: number
   lastActiveAt: string
+}
+
+// Rozhrania pre typy
+export interface Invite {
+  id: number
+  channel_id: number
+  channel: {
+    id: number
+    name: string
+  }
+}
+
+export interface ChannelData {
+  name: string
+  type: 'private' | 'public'
+  invitedMembers: number[]
+  notificationSettings: string
+}
+
+export interface AxiosErrorLike {
+  isAxiosError: boolean
+  response?: { status: number }
 }
