@@ -13,6 +13,7 @@ declare module '@vue/runtime-core' {
 }
 
 const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:3333'
+// const baseURL = 'https://abc123.ngrok.io'
 
 const api = axios.create({
   baseURL,
