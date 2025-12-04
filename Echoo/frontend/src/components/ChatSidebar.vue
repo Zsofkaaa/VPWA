@@ -132,35 +132,15 @@
   </q-drawer>
 </template>
 
+
+
 <script lang="ts" setup>
 import { ref, computed } from 'vue'
 import axios from 'axios'
 import ManageChannelMenu from './ManageChannelMenu.vue'
 import AddChannelDialog from './AddChannelDialog.vue'
 import { useQuasar } from 'quasar'
-
-/* ROZHRANIA DÁT */
-interface Channel {
-  id: number
-  name: string
-  path: string
-  role?: 'admin' | 'member'
-  type: 'private' | 'public'
-  members?: { userId: number; username: string }[]
-}
-
-interface ChannelData {
-  name: string
-  type: 'private' | 'public'
-  invitedMembers: number[]
-  notificationSettings: string
-}
-
-interface Invite {
-  id: number
-  channel_id: number
-  channel: { id: number; name: string }
-}
+import type { Invite, ChannelData, Channel } from '@/types'
 
 /* PROPS */
 const props = defineProps<{
@@ -239,6 +219,7 @@ function handleNotificationSettingChanged(channelId: number, newSetting: string)
   emit('notification-setting-changed', channelId, newSetting)
 }
 </script>
+
 
 
 <style>

@@ -1,27 +1,22 @@
 <template>
-
   <!-- HLAVNÁ TRANSITION PRE ANIMÁCIU -->
   <transition name="slide-up">
-
     <!-- NOTIFIKAČNÉ OKNO -->
     <div v-if="visible" class="notification-popup">
-
       <!-- HLAVIČKA -->
       <div class="header">
         <span class="sender">{{ sender }}</span>
         <img class="logo" :src="logo" alt="app logo" />
       </div>
-
       <!-- TEXT SPRÁVY -->
       <div class="message-box">
         {{ shortMessage }}
       </div>
-
     </div>
-
   </transition>
-
 </template>
+
+
 
 <script lang="ts" setup>
 import { computed, toRefs } from 'vue'
@@ -45,6 +40,8 @@ const shortMessage = computed(() => {
   return message.value
 })
 </script>
+
+
 
 <style scoped>
 /* KONTEJNER NOTIFIKÁCIE */

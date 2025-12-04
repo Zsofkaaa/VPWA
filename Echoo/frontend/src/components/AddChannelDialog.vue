@@ -108,9 +108,12 @@
   </q-dialog>
 </template>
 
+
+
 <script lang="ts" setup>
 import { ref, onMounted } from 'vue'
 import axios from 'axios'
+import type { ChannelData, MeResponse, User } from '@/types'
 
 // Form state
 const channelName = ref('')
@@ -147,25 +150,6 @@ defineProps<{
   visible: boolean
   existingChannels?: string[]
 }>()
-
-// Channel data type
-interface ChannelData {
-  name: string
-  type: 'private' | 'public'
-  invitedMembers: number[]
-  notificationSettings: string
-}
-
-interface MeResponse {
-  id: number
-  name: string | null
-  nickName: string | null
-}
-
-interface User {
-  id: number
-  nickName: string
-}
 
 // Close dialog and reset form
 function closeDialog() {

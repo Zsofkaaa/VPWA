@@ -49,6 +49,8 @@
   </div>
 </template>
 
+
+
 <script lang="ts" setup>
 import { ref, watch } from 'vue'
 import axios from 'axios'
@@ -84,6 +86,8 @@ watch(showMembers, async (val) => {
   }
 })
 </script>
+
+
 
 <style scoped>
 /* Tlačidlá členov rozšírené na šírku */

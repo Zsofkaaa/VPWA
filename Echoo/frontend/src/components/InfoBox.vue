@@ -54,19 +54,15 @@
   </q-btn>
 </template>
 
+
+
 <script lang="ts" setup>
 import { useQuasar } from 'quasar'
 import { ref } from 'vue'
+import type { Command } from '@/types'
 
 // Quasar objekt pre UI
 const $q = useQuasar()
-
-// Typ jedného príkazu
-interface Command {
-  id: number
-  name: string
-  description: string
-}
 
 // Reaktívne stavy
 const commands = ref<Command[]>([])
@@ -101,6 +97,8 @@ const loadCommands = async () => {
   }
 }
 </script>
+
+
 
 <style scoped>
 /* Štýl info tlačidla */

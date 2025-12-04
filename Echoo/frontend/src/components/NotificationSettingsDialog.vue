@@ -26,6 +26,8 @@
   </q-dialog>
 </template>
 
+
+
 <script lang="ts" setup>
 import { ref, watch } from 'vue'
 import axios from 'axios'
@@ -98,6 +100,8 @@ async function saveSettings() {
   }
 }
 </script>
+
+
 
 <style scoped>
 .notification-card {

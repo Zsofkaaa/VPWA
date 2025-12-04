@@ -253,7 +253,7 @@ watch(currentChannelId, (id, oldId) => {
 
 // Lifecycle hooks
 onMounted(async () => {
-  console.log('[CHAT LAYOUT] Mounting component...')
+  // console.log('[CHAT LAYOUT] Mounting component...')
 
   await requestNotificationPermission()
 
@@ -283,7 +283,7 @@ onMounted(async () => {
   }
 
   setupSocketListeners((msg) => {
-    console.log('[SOCKET DBG] newMessage received', msg)
+    // console.log('[SOCKET DBG] newMessage received', msg)
     handleIncomingMessage(
       msg,
       [...privateChannels.value, ...publicChannels.value],

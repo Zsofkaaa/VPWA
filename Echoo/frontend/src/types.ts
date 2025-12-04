@@ -1,3 +1,6 @@
+// USER ÉS APP USER UGYANAAAZ
+
+
 export interface TypingData {
   user: string
   channelId: number
@@ -21,6 +24,12 @@ export interface KickResponse {
   message: string
 }
 
+export interface Command {
+  id: number
+  name: string
+  description: string
+}
+
 export interface ChannelResponse {
   id: number
   name: string
@@ -40,19 +49,16 @@ export interface Message {
 export interface Channel {
   id: number
   name: string
+  path: string
+  role?: 'admin' | 'member'
   type: 'private' | 'public'
-  createdBy: number
-  lastActiveAt: string
+  members?: { userId: number; username: string }[]
 }
 
-// Rozhrania pre typy
 export interface Invite {
   id: number
   channel_id: number
-  channel: {
-    id: number
-    name: string
-  }
+  channel: { id: number; name: string }
 }
 
 export interface ChannelData {
@@ -67,8 +73,38 @@ export interface AxiosErrorLike {
   response?: { status: number }
 }
 
+export interface AxiosErrorLike2 {
+  response?: {
+    data?: {
+      error?: string
+    }
+  }
+}
+
 export interface TypingContentData {
   user: string
   channelId: number
   content: string
+}
+
+export interface MeResponse {
+  id: number
+  name: string | null
+  nickName: string | null
+}
+
+export interface User {
+  id: number
+  nickName: string
+}
+
+export interface User2 {
+  id: number
+  nickName: string
+  role: 'admin' | 'member'
+}
+
+export interface Member {
+  userId: number
+  username: string
 }

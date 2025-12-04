@@ -30,21 +30,16 @@
   </div>
 </template>
 
+
+
 <script lang="ts" setup>
 import { nextTick, ref, watch, onMounted, inject, type Ref } from 'vue'
+import type { Message } from '@/types';
 
 // Získame ID aktuálneho používateľa z rodiča
 const currentUserId = inject<number>('currentUserId')
 // Získame aktuálny kanál z rodiča ako reaktívnu referenciu
 const currentChannelId = inject<Ref<number | null>>('currentChannelId')
-
-interface Message {
-  id: number
-  userId: number
-  user: string
-  text: string
-  mentionedUserIds?: number[]
-}
 
 // Prijímame správy ako prop
 const props = defineProps<{ messages: Message[] }>()
@@ -196,6 +191,8 @@ onMounted(() => {
   setTimeout(scrollToBottom, 500)
 })
 </script>
+
+
 
 <style>
 .ping-highlight {

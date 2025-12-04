@@ -2,7 +2,7 @@
   <!-- Dialog pre kickovanie používateľov -->
   <q-dialog v-model="internalVisible" persistent transition-show="slide-up" transition-hide="slide-down">
     <q-card class="bg-dark text-white" style="width: 420px; max-width: 90vw;">
-      
+
       <!-- Hlavička dialogu -->
       <q-card-section class="row items-center q-pb-none">
         <div class="text-h6">Kick User</div>
@@ -38,14 +38,12 @@
   </q-dialog>
 </template>
 
+
+
 <script lang="ts" setup>
 import { ref, watch } from 'vue'
+import type { User } from '@/types';
 
-// Typ používateľa
-interface User {
-  id: number
-  nickName: string
-}
 
 // Props pre viditeľnosť a členov
 const props = defineProps<{
@@ -92,6 +90,8 @@ function confirmKick() {
   }
 }
 </script>
+
+
 
 <style scoped>
 /* Zaoblenie karty */

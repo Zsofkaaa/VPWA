@@ -55,13 +55,10 @@
 </template>
 
 
+
 <script lang="ts" setup>
 import { ref, watch } from 'vue'
-
-interface User {
-  id: number
-  nickName: string
-}
+import type { User } from '@/types';
 
 // Props z rodiča
 const props = defineProps<{
@@ -121,6 +118,8 @@ function confirmBan() {
   }
 }
 </script>
+
+
 
 <style scoped>
 .q-card {

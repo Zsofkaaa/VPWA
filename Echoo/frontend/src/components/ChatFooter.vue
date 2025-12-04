@@ -16,6 +16,8 @@
   </footer>
 </template>
 
+
+
 <script lang="ts" setup>
 defineProps<{
   newMessage: string

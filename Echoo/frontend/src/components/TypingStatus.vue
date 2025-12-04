@@ -9,6 +9,8 @@
   </div>
 </template>
 
+
+
 <script setup lang="ts">
 defineProps<{
   typingUser?: string | null
@@ -16,6 +18,8 @@ defineProps<{
   typingStatusStyle: Record<string, string | number>
 }>()
 </script>
+
+
 
 <style scoped>
 .typing-status {

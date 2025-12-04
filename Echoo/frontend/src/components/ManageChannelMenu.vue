@@ -164,26 +164,8 @@ import AddUserDialog from './AddUserDialog.vue'
 import KickUserDialog from './KickUserDialog.vue'
 import BanUserDialog from './BanUserDialog.vue'
 import NotificationSettingsDialog from './NotificationSettingsDialog.vue'
+import type { Member, AxiosErrorLike2, User2 } from '@/types'
 
-// Typy
-interface Member {
-  userId: number
-  username: string
-}
-
-interface User {
-  id: number
-  nickName: string
-  role: 'admin' | 'member'
-}
-
-interface AxiosErrorLike {
-  response?: {
-    data?: {
-      error?: string
-    }
-  }
-}
 const props = defineProps<{
   channel: {
     id: number
@@ -209,7 +191,7 @@ const showNotificationDialog = ref(false)
 const availableUsers = ref<{ label: string; value: number }[]>([])
 const currentUserId = ref<number | null>(null)
 const currentNotificationSetting = ref('all')
-const channelMembers = ref<User[]>([])
+const channelMembers = ref<User2[]>([])
 const menu = ref(false)
 
 // Emit
@@ -287,15 +269,15 @@ async function loadChannelMembers() {
   if (!props.channel.id) return
   if (!currentUserId.value) await loadCurrentUser()
   try {
-    const res = await axios.get<User[]>(`${API_URL}/channels/${props.channel.id}/members`, { headers: { Authorization: `Bearer ${token}` } })
+    const res = await axios.get<User2[]>(`${API_URL}/channels/${props.channel.id}/members`, { headers: { Authorization: `Bearer ${token}` } })
     channelMembers.value = res.data.filter(u => u.id !== currentUserId.value && u.role !== 'admin')
   } catch (err) { console.error('Failed to load channel members', err) }
 }
 
 async function loadAvailableUsers(channelId: number) {
   try {
-    const allUsers = (await axios.get<User[]>(`${API_URL}/users`, { headers: { Authorization: `Bearer ${token}` } })).data
-    const channelUsers = (await axios.get<User[]>(`${API_URL}/channels/${channelId}/members`, { headers: { Authorization: `Bearer ${token}` } })).data
+    const allUsers = (await axios.get<User2[]>(`${API_URL}/users`, { headers: { Authorization: `Bearer ${token}` } })).data
+    const channelUsers = (await axios.get<User2[]>(`${API_URL}/channels/${channelId}/members`, { headers: { Authorization: `Bearer ${token}` } })).data
     availableUsers.value = allUsers
       .filter(u => u.id !== currentUserId.value && !channelUsers.some(m => m.id === u.id))
       .map(u => ({ label: u.nickName, value: u.id }))
@@ -339,7 +321,7 @@ async function kickUsers(userIds: number[]) {
       }
     } catch (err: unknown) {
       if (typeof err === 'object' && err !== null && 'response' in err) {
-        const errorData = (err as AxiosErrorLike).response?.data
+        const errorData = (err as AxiosErrorLike2).response?.data
         if (errorData?.error === 'You already kicked this user') {
           $q.notify({ type: 'warning', message: 'You already kicked this user' })
         } else {

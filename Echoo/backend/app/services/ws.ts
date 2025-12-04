@@ -33,7 +33,7 @@ class Ws {
 
       socket.on('typing', (data: { channelId: number; user: string }) => {
         const room = `channel_${data.channelId}`
-        console.log('TYPING EVENT:', data, ' -> broadcasting to ', room)
+        // console.log('TYPING EVENT:', data, ' -> broadcasting to ', room)
 
         // Broadcast mindenki másnak a roomban, kivéve a küldőt
         socket.to(room).emit('user_typing', { user: data.user, channelId: data.channelId })
@@ -51,7 +51,7 @@ class Ws {
 
       socket.on('typing_content', (data: { channelId: number; user: string; content: string }) => {
         const room = `channel_${data.channelId}`
-        console.log('[WS] Typing content from', data.user, ':', data.content)
+        // console.log('[WS] Typing content from', data.user, ':', data.content)
 
         // Broadcast everyone else in the room
         socket.to(room).emit('user_typing_content', {
