@@ -1,7 +1,7 @@
 <template>
   <div ref="messagesContainer" class="chat-messages">
     <q-infinite-scroll
-      :offset="500"
+      :offset="150"
       :disable="isLoadingOlder || !hasMoreMessages"
       @load="onLoad"
       reverse
@@ -45,6 +45,8 @@ const localMessages = ref<Message[]>([])
 const messagesContainer = ref<HTMLElement | null>(null)
 const bottomElement = ref<HTMLElement | null>(null)
 const userScrolledUp = ref(false)
+const oldestMessageId = ref<number | null>(null)
+const lastLoadTime = ref<number>(0) // Throttling mechanizmus
 
 function getCurrentUserNickname(): string | null {
   const savedUser = localStorage.getItem('user')
@@ -57,15 +59,12 @@ function getCurrentUserNickname(): string | null {
   }
 }
 
-// Vylepšené extrahovanie mentions - podporuje aj viacrozmerné mená
 function extractMentions(text: string): string[] {
-  // Regex pre @"user name", @'user name' alebo @username
   const mentionRegex = /@(?:"([^"]+)"|'([^']+)'|(\S+))/g
   const matches = text.matchAll(mentionRegex)
   const mentions: string[] = []
 
   for (const match of matches) {
-    // match[1] = quoted with ", match[2] = quoted with ', match[3] = single word
     const mention = (match[1] || match[2] || match[3])?.toLowerCase()
     if (mention) {
       mentions.push(mention)
@@ -75,63 +74,97 @@ function extractMentions(text: string): string[] {
   return mentions
 }
 
-const oldestMessageId = ref<number | null>(null)
+async function onLoad(index: number, done: (stop?: boolean) => void) {
+  const now = Date.now()
+  if (now - lastLoadTime.value < 1000) {
+    console.log('[INFINITE SCROLL] Throttled - too soon')
+    done()
+    return
+  }
 
-function onLoad(index: number, done: (stop?: boolean) => void) {
   if (!currentChannelId?.value) {
     console.warn("No channel selected.")
     done(true)
     return
   }
 
+  // Ak už načítavame, preskočíme
+  if (isLoadingOlder.value) {
+    console.log('[INFINITE SCROLL] Already loading')
+    done()
+    return
+  }
+
+  isLoadingOlder.value = true
+  lastLoadTime.value = now
+
   const token = localStorage.getItem('auth_token')
-  const url = `http://localhost:3333/channels/${currentChannelId.value}/messages?before=${oldestMessageId.value ?? ''}&limit=20`
+  const beforeId = oldestMessageId.value ?? ''
+  const url = `http://localhost:3333/channels/${currentChannelId.value}/messages?before=${beforeId}&limit=20`
 
-  console.log(`[INFINITE SCROLL] Fetch URL:`, url)
+  console.log(`[INFINITE SCROLL] Fetching older messages before ID: ${beforeId}`)
 
-  setTimeout(() => {
-    void (async () => {
-      try {
-        const response = await fetch(url, {
-          headers: { Authorization: `Bearer ${token}` }
-        })
+  try {
+    const response = await fetch(url, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
 
-        if (!response.ok) {
-          console.error('Failed to fetch messages')
-          done(true)
-          return
-        }
+    if (!response.ok) {
+      console.error('Failed to fetch messages:', response.status)
+      hasMoreMessages.value = false
+      done(true)
+      return
+    }
 
-        const newMessages: Message[] = await response.json()
+    const newMessages: Message[] = await response.json()
+    console.log(`[INFINITE SCROLL] Received ${newMessages.length} messages`)
 
-        if (newMessages.length === 0) {
-          hasMoreMessages.value = false
-          done(true)
-          return
-        }
+    if (newMessages.length === 0) {
+      hasMoreMessages.value = false
+      done(true)
+      return
+    }
 
-        localMessages.value.unshift(...newMessages)
-        oldestMessageId.value = newMessages[newMessages.length - 1]!.id
+    // Backend posiela desc, my chceme asc pre zobrazenie
+    const sortedMessages = [...newMessages].reverse()
 
-        done()
+    // Odstránime duplikáty - pridáme len tie, ktoré ešte nemáme
+    const existingIds = new Set(localMessages.value.map(m => m.id))
+    const uniqueNewMessages = sortedMessages.filter(m => !existingIds.has(m.id))
 
-      } catch (err) {
-        console.error("Fetch error:", err)
-        done(true)
-      }
-    })()
-  }, 1000)
+    if (uniqueNewMessages.length > 0) {
+      // Pridáme na začiatok (staršie správy)
+      localMessages.value = [...uniqueNewMessages, ...localMessages.value]
+
+      // Aktualizujeme ID najstaršej správy (najmenšie ID)
+      const allIds = localMessages.value.map(m => m.id)
+      oldestMessageId.value = Math.min(...allIds)
+
+      console.log(`[INFINITE SCROLL] Added ${uniqueNewMessages.length} unique messages. Oldest ID: ${oldestMessageId.value}`)
+    }
+
+    // Ak sme dostali menej správ ako limit, pravdepodobne sme na konci
+    if (newMessages.length < 20) {
+      hasMoreMessages.value = false
+    }
+
+    done()
+
+  } catch (err) {
+    console.error("[INFINITE SCROLL] Fetch error:", err)
+    hasMoreMessages.value = false
+    done(true)
+  } finally {
+    isLoadingOlder.value = false
+  }
 }
 
-// Vylepšené formátovanie - zvýrazní aj viacrozmerné mentions
 function formatMessage(text: string): string {
-  // Escapujeme HTML entity
   const escaped = text
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
 
-  // Zvýrazníme mentions
   return escaped.replace(
     /@(?:"([^"]+)"|'([^']+)'|(\S+))/g,
     (match, quoted1, quoted2, single) => {
@@ -144,12 +177,10 @@ function formatMessage(text: string): string {
 function isPingedMessage(msg: Message): boolean {
   if (msg.userId === currentUserId) return false
 
-  // Primárne sa spoliehame na backend mentionedUserIds
   if (msg.mentionedUserIds && msg.mentionedUserIds.length > 0) {
     if (msg.mentionedUserIds.includes(currentUserId as number)) return true
   }
 
-  // Fallback: kontrola na základe prezývky
   const currentNickname = getCurrentUserNickname()
   if (!currentNickname) return false
   const mentions = extractMentions(msg.text)
@@ -173,15 +204,43 @@ function handleScroll() {
   userScrolledUp.value = !isAtBottom()
 }
 
+// Sledujeme zmeny v props.messages (nové správy z parent componentu)
 watch(
   () => props.messages,
   async (newVal) => {
     const wasBottom = isAtBottom()
 
-    if (JSON.stringify(newVal) !== JSON.stringify(localMessages.value)) {
-      localMessages.value = [...newVal]
-      hasMoreMessages.value = true
-      isLoadingOlder.value = false
+    // Ak sa zmenil kanál alebo prišli úplne nové správy
+    if (newVal.length > 0) {
+      // Skontrolujeme, či sú to nové správy alebo zmena kanála
+      const currentIds = new Set(localMessages.value.map(m => m.id))
+
+      // Ak sú všetky ID nové, pravdepodobne sa zmenil kanál
+      const isChannelChange = newVal.length > 0 &&
+        newVal.every(m => !currentIds.has(m.id))
+
+      if (isChannelChange) {
+        // Reset všetkého pri zmene kanála
+        console.log('[MESSAGES] Channel changed, resetting...')
+        localMessages.value = [...newVal]
+        hasMoreMessages.value = true
+        isLoadingOlder.value = false
+
+        // Nastavíme ID najstaršej správy
+        if (newVal.length > 0) {
+          const allIds = newVal.map(m => m.id)
+          oldestMessageId.value = Math.min(...allIds)
+        }
+      } else {
+        // Pridáme len nové správy (tie, ktoré ešte nemáme)
+        const existingIds = new Set(localMessages.value.map(m => m.id))
+        const uniqueNewMessages = newVal.filter(m => !existingIds.has(m.id))
+
+        if (uniqueNewMessages.length > 0) {
+          console.log(`[MESSAGES] Adding ${uniqueNewMessages.length} new messages`)
+          localMessages.value = [...localMessages.value, ...uniqueNewMessages]
+        }
+      }
     }
 
     await nextTick()
@@ -191,6 +250,19 @@ watch(
     }
   },
   { immediate: true, deep: true }
+)
+
+// Sledujeme zmenu kanála
+watch(
+  () => currentChannelId?.value,
+  () => {
+    // Reset pri zmene kanála
+    hasMoreMessages.value = true
+    oldestMessageId.value = null
+    localMessages.value = []
+    userScrolledUp.value = false
+    lastLoadTime.value = 0 // Reset throttle
+  }
 )
 
 onMounted(() => {
