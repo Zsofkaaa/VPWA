@@ -1,23 +1,39 @@
 import Message from '#models/message'
 import Channel from '#models/channel'
+import User from '#models/user'
+import MessageMention from '#models/message_mention'
 import { DateTime } from 'luxon'
 
 export default class MessagesController {
-  // Získanie posledných správ z kanála s podporou infinite scroll
+  // Pomocná funkcia na extrakciu mentions
+  private async extractMentions(content: string) {
+    // Najprv skúsime nájsť všetkých používateľov
+    const allUsers = await User.all()
+    const mentionedUserIds: number[] = []
+
+    // Regex pre @ mentions - zachytí aj viacrozmerné mená
+    // Hľadáme @username alebo @"user name" alebo @'user name'
+    const mentionRegex = /@(?:"([^"]+)"|'([^']+)'|(\S+))/g
+
+    let match
+    while ((match = mentionRegex.exec(content)) !== null) {
+      // match[1] = quoted with ", match[2] = quoted with ', match[3] = single word
+      const mentionText = (match[1] || match[2] || match[3] || '').toLowerCase()
+
+      // Nájdeme používateľa s touto prezývkou
+      const user = allUsers.find((u) => u.nickName.toLowerCase() === mentionText)
+      if (user && !mentionedUserIds.includes(user.id)) {
+        mentionedUserIds.push(user.id)
+      }
+    }
+
+    return mentionedUserIds
+  }
+
   public async index({ params, request }: { params: { id: number }; request: any }) {
     const channelId = params.id
-
-    // Parametre pre pagination
-    const before = request.input('before') // ID správy, pred ktorou chceme načítať staršie
-    const limit = Number(request.input('limit', 30)) // Počet správ (default 30)
-
-    /*
-    console.log('[MESSAGES CONTROLLER] Loading messages:', {
-      channelId,
-      before,
-      limit,
-    })
-    */
+    const before = request.input('before')
+    const limit = Number(request.input('limit', 30))
 
     let query = Message.query()
       .where('channel_id', channelId)
@@ -26,15 +42,12 @@ export default class MessagesController {
       .orderBy('id', 'desc')
       .limit(limit)
 
-    // Ak je zadané before, načítame len správy staršie ako táto
     if (before) {
       query = query.where('id', '<', Number(before))
     }
 
     const messages = await query
-    // console.log('[MESSAGES CONTROLLER] Found messages:', messages.length)
 
-    // Transformujeme do formátu pre frontend
     const result = messages.map((msg) => ({
       id: msg.id,
       userId: msg.senderId,
@@ -43,11 +56,9 @@ export default class MessagesController {
       mentionedUserIds: msg.mentions.map((m) => m.mentionedUserId),
     }))
 
-    // console.log('[MESSAGES CONTROLLER] Returning messages:', result.length)
     return result
   }
 
-  // Vytvorenie novej správy (HTTP POST)
   public async store({ auth, params, request }: any) {
     const channelId = Number(params.id)
     const { content } = request.only(['content'])
@@ -55,10 +66,9 @@ export default class MessagesController {
     const senderId = auth?.user?.id
     if (!senderId) throw new Error('Používateľ nie je autentifikovaný')
 
-    // Načítame kanál
     const channel = await Channel.findOrFail(channelId)
 
-    // Vytvoríme novú správu
+    // Vytvoríme správu
     const message = await Message.create({
       channelId,
       senderId,
@@ -67,20 +77,34 @@ export default class MessagesController {
       hasCommand: false,
     })
 
-    // Načítame autora správy
     await message.load('sender')
 
-    // Aktualizujeme čas poslednej aktivity kanála
+    // Extrahovanie a uloženie mentions
+    const mentionedUserIds = await this.extractMentions(content)
+
+    if (mentionedUserIds.length > 0) {
+      // Uložíme mentions do databázy
+      for (const userId of mentionedUserIds) {
+        await MessageMention.create({
+          messageId: message.id,
+          mentionedUserId: userId,
+        })
+      }
+
+      message.hasPing = true
+      await message.save()
+    }
+
+    // Aktualizujeme kanál
     channel.lastActiveAt = DateTime.now()
     await channel.save()
 
-    // Vrátime správu vo formáte pre frontend
     return {
       id: message.id,
       userId: senderId,
       user: message.sender.nickName,
       text: message.content,
-      mentionedUserIds: [],
+      mentionedUserIds: mentionedUserIds,
     }
   }
 }

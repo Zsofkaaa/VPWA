@@ -30,28 +30,22 @@
   </div>
 </template>
 
-
-
 <script lang="ts" setup>
 import { nextTick, ref, watch, onMounted, inject, type Ref } from 'vue'
 import type { Message } from '@/types';
 
-// Získame ID aktuálneho používateľa z rodiča
 const currentUserId = inject<number>('currentUserId')
-// Získame aktuálny kanál z rodiča ako reaktívnu referenciu
 const currentChannelId = inject<Ref<number | null>>('currentChannelId')
 
-// Prijímame správy ako prop
 const props = defineProps<{ messages: Message[] }>()
 
-const isLoadingOlder = ref(false)  // Stav načítania starších správ
-const hasMoreMessages = ref(true)  // Indikuje, či sú ďalšie správy na načítanie
-const localMessages = ref<Message[]>([]) // Lokálna kópia správ pre zobrazenie
-const messagesContainer = ref<HTMLElement | null>(null) // Ref na kontajner správ
-const bottomElement = ref<HTMLElement | null>(null) // Ref na spodný element pre scroll
-const userScrolledUp = ref(false) // Sleduje, či používateľ scrolloval hore
+const isLoadingOlder = ref(false)
+const hasMoreMessages = ref(true)
+const localMessages = ref<Message[]>([])
+const messagesContainer = ref<HTMLElement | null>(null)
+const bottomElement = ref<HTMLElement | null>(null)
+const userScrolledUp = ref(false)
 
-// Získanie prezývky používateľa zo storage
 function getCurrentUserNickname(): string | null {
   const savedUser = localStorage.getItem('user')
   if (!savedUser) return null
@@ -63,18 +57,26 @@ function getCurrentUserNickname(): string | null {
   }
 }
 
-// Vyextrahovanie zmienok v texte správy
+// Vylepšené extrahovanie mentions - podporuje aj viacrozmerné mená
 function extractMentions(text: string): string[] {
-  const mentionRegex = /@(\w+)/g
+  // Regex pre @"user name", @'user name' alebo @username
+  const mentionRegex = /@(?:"([^"]+)"|'([^']+)'|(\S+))/g
   const matches = text.matchAll(mentionRegex)
-  return Array.from(matches, (m) => m[1])
-    .filter((mention): mention is string => Boolean(mention))
-    .map(m => m.toLowerCase())
+  const mentions: string[] = []
+
+  for (const match of matches) {
+    // match[1] = quoted with ", match[2] = quoted with ', match[3] = single word
+    const mention = (match[1] || match[2] || match[3])?.toLowerCase()
+    if (mention) {
+      mentions.push(mention)
+    }
+  }
+
+  return mentions
 }
 
-const oldestMessageId = ref<number | null>(null) // ID najstaršej načítanej správy
+const oldestMessageId = ref<number | null>(null)
 
-// Funkcia na načítanie starších správ pri infinite scroll
 function onLoad(index: number, done: (stop?: boolean) => void) {
   if (!currentChannelId?.value) {
     console.warn("No channel selected.")
@@ -108,10 +110,7 @@ function onLoad(index: number, done: (stop?: boolean) => void) {
           return
         }
 
-        // Pridáme nové správy na začiatok zoznamu
         localMessages.value.unshift(...newMessages)
-
-        // Aktualizujeme ID najstaršej správy
         oldestMessageId.value = newMessages[newMessages.length - 1]!.id
 
         done()
@@ -124,24 +123,39 @@ function onLoad(index: number, done: (stop?: boolean) => void) {
   }, 1000)
 }
 
-// Formátovanie správy s vyznačením zmienok
+// Vylepšené formátovanie - zvýrazní aj viacrozmerné mentions
 function formatMessage(text: string): string {
-  return text.replace(/(@\w+)/g, '<span class="ping-highlight">$1</span>')
+  // Escapujeme HTML entity
+  const escaped = text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+
+  // Zvýrazníme mentions
+  return escaped.replace(
+    /@(?:"([^"]+)"|'([^']+)'|(\S+))/g,
+    (match, quoted1, quoted2, single) => {
+      const mentionText = quoted1 || quoted2 || single
+      return `<span class="ping-highlight">@${mentionText}</span>`
+    }
+  )
 }
 
-// Kontrola, či správa obsahuje zmienku na aktuálneho používateľa
 function isPingedMessage(msg: Message): boolean {
   if (msg.userId === currentUserId) return false
+
+  // Primárne sa spoliehame na backend mentionedUserIds
   if (msg.mentionedUserIds && msg.mentionedUserIds.length > 0) {
     if (msg.mentionedUserIds.includes(currentUserId as number)) return true
   }
+
+  // Fallback: kontrola na základe prezývky
   const currentNickname = getCurrentUserNickname()
   if (!currentNickname) return false
   const mentions = extractMentions(msg.text)
   return mentions.includes(currentNickname)
 }
 
-// Zistenie, či je scroll na spodku
 function isAtBottom(): boolean {
   const el = messagesContainer.value
   if (!el) return true
@@ -149,19 +163,16 @@ function isAtBottom(): boolean {
   return el.scrollHeight - el.scrollTop - el.clientHeight <= threshold
 }
 
-// Posunutie scrollu na spodok
 function scrollToBottom() {
   const el = bottomElement.value
   if (!el) return
   el.scrollIntoView({ behavior: 'smooth', block: 'start' })
 }
 
-// Ošetrenie scroll eventu, zisťujeme, či používateľ scrolloval hore
 function handleScroll() {
   userScrolledUp.value = !isAtBottom()
 }
 
-// Sledujeme zmeny správ a automaticky scrollujeme, ak je treba
 watch(
   () => props.messages,
   async (newVal) => {
@@ -182,7 +193,6 @@ watch(
   { immediate: true, deep: true }
 )
 
-// Pridáme event listener na scroll po mountnutí
 onMounted(() => {
   const el = messagesContainer.value
   if (el) {
@@ -191,8 +201,6 @@ onMounted(() => {
   setTimeout(scrollToBottom, 500)
 })
 </script>
-
-
 
 <style>
 .ping-highlight {
