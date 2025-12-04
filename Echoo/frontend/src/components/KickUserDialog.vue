@@ -42,13 +42,13 @@
 
 <script lang="ts" setup>
 import { ref, watch } from 'vue'
-import type { User } from '@/types';
+import type { AppUser } from '@/types';
 
 
 // Props pre viditeľnosť a členov
 const props = defineProps<{
   visible: boolean
-  members: User[]
+  members: AppUser[]
 }>()
 
 // Emit udalostí pre parent komponent

@@ -58,12 +58,12 @@
 
 <script lang="ts" setup>
 import { ref, watch } from 'vue'
-import type { User } from '@/types';
+import type { AppUser } from '@/types';
 
 // Props z rodiča
 const props = defineProps<{
   visible: boolean
-  members: User[]
+  members: AppUser[]
 }>()
 
 // Eventy pre rodiča

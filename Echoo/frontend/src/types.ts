@@ -1,6 +1,3 @@
-// USER ÉS APP USER UGYANAAAZ
-
-
 export interface TypingData {
   user: string
   channelId: number
@@ -13,11 +10,6 @@ export interface UserChannel {
   path: string
   role: 'admin' | 'member'
   notificationSettings?: string
-}
-
-export interface AppUser {
-  id: number
-  nickName: string
 }
 
 export interface KickResponse {
@@ -93,12 +85,12 @@ export interface MeResponse {
   nickName: string | null
 }
 
-export interface User {
+export interface AppUser {
   id: number
   nickName: string
 }
 
-export interface User2 {
+export interface User {
   id: number
   nickName: string
   role: 'admin' | 'member'

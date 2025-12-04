@@ -113,7 +113,7 @@
 <script lang="ts" setup>
 import { ref, onMounted } from 'vue'
 import axios from 'axios'
-import type { ChannelData, MeResponse, User } from '@/types'
+import type { ChannelData, MeResponse, AppUser } from '@/types'
 
 // Form state
 const channelName = ref('')
@@ -184,7 +184,7 @@ onMounted(async () => {
     })
     currentUserId.value = me.data.id
 
-    const users = await axios.get<User[]>(`${API_URL}/users`, {
+    const users = await axios.get<AppUser[]>(`${API_URL}/users`, {
       headers: { Authorization: `Bearer ${token}` }
     })
 
