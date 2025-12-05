@@ -146,21 +146,21 @@ class Ws {
   // Send invite notification to specific user
   sendInviteNotification(userId: number, inviteData: any) {
     const userRoom = `user_${userId}`
-    console.log(`[WS] Sending invite notification to user ${userId} in room ${userRoom}`)
+    // console.log(`[WS] Sending invite notification to user ${userId} in room ${userRoom}`)
     this.io?.to(userRoom).emit('new_invite', inviteData)
   }
 
   // Notify user about channel updates (when accepted invite)
   sendChannelUpdate(userId: number, channelData: any) {
     const userRoom = `user_${userId}`
-    console.log(`[WS] Sending channel update to user ${userId}`)
+    // console.log(`[WS] Sending channel update to user ${userId}`)
     this.io?.to(userRoom).emit('channel_joined', channelData)
   }
 
   // Notify all users in channel that it was deleted
   sendChannelDeleted(channelId: number, channelName: string, deletedBy: number) {
     const channelRoom = `channel_${channelId}`
-    console.log(`[WS] Sending channel deleted notification to channel ${channelId}`)
+    // console.log(`[WS] Sending channel deleted notification to channel ${channelId}`)
     this.io?.to(channelRoom).emit('channel_deleted', {
       channelId,
       channelName,
@@ -171,7 +171,7 @@ class Ws {
   // Notify user that they were kicked from channel
   sendUserKicked(userId: number, channelId: number, channelName: string) {
     const userRoom = `user_${userId}`
-    console.log(`[WS] Sending user kicked notification to user ${userId}`)
+    // console.log(`[WS] Sending user kicked notification to user ${userId}`)
     this.io?.to(userRoom).emit('user_kicked', {
       userId,
       channelId,

@@ -84,7 +84,7 @@ export default class ChannelsController {
             },
           })
 
-          console.log(`[CHANNEL CREATE] Sent invite notification to user ${userId}`)
+          // console.log(`[CHANNEL CREATE] Sent invite notification to user ${userId}`)
         }
       }
 

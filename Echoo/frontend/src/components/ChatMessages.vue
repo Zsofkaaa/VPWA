@@ -82,7 +82,7 @@ function extractMentions(text: string): string[] {
 async function onLoad(index: number, done: (stop?: boolean) => void) {
   const now = Date.now()
   if (now - lastLoadTime.value < 1000) {
-    console.log('[INFINITE SCROLL] Throttled - too soon')
+    // console.log('[INFINITE SCROLL] Throttled - too soon')
     done()
     return
   }
@@ -94,7 +94,7 @@ async function onLoad(index: number, done: (stop?: boolean) => void) {
   }
 
   if (isLoadingOlder.value) {
-    console.log('[INFINITE SCROLL] Already loading')
+    // console.log('[INFINITE SCROLL] Already loading')
     done()
     return
   }
@@ -106,7 +106,7 @@ async function onLoad(index: number, done: (stop?: boolean) => void) {
   const beforeId = oldestMessageId.value ?? ''
   const url = `http://localhost:3333/channels/${currentChannelId.value}/messages?before=${beforeId}&limit=20`
 
-  console.log(`[INFINITE SCROLL] Fetching older messages before ID: ${beforeId}`)
+  // console.log(`[INFINITE SCROLL] Fetching older messages before ID: ${beforeId}`)
 
   try {
     const response = await fetch(url, {
@@ -121,7 +121,7 @@ async function onLoad(index: number, done: (stop?: boolean) => void) {
     }
 
     const newMessages: Message[] = await response.json()
-    console.log(`[INFINITE SCROLL] Received ${newMessages.length} messages`)
+    // console.log(`[INFINITE SCROLL] Received ${newMessages.length} messages`)
 
     if (newMessages.length === 0) {
       hasMoreMessages.value = false
@@ -137,7 +137,7 @@ async function onLoad(index: number, done: (stop?: boolean) => void) {
       localMessages.value = [...uniqueNewMessages, ...localMessages.value]
       const allIds = localMessages.value.map(m => m.id)
       oldestMessageId.value = Math.min(...allIds)
-      console.log(`[INFINITE SCROLL] Added ${uniqueNewMessages.length} unique messages. Oldest ID: ${oldestMessageId.value}`)
+      // console.log(`[INFINITE SCROLL] Added ${uniqueNewMessages.length} unique messages. Oldest ID: ${oldestMessageId.value}`)
     }
 
     if (newMessages.length < 20) {
@@ -215,7 +215,7 @@ watch(
       const isChannelChange = newVal.length > 0 && newVal.every(m => !currentIds.has(m.id))
 
       if (isChannelChange) {
-        console.log('[MESSAGES] Channel changed, resetting...')
+        // console.log('[MESSAGES] Channel changed, resetting...')
         localMessages.value = [...newVal]
         hasMoreMessages.value = true
         isLoadingOlder.value = false
@@ -229,7 +229,7 @@ watch(
         const uniqueNewMessages = newVal.filter(m => !existingIds.has(m.id))
 
         if (uniqueNewMessages.length > 0) {
-          console.log(`[MESSAGES] Adding ${uniqueNewMessages.length} new messages`)
+          // console.log(`[MESSAGES] Adding ${uniqueNewMessages.length} new messages`)
           localMessages.value = [...localMessages.value, ...uniqueNewMessages]
         }
       }

@@ -144,7 +144,7 @@ const {
   currentChannelId,
   // Invite callback
   (inviteData) => {
-    console.log('[LAYOUT] New invite received:', inviteData)
+    // console.log('[LAYOUT] New invite received:', inviteData)
     void loadInvites()
     $q.notify({
       type: 'info',
