@@ -3,6 +3,13 @@ export interface TypingData {
   channelId: number
 }
 
+export interface UserData {
+  firstName: string
+  lastName: string
+  nickName: string
+  email: string
+}
+
 export interface UserChannel {
   id: number
   name: string
@@ -79,6 +86,12 @@ export interface TypingContentData {
   content: string
 }
 
+export interface TypingUser {
+  user: string
+  content: string
+  timestamp: number
+}
+
 export interface MeResponse {
   id: number
   name: string | null
@@ -99,4 +112,40 @@ export interface User {
 export interface Member {
   userId: number
   username: string
+}
+
+// WebSocket notification interfaces
+export interface InviteNotification {
+  id: number
+  channel_id: number
+  channel: {
+    id: number
+    name: string
+  }
+}
+
+export interface ChannelUpdateNotification {
+  id: number
+  name: string
+  type: 'private' | 'public'
+  path: string
+  role: 'admin' | 'member'
+}
+
+export interface ChannelDeletedNotification {
+  channelId: number
+  channelName: string
+  deletedBy: number
+}
+
+export interface UserKickedNotification {
+  userId: number
+  channelId: number
+  channelName: string
+}
+
+export interface UserBannedNotification {
+  userId: number
+  channelId: number
+  channelName: string
 }

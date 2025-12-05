@@ -4,6 +4,7 @@ import UserChannel from '#models/user_channel'
 import { DateTime } from 'luxon'
 import User from '#models/user'
 import ChannelInvite from '#models/channel_invite'
+import ws from '#services/ws'
 
 export default class ChannelsController {
   // Vytvorenie novej channel
@@ -39,7 +40,7 @@ export default class ChannelsController {
         lastActiveAt: DateTime.now(),
       })
 
-      // Pridanie tvorcu ako admina
+      // 2️⃣ Pridanie tvorcu ako admina
       await UserChannel.create({
         channelId: channel.id,
         userId: auth.user.id,
@@ -47,7 +48,7 @@ export default class ChannelsController {
         notificationSettings: notificationSettings || 'all',
       })
 
-      // 3️⃣ Invite-ok létrehozása
+      // 3️⃣ Invite-ok létrehozása + WebSocket értesítések
       if (Array.isArray(invitedMembers) && invitedMembers.length > 0) {
         for (const userId of invitedMembers) {
           const alreadyMember = await UserChannel.query()
@@ -65,12 +66,25 @@ export default class ChannelsController {
 
           if (pendingInvite) continue
 
-          await ChannelInvite.create({
+          // Invite létrehozása
+          const invite = await ChannelInvite.create({
             channelId: channel.id,
             userId,
             invitedBy: auth.user.id,
             status: 'pending',
           })
+
+          // ⭐ WebSocket értesítés küldése ⭐
+          ws.sendInviteNotification(userId, {
+            id: invite.id,
+            channel_id: channel.id,
+            channel: {
+              id: channel.id,
+              name: channel.name,
+            },
+          })
+
+          console.log(`[CHANNEL CREATE] Sent invite notification to user ${userId}`)
         }
       }
 
@@ -101,6 +115,9 @@ export default class ChannelsController {
     if (!userChannel || userChannel.role !== 'admin') {
       return response.unauthorized({ message: 'Only admins can terminate channel' })
     }
+
+    // ⭐ WebSocket értesítés ELŐTTE (amikor még mindenki a channel room-ban van) ⭐
+    ws.sendChannelDeleted(channelId, channel.name, user.id)
 
     // Odstránenie všetkých user_channel záznamov
     await UserChannel.query().where('channel_id', channelId).delete()

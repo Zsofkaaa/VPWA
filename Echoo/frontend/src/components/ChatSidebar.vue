@@ -132,8 +132,6 @@
   </q-drawer>
 </template>
 
-
-
 <script lang="ts" setup>
 import { ref, computed } from 'vue'
 import axios from 'axios'
@@ -179,24 +177,77 @@ function openInviteDialog(invite: Invite) {
 
 /* POTVRDENIE INVITE */
 async function acceptInvite() {
-  const token = localStorage.getItem('auth_token')
-  await axios.post(`http://localhost:3333/invites/${selectedInvite.value!.id}/accept`, {}, { headers: { Authorization: `Bearer ${token}` } })
-  inviteDialog.value = false
-  emit('invite-updated')
-  emit('goToChannel', {
-    id: selectedInvite.value!.channel.id,
-    name: selectedInvite.value!.channel.name,
-    type: 'private',
-    path: `/chat/${selectedInvite.value!.channel.id}`
-  })
+  try {
+    const token = localStorage.getItem('auth_token')
+    await axios.post(
+      `http://localhost:3333/invites/${selectedInvite.value!.id}/accept`,
+      {},
+      { headers: { Authorization: `Bearer ${token}` } }
+    )
+
+    inviteDialog.value = false
+
+    // Emit event to reload invites
+    emit('invite-updated')
+
+    // Navigate to the channel immediately
+    const channelId = selectedInvite.value!.channel.id
+    const channelName = selectedInvite.value!.channel.name
+
+    // Small delay to allow channel list to update
+    setTimeout(() => {
+      emit('goToChannel', {
+        id: channelId,
+        name: channelName,
+        type: 'private',
+        path: `/chat/${channelId}`
+      })
+    }, 100)
+
+    $q.notify({
+      type: 'positive',
+      message: `Joined channel "${channelName}"`,
+      position: 'top',
+      timeout: 2000
+    })
+  } catch (error) {
+    console.error('Failed to accept invite:', error)
+    $q.notify({
+      type: 'negative',
+      message: 'Failed to accept invite',
+      position: 'top',
+      timeout: 2000
+    })
+  }
 }
 
 /* ODMITNUTIE INVITE */
 async function rejectInvite() {
-  const token = localStorage.getItem('auth_token')
-  await axios.post(`http://localhost:3333/invites/${selectedInvite.value!.id}/reject`, {}, { headers: { Authorization: `Bearer ${token}` } })
-  inviteDialog.value = false
-  emit('invite-updated')
+  try {
+    const token = localStorage.getItem('auth_token')
+    await axios.post(
+      `http://localhost:3333/invites/${selectedInvite.value!.id}/reject`,
+      {},
+      { headers: { Authorization: `Bearer ${token}` } }
+    )
+    inviteDialog.value = false
+    emit('invite-updated')
+
+    $q.notify({
+      type: 'info',
+      message: 'Invite rejected',
+      position: 'top',
+      timeout: 2000
+    })
+  } catch (error) {
+    console.error('Failed to reject invite:', error)
+    $q.notify({
+      type: 'negative',
+      message: 'Failed to reject invite',
+      position: 'top',
+      timeout: 2000
+    })
+  }
 }
 
 /* VÝBER KANÁLU */
@@ -220,10 +271,7 @@ function handleNotificationSettingChanged(channelId: number, newSetting: string)
 }
 </script>
 
-
-
 <style>
-
 /* HLAVNÝ ŠTÝL SIDEBARU */
 .sidebar {
   background-color: #355070 !important;
@@ -323,7 +371,7 @@ function handleNotificationSettingChanged(channelId: number, newSetting: string)
 .invite-badge {
   width: 10px;
   height: 10px;
-  background-color: orange;  /* ← itt változtattuk a színt */
+  background-color: orange;
   border-radius: 50%;
   position: absolute;
   right: 12px;
@@ -333,7 +381,7 @@ function handleNotificationSettingChanged(channelId: number, newSetting: string)
 
 /* Invite-k kiemelése kerettel */
 .active-invite {
-  background-color: rgba(255, 166, 0, 0.15); /* halvány háttér színnel még látványosabb */
+  background-color: rgba(255, 166, 0, 0.15);
 }
 
 /* ROZDEĽOVACIA ČIARA MEDZI SEKCIAMI */

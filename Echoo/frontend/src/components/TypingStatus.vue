@@ -1,32 +1,41 @@
 <template>
   <div class="typing-status" :style="typingStatusStyle">
-    <div class="typing-header">
-      {{ typingUser ? `${typingUser} is typing...` : 'Someone is typing...' }}
-    </div>
-    <div v-if="typingContent" class="typing-preview">
-      "{{ typingContent }}"
+    <div class="typing-text">
+      {{ getTypingText() }}
     </div>
   </div>
 </template>
 
-
-
 <script setup lang="ts">
-defineProps<{
-  typingUser?: string | null
-  typingContent?: string // ⬅️ ÚJ
+import type { TypingUser } from '@/types';
+
+const props = defineProps<{
+  typingUsers: TypingUser[]
   typingStatusStyle: Record<string, string | number>
 }>()
+
+function getTypingText() {
+  const count = props.typingUsers.length
+
+  if (count === 0) return ''
+  if (count > 3) return 'More than 3 people are typing...'
+
+  const users = props.typingUsers.map(u => u.user)
+
+  if (count === 1) return `${users[0]} is typing...`
+  if (count === 2) return `${users[0]} and ${users[1]} are typing...`
+  if (count === 3) return `${users[0]}, ${users[1]} and ${users[2]} are typing...`
+
+  return ''
+}
 </script>
-
-
 
 <style scoped>
 .typing-status {
   background: rgba(0, 0, 0, 0.85);
   backdrop-filter: blur(8px);
   color: white;
-  padding: 10px 16px;
+  padding: 8px 16px;
   border-radius: 12px;
   font-size: 14px;
   width: fit-content;
@@ -34,21 +43,8 @@ defineProps<{
   margin-left: 15px;
 }
 
-.typing-header {
+.typing-text {
   font-style: italic;
-  margin-bottom: 4px;
-}
-
-.typing-preview {
   color: #aaa;
-  font-size: 13px;
-  font-style: normal;
-  margin-top: 6px;
-  padding: 6px 10px;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 8px;
-  max-height: 100px;
-  overflow-y: auto;
-  word-break: break-word;
 }
 </style>

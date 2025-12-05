@@ -2,6 +2,8 @@ import type { HttpContext } from '@adonisjs/core/http'
 import UserChannel from '#models/user_channel'
 import KickLog from '#models/kick_log'
 import ChannelBan from '#models/channel_ban'
+import Channel from '#models/channel'
+import ws from '#services/ws'
 
 export default class UserChannelController {
   // Pridanie používateľa do kanála
@@ -144,6 +146,10 @@ export default class UserChannelController {
 
     if (!record) return response.notFound({ error: 'User is not in this channel' })
 
+    // Get channel name for notification
+    const channel = await Channel.find(channelId)
+    const channelName = channel?.name || 'Unknown Channel'
+
     // 1) Töröljük a csatornatagságot
     await record.delete()
 
@@ -153,6 +159,9 @@ export default class UserChannelController {
       channelId,
       bannedBy: adminUser.id,
     })
+
+    // ⭐ 3) WebSocket értesítés a banned usernek
+    ws.sendUserBanned(userId, channelId, channelName)
 
     return response.ok({ message: 'User banned successfully' })
   }
@@ -183,9 +192,17 @@ export default class UserChannelController {
 
     const isAdmin = kickerRecord.role === 'admin'
 
+    // Get channel name for notification
+    const channel = await Channel.find(channelId)
+    const channelName = channel?.name || 'Unknown Channel'
+
     // Ak admin, ban permanentne
     if (isAdmin) {
       await targetRecord.delete()
+
+      // ⭐ WebSocket értesítés - admin ban
+      ws.sendUserBanned(targetUserId, channelId, channelName)
+
       return response.ok({ message: 'User permanently banned' })
     }
 
@@ -212,11 +229,17 @@ export default class UserChannelController {
       await ChannelBan.create({
         userId: targetUserId,
         channelId,
-        bannedBy: kickerUser.id, // admin/kickelő ID
+        bannedBy: kickerUser.id,
       })
+
+      // ⭐ 3) WebSocket értesítés - 3 kick után ban
+      ws.sendUserBanned(targetUserId, channelId, channelName)
 
       return response.ok({ message: 'User has been banned after 3 different users kicked them' })
     }
+
+    // ⭐ WebSocket értesítés - kick (nem ban)
+    ws.sendUserKicked(targetUserId, channelId, channelName)
 
     return response.ok({ message: `User kicked successfully (${kicks.length}/3)` })
   }

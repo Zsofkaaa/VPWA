@@ -29,11 +29,10 @@
         <router-view />
       </q-page-container>
 
-      <!-- Indikátor písania správy -->
+      <!-- Indikátor písania správy - UPDATED -->
       <TypingStatus
         v-if="isTyping"
-        :typing-user="typingUser"
-        :typing-content="typingContent"
+        :typing-users="typingUsers"
         :typing-status-style="typingStatusStyle"
       />
 
@@ -42,6 +41,7 @@
         v-if="isChatPage"
         v-model:new-message="newMessage"
         :footer-style="footerStyle"
+        :typing-users="typingUsers"
         @enter-press="onEnterPress"
         @typing="handleTyping"
         @typing-content="handleTypingContent"
@@ -59,7 +59,7 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, computed, watch, provide, onMounted, onBeforeUnmount, getCurrentInstance } from 'vue'
+import { ref, computed, watch, provide, getCurrentInstance } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useQuasar } from 'quasar'
 import { useAuth } from '../composables/useAuth'
@@ -69,6 +69,8 @@ import { useMessages } from 'src/composables/useMessages'
 import { useSocketEvents } from 'src/composables/useSocketEvents'
 import { useNotifications } from 'src/composables/useNotifications'
 import { useInvites } from 'src/composables/useInvites'
+import { useChannelRemoval } from 'src/composables/useChannelRemoval'
+import { useAppInitialization } from 'src/composables/useAppInitialization'
 
 // Komponenty
 import Header from 'components/ChatHeader.vue'
@@ -110,18 +112,68 @@ const {
   sendMessage
 } = useMessages(currentChannelId, currentUserId, privateChannels, publicChannels, $q, socket)
 
-// Socket Events Composable
+// Channel Removal Composable
+const {
+  handleChannelDeleted,
+  handleUserKicked,
+  handleUserBanned
+} = useChannelRemoval(
+  privateChannels,
+  publicChannels,
+  currentChannelId,
+  currentChannelName,
+  activeChannelPath,
+  messages,
+  router,
+  $q
+)
+
+// Socket Events Composable - UPDATED
 const {
   isTyping,
-  typingUser,
-  typingContent,
+  typingUsers,
   handleTyping,
   handleTypingContent,
   setupSocketListeners,
   cleanupSocketListeners,
   joinChannel,
-  leaveChannel
-} = useSocketEvents(socket, currentChannelId)
+  leaveChannel,
+  joinUserRoom
+} = useSocketEvents(
+  socket,
+  currentChannelId,
+  // Invite callback
+  (inviteData) => {
+    console.log('[LAYOUT] New invite received:', inviteData)
+    void loadInvites()
+    $q.notify({
+      type: 'info',
+      message: `You have a new invite to "${inviteData.channel.name}"`,
+      position: 'top-right',
+      timeout: 3000
+    })
+  },
+  // Channel joined callback
+  (channelData) => {
+    console.log('[LAYOUT] Channel joined:', channelData)
+    const token = localStorage.getItem('auth_token')
+    if (token && currentUserId.value) {
+      void loadUserChannels(currentUserId.value, token)
+    }
+  },
+  // Channel deleted callback
+  (data) => {
+    handleChannelDeleted(data.channelId, data.channelName, data.deletedBy, currentUserId.value)
+  },
+  // User kicked callback
+  (data) => {
+    handleUserKicked(data.userId, data.channelId, data.channelName, currentUserId.value)
+  },
+  // User banned callback
+  (data) => {
+    handleUserBanned(data.userId, data.channelId, data.channelName, currentUserId.value)
+  }
+)
 
 // Notifications Composable
 const {
@@ -238,70 +290,26 @@ watch(
   { immediate: true }
 )
 
-/*
-watch(currentChannelId, (id, oldId) => {
-  if (!socket) return
-
-  if (oldId) {
-    leaveChannel(oldId)
-  }
-  if (id) {
-    joinChannel(id)
-  }
-})
-*/
-
-// Lifecycle hooks
-onMounted(async () => {
-  // console.log('[CHAT LAYOUT] Mounting component...')
-
-  await requestNotificationPermission()
-
-  // Načítaj aktuálneho používateľa
-  const savedUser = localStorage.getItem("user")
-  if (savedUser) {
-    const user = JSON.parse(savedUser)
-    currentUserId.value = user.id
-  }
-
-  // Načítaj kanály používateľa
-  const token = localStorage.getItem('auth_token')
-  if (token && currentUserId.value) {
-    await loadUserChannels(currentUserId.value, token)
-
-    const found = [...privateChannels.value, ...publicChannels.value].find(ch => ch.path === route.path)
-    if (found) {
-      currentChannelId.value = found.id
-      currentChannelName.value = found.name
-      activeChannelPath.value = found.path
-    }
-  }
-
-  // Setup socket listeners
-  if (currentChannelId.value) {
-    joinChannel(currentChannelId.value)
-  }
-
-  setupSocketListeners((msg) => {
-    // console.log('[SOCKET DBG] newMessage received', msg)
-    handleIncomingMessage(
-      msg,
-      [...privateChannels.value, ...publicChannels.value],
-      currentUserId.value,
-      currentChannelId.value,
-      messages,
-      router
-    )
-  })
-
-  await loadInvites()
-})
-
-onBeforeUnmount(() => {
-  cleanupSocketListeners()
-  if (currentChannelId.value) {
-    leaveChannel(currentChannelId.value)
-  }
+// App Initialization (onMounted/onBeforeUnmount logic)
+useAppInitialization({
+  currentUserId,
+  currentChannelId,
+  currentChannelName,
+  activeChannelPath,
+  privateChannels,
+  publicChannels,
+  messages,
+  route,
+  requestNotificationPermission,
+  loadUserChannels,
+  loadInvites,
+  joinChannel,
+  joinUserRoom,
+  leaveChannel,
+  setupSocketListeners,
+  cleanupSocketListeners,
+  handleIncomingMessage,
+  router
 })
 
 // Provide data pre child komponenty
@@ -311,11 +319,10 @@ provide('userChannels', computed(() => [...privateChannels.value, ...publicChann
 provide('currentChannelId', currentChannelId)
 provide('currentChannelName', currentChannelName)
 provide('activeChannelPath', activeChannelPath)
-provide('typingContent', typingContent)
+provide('privateChannels', privateChannels)
+provide('publicChannels', publicChannels)
 
 </script>
-
-
 
 <style scoped>
 .main-wrapper {

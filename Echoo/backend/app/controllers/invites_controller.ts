@@ -1,6 +1,7 @@
 import ChannelInvite from '#models/channel_invite'
 import UserChannel from '#models/user_channel'
 import ChannelBan from '#models/channel_ban'
+import ws from '#services/ws'
 
 // a HttpContextContract helyett használjunk any-t
 export default class InvitesController {
@@ -53,11 +54,24 @@ export default class InvitesController {
     }
 
     // 5) create invite
-    await ChannelInvite.create({
+    const invite = await ChannelInvite.create({
       channelId,
       userId: invitedUserId,
       invitedBy: inviterId,
       status: 'pending',
+    })
+
+    // 6) Load channel info pre WebSocket notifikáciu
+    await invite.load('channel')
+
+    // 7) Pošli real-time notifikáciu invitee-mu
+    ws.sendInviteNotification(invitedUserId, {
+      id: invite.id,
+      channel_id: channelId,
+      channel: {
+        id: invite.channel.id,
+        name: invite.channel.name,
+      },
     })
 
     return response.status(200).json({ message: 'Invitation sent' })
@@ -89,6 +103,18 @@ export default class InvitesController {
       channelId: invite.channelId,
       role: 'member',
       notificationSettings: 'all',
+    })
+
+    // Load channel info
+    await invite.load('channel')
+
+    // Pošli real-time notifikáciu užívateľovi
+    ws.sendChannelUpdate(auth.user.id, {
+      id: invite.channel.id,
+      name: invite.channel.name,
+      type: invite.channel.type,
+      path: `/chat/${invite.channel.id}`,
+      role: 'member',
     })
 
     return { message: 'Joined channel' }

@@ -136,6 +136,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useQuasar } from 'quasar'
 import axios from 'axios'
+import type { UserData } from '@/types'
 
 // Quasar notifikácie
 const $q = useQuasar()
@@ -169,14 +170,6 @@ function closeDialog() {
   password.value = ''
   confirmPassword.value = ''
   showPassword.value = false
-}
-
-// Typ používateľa
-interface UserData {
-  firstName: string
-  lastName: string
-  nickName: string
-  email: string
 }
 
 // Uloženie zmien profilu

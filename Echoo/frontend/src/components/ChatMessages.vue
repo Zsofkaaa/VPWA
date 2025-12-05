@@ -12,6 +12,11 @@
         </div>
       </template>
 
+      <!-- Loading animácia a tetején (mivel reverse mode van) -->
+      <div v-if="isLoadingOlder" class="row justify-center q-my-md">
+        <q-spinner-dots color="white" size="40px" />
+      </div>
+
       <div v-for="msg in localMessages" :key="msg.id" class="q-mb-md">
         <div class="text-bold">
           {{ msg.user }}
@@ -46,7 +51,7 @@ const messagesContainer = ref<HTMLElement | null>(null)
 const bottomElement = ref<HTMLElement | null>(null)
 const userScrolledUp = ref(false)
 const oldestMessageId = ref<number | null>(null)
-const lastLoadTime = ref<number>(0) // Throttling mechanizmus
+const lastLoadTime = ref<number>(0)
 
 function getCurrentUserNickname(): string | null {
   const savedUser = localStorage.getItem('user')
@@ -88,7 +93,6 @@ async function onLoad(index: number, done: (stop?: boolean) => void) {
     return
   }
 
-  // Ak už načítavame, preskočíme
   if (isLoadingOlder.value) {
     console.log('[INFINITE SCROLL] Already loading')
     done()
@@ -125,37 +129,34 @@ async function onLoad(index: number, done: (stop?: boolean) => void) {
       return
     }
 
-    // Backend posiela desc, my chceme asc pre zobrazenie
     const sortedMessages = [...newMessages].reverse()
-
-    // Odstránime duplikáty - pridáme len tie, ktoré ešte nemáme
     const existingIds = new Set(localMessages.value.map(m => m.id))
     const uniqueNewMessages = sortedMessages.filter(m => !existingIds.has(m.id))
 
     if (uniqueNewMessages.length > 0) {
-      // Pridáme na začiatok (staršie správy)
       localMessages.value = [...uniqueNewMessages, ...localMessages.value]
-
-      // Aktualizujeme ID najstaršej správy (najmenšie ID)
       const allIds = localMessages.value.map(m => m.id)
       oldestMessageId.value = Math.min(...allIds)
-
       console.log(`[INFINITE SCROLL] Added ${uniqueNewMessages.length} unique messages. Oldest ID: ${oldestMessageId.value}`)
     }
 
-    // Ak sme dostali menej správ ako limit, pravdepodobne sme na konci
     if (newMessages.length < 20) {
       hasMoreMessages.value = false
     }
 
-    done()
+    // Kis késleltetés az animáció megjelenítéséhez
+    setTimeout(() => {
+      done()
+    }, 300)
 
   } catch (err) {
     console.error("[INFINITE SCROLL] Fetch error:", err)
     hasMoreMessages.value = false
     done(true)
   } finally {
-    isLoadingOlder.value = false
+    setTimeout(() => {
+      isLoadingOlder.value = false
+    }, 200)
   }
 }
 
@@ -204,35 +205,26 @@ function handleScroll() {
   userScrolledUp.value = !isAtBottom()
 }
 
-// Sledujeme zmeny v props.messages (nové správy z parent componentu)
 watch(
   () => props.messages,
   async (newVal) => {
     const wasBottom = isAtBottom()
 
-    // Ak sa zmenil kanál alebo prišli úplne nové správy
     if (newVal.length > 0) {
-      // Skontrolujeme, či sú to nové správy alebo zmena kanála
       const currentIds = new Set(localMessages.value.map(m => m.id))
-
-      // Ak sú všetky ID nové, pravdepodobne sa zmenil kanál
-      const isChannelChange = newVal.length > 0 &&
-        newVal.every(m => !currentIds.has(m.id))
+      const isChannelChange = newVal.length > 0 && newVal.every(m => !currentIds.has(m.id))
 
       if (isChannelChange) {
-        // Reset všetkého pri zmene kanála
         console.log('[MESSAGES] Channel changed, resetting...')
         localMessages.value = [...newVal]
         hasMoreMessages.value = true
         isLoadingOlder.value = false
 
-        // Nastavíme ID najstaršej správy
         if (newVal.length > 0) {
           const allIds = newVal.map(m => m.id)
           oldestMessageId.value = Math.min(...allIds)
         }
       } else {
-        // Pridáme len nové správy (tie, ktoré ešte nemáme)
         const existingIds = new Set(localMessages.value.map(m => m.id))
         const uniqueNewMessages = newVal.filter(m => !existingIds.has(m.id))
 
@@ -252,16 +244,14 @@ watch(
   { immediate: true, deep: true }
 )
 
-// Sledujeme zmenu kanála
 watch(
   () => currentChannelId?.value,
   () => {
-    // Reset pri zmene kanála
     hasMoreMessages.value = true
     oldestMessageId.value = null
     localMessages.value = []
     userScrolledUp.value = false
-    lastLoadTime.value = 0 // Reset throttle
+    lastLoadTime.value = 0
   }
 )
 
@@ -274,7 +264,7 @@ onMounted(() => {
 })
 </script>
 
-<style>
+<style scoped>
 .ping-highlight {
   color: #00aff4 !important;
   font-weight: 700;

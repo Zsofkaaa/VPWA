@@ -31,6 +31,13 @@ class Ws {
         // console.log(`[WS] Left room: ${room}`)
       })
 
+      // User joins their personal room for invite notifications
+      socket.on('join_user_room', (userId: number) => {
+        const userRoom = `user_${userId}`
+        socket.join(userRoom)
+        console.log(`[WS] User ${userId} joined personal room: ${userRoom}`)
+      })
+
       socket.on('typing', (data: { channelId: number; user: string }) => {
         const room = `channel_${data.channelId}`
         // console.log('TYPING EVENT:', data, ' -> broadcasting to ', room)
@@ -40,13 +47,14 @@ class Ws {
 
         // Opció: automatikus stop 5 másodperc után, ha nem jön új gépelés
         setTimeout(() => {
-          socket.to(room).emit('user_stop_typing')
+          socket.to(room).emit('user_stop_typing', { user: data.user })
         }, 5000)
       })
 
-      socket.on('stop_typing', (data: { channelId: number }) => {
+      socket.on('stop_typing', (data: { channelId: number; user: string }) => {
         const room = `channel_${data.channelId}`
-        socket.to(room).emit('user_stop_typing')
+        // Broadcast stop typing with username
+        socket.to(room).emit('user_stop_typing', { user: data.user })
       })
 
       socket.on('typing_content', (data: { channelId: number; user: string; content: string }) => {
@@ -65,7 +73,7 @@ class Ws {
         const { channelId, userId, text } = data
 
         try {
-          // Extrahuje všetky @nickname
+          // Vylepšené extrahovanie mentions - podporuje aj viacrozmerné mená
           const mentionedNicknames = this.extractMentions(text)
           let mentionedUserIds: number[] = []
 
@@ -135,11 +143,70 @@ class Ws {
     console.log('[WS] WebSocket server is running')
   }
 
-  // Funkcia na extrakciu všetkých @nickname zo správy
+  // Send invite notification to specific user
+  sendInviteNotification(userId: number, inviteData: any) {
+    const userRoom = `user_${userId}`
+    console.log(`[WS] Sending invite notification to user ${userId} in room ${userRoom}`)
+    this.io?.to(userRoom).emit('new_invite', inviteData)
+  }
+
+  // Notify user about channel updates (when accepted invite)
+  sendChannelUpdate(userId: number, channelData: any) {
+    const userRoom = `user_${userId}`
+    console.log(`[WS] Sending channel update to user ${userId}`)
+    this.io?.to(userRoom).emit('channel_joined', channelData)
+  }
+
+  // Notify all users in channel that it was deleted
+  sendChannelDeleted(channelId: number, channelName: string, deletedBy: number) {
+    const channelRoom = `channel_${channelId}`
+    console.log(`[WS] Sending channel deleted notification to channel ${channelId}`)
+    this.io?.to(channelRoom).emit('channel_deleted', {
+      channelId,
+      channelName,
+      deletedBy,
+    })
+  }
+
+  // Notify user that they were kicked from channel
+  sendUserKicked(userId: number, channelId: number, channelName: string) {
+    const userRoom = `user_${userId}`
+    console.log(`[WS] Sending user kicked notification to user ${userId}`)
+    this.io?.to(userRoom).emit('user_kicked', {
+      userId,
+      channelId,
+      channelName,
+    })
+  }
+
+  // Notify user that they were banned from channel
+  sendUserBanned(userId: number, channelId: number, channelName: string) {
+    const userRoom = `user_${userId}`
+    console.log(`[WS] Sending user banned notification to user ${userId}`)
+    this.io?.to(userRoom).emit('user_banned', {
+      userId,
+      channelId,
+      channelName,
+    })
+  }
+
+  // Vylepšená funkcia na extrakciu všetkých @nickname zo správy
+  // Podporuje aj @"user name" a @'user name' formát
   private extractMentions(text: string): string[] {
-    const mentionRegex = /@(\w+)/g
+    // Regex pre @"user name", @'user name' alebo @username
+    const mentionRegex = /@(?:"([^"]+)"|'([^']+)'|(\S+))/g
     const matches = text.matchAll(mentionRegex)
-    return Array.from(matches, (m) => m[1])
+    const mentions: string[] = []
+
+    for (const match of matches) {
+      // match[1] = quoted with ", match[2] = quoted with ', match[3] = single word
+      const mention = match[1] || match[2] || match[3]
+      if (mention) {
+        mentions.push(mention)
+      }
+    }
+
+    return mentions
   }
 }
 
