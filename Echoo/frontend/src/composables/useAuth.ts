@@ -117,7 +117,6 @@ export function useAuth() {
       localStorage.removeItem('auth_token')
       localStorage.removeItem('user')
       delete api.defaults.headers.common['Authorization']
-      // NE navigálj itt - a router guard fogja csinálni automatikusan
     }
   }
 

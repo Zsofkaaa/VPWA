@@ -60,6 +60,7 @@
 import { useQuasar } from 'quasar'
 import { ref } from 'vue'
 import type { Command } from '@/types'
+// import API_URL from '@/config/api'
 
 // Quasar objekt pre UI
 const $q = useQuasar()
@@ -78,7 +79,7 @@ const loadCommands = async () => {
   error.value = false
 
   try {
-    const response = await fetch('http://localhost:3333/api/commands')
+    const response = await fetch('${API_URL}/api/commands')
 
     if (!response.ok) throw new Error(`HTTP error: ${response.status}`)
 

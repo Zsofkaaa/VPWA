@@ -165,6 +165,7 @@ import KickUserDialog from './KickUserDialog.vue'
 import BanUserDialog from './BanUserDialog.vue'
 import NotificationSettingsDialog from './NotificationSettingsDialog.vue'
 import type { Member, AxiosErrorLike2, User } from '@/types'
+import API_URL from '../config/api'
 
 const props = defineProps<{
   channel: {
@@ -178,7 +179,7 @@ const props = defineProps<{
 
 const router = useRouter()
 const $q = useQuasar()
-const API_URL = 'http://localhost:3333'
+// const API_URL = 'http://localhost:3333'
 const token = localStorage.getItem('auth_token')
 
 // Dialogy

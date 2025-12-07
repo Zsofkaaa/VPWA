@@ -3,8 +3,9 @@ import type { Ref } from 'vue'
 import type { UserChannel, AppUser, KickResponse, Channel, ChannelResponse, Message } from '@/types'
 import type { QVueGlobals } from 'quasar'
 import type { Router } from 'vue-router'
+import API_URL from '../config/api'
 
-const API_URL = 'http://localhost:3333'
+// const API_URL = 'http://localhost:3333'
 
 export function useChannelCommands(
   privateChannels: Ref<UserChannel[]>,

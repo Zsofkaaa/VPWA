@@ -55,6 +55,7 @@
 import { ref, watch } from 'vue'
 import axios from 'axios'
 import { useQuasar } from 'quasar'
+import API_URL from '../config/api'
 
 const $q = useQuasar()
 
@@ -70,7 +71,7 @@ const props = defineProps<{
   channelId?: number | null
 }>()
 
-const API_URL = 'http://localhost:3333'
+// const API_URL = 'http://localhost:3333'
 
 // Fetch členov, keď sa dialóg otvorí
 watch(showMembers, async (val) => {

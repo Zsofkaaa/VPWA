@@ -3,6 +3,7 @@ import type { Message, Channel, UserChannel } from '@/types'
 import axios from 'axios'
 import type { QVueGlobals } from 'quasar'
 import type io from "socket.io-client"
+import API_URL from '../config/api'
 
 export function useMessages(
   currentChannelId: Ref<number | null>,
@@ -29,14 +30,14 @@ export function useMessages(
     }
 
     try {
-      const res = await axios.get<Channel[]>('http://localhost:3333/channels')
+      const res = await axios.get<Channel[]>('${API_URL}/channels')
       const channelsData: Channel[] = res.data
 
       const channelDb = channelsData.find(c => c.name === channel.name)
       if (!channelDb) return
 
       const msgRes = await axios.get<Message[]>(
-        `http://localhost:3333/channels/${channelDb.id}/messages`
+        `${API_URL}/channels/${channelDb.id}/messages`
       )
 
       messages.value = msgRes.data.reverse()

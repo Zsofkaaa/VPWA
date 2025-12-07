@@ -139,6 +139,7 @@ import ManageChannelMenu from './ManageChannelMenu.vue'
 import AddChannelDialog from './AddChannelDialog.vue'
 import { useQuasar } from 'quasar'
 import type { Invite, ChannelData, Channel } from '@/types'
+import API_URL from '../config/api'
 
 /* PROPS */
 const props = defineProps<{
@@ -180,7 +181,7 @@ async function acceptInvite() {
   try {
     const token = localStorage.getItem('auth_token')
     await axios.post(
-      `http://localhost:3333/invites/${selectedInvite.value!.id}/accept`,
+      `${API_URL}/invites/${selectedInvite.value!.id}/accept`,
       {},
       { headers: { Authorization: `Bearer ${token}` } }
     )
@@ -226,7 +227,7 @@ async function rejectInvite() {
   try {
     const token = localStorage.getItem('auth_token')
     await axios.post(
-      `http://localhost:3333/invites/${selectedInvite.value!.id}/reject`,
+      `${API_URL}/invites/${selectedInvite.value!.id}/reject`,
       {},
       { headers: { Authorization: `Bearer ${token}` } }
     )

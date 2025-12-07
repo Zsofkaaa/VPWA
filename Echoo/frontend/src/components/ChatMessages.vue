@@ -38,6 +38,7 @@
 <script lang="ts" setup>
 import { nextTick, ref, watch, onMounted, inject, type Ref } from 'vue'
 import type { Message } from '@/types';
+import API_URL from '../config/api';
 
 const currentUserId = inject<number>('currentUserId')
 const currentChannelId = inject<Ref<number | null>>('currentChannelId')
@@ -104,7 +105,7 @@ async function onLoad(index: number, done: (stop?: boolean) => void) {
 
   const token = localStorage.getItem('auth_token')
   const beforeId = oldestMessageId.value ?? ''
-  const url = `http://localhost:3333/channels/${currentChannelId.value}/messages?before=${beforeId}&limit=20`
+  const url = `${API_URL}/channels/${currentChannelId.value}/messages?before=${beforeId}&limit=20`
 
   // console.log(`[INFINITE SCROLL] Fetching older messages before ID: ${beforeId}`)
 

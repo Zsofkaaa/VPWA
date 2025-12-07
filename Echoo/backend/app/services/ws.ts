@@ -15,7 +15,15 @@ class Ws {
 
     // Inicializácia Socket.IO
     this.io = new Server(server.getNodeServer(), {
-      cors: { origin: '*' },
+      cors: {
+        origin: [
+          'http://localhost:9200', // 9000 → 9200
+          'http://127.0.0.1:9200', // 9000 → 9200
+          process.env.CORS_ORIGIN || 'http://192.168.43.120:9200',
+        ],
+        credentials: true,
+        methods: ['GET', 'POST'],
+      },
     })
 
     this.io.on('connection', (socket) => {

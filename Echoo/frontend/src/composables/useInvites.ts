@@ -1,8 +1,9 @@
 import { ref } from 'vue'
 import axios from 'axios'
 import type { Invite } from '@/types'
+import API_URL from '../config/api'
 
-const API_URL = 'http://localhost:3333'
+// const API_URL = 'http://localhost:3333'
 
 export function useInvites() {
   const invites = ref<Invite[]>([])

@@ -1,11 +1,11 @@
-// composables/useChannelManagement.ts
 import { ref, type Ref } from 'vue'
 import type { Router } from 'vue-router'
 import type { QVueGlobals } from 'quasar'
 import axios from 'axios'
 import type { ChannelData, AxiosErrorLike, ChannelResponse, UserChannel } from '@/types'
+import API_URL from '../config/api'
 
-const API_URL = 'http://localhost:3333'
+//const API_URL = 'http://localhost:3333'
 
 function isAxiosError(err: unknown): err is AxiosErrorLike {
   return (

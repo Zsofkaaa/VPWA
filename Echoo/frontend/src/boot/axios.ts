@@ -12,8 +12,13 @@ declare module '@vue/runtime-core' {
   }
 }
 
+// ⭐ DEBUG: Log the environment variable
+console.log('[AXIOS] VITE_API_URL:', import.meta.env.VITE_API_URL)
+
 const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:3333'
-// const baseURL = 'https://abc123.ngrok.io'
+
+// ⭐ DEBUG: Log the final baseURL
+console.log('[AXIOS] Using baseURL:', baseURL)
 
 const api = axios.create({
   baseURL,
@@ -32,7 +37,7 @@ api.interceptors.request.use(
     }
     return config
   },
-  (error) => Promise.reject(error) // ← JAVÍTVA: ne new Error(error)
+  (error) => Promise.reject(error)
 )
 
 api.interceptors.response.use(
@@ -45,7 +50,7 @@ api.interceptors.response.use(
         window.location.href = '/auth'
       }
     }
-    return Promise.reject(error) // ← JAVÍTVA: ne new Error(error)
+    return Promise.reject(error)
   }
 )
 

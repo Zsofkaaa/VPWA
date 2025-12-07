@@ -114,6 +114,7 @@
 import { ref, onMounted } from 'vue'
 import axios from 'axios'
 import type { ChannelData, MeResponse, AppUser } from '@/types'
+import API_URL from '../config/api'
 
 // Form state
 const channelName = ref('')
@@ -123,7 +124,7 @@ const notificationSettings = ref<'all' | 'mentions' | 'muted'>('all')
 const availableMembers = ref<{ label: string, value: number }[]>([])
 const currentUserId = ref<number | null>(null)
 
-const API_URL = 'http://localhost:3333'
+//const API_URL = 'http://localhost:3333'
 const token = localStorage.getItem('auth_token')
 
 // Visibility options

@@ -6,10 +6,14 @@ import { defineConfig } from '@adonisjs/cors'
  *
  * https://docs.adonisjs.com/guides/security/cors
  */
+
 const corsConfig = defineConfig({
   enabled: true,
-  origin: true,
-  //origin: ['http://localhost:5173'], // Quasar fejlesztői szerver
+  origin: [
+    'http://localhost:9200', // 9000 → 9200
+    'http://127.0.0.1:9200', // 9000 → 9200
+    process.env.CORS_ORIGIN || 'http://192.168.43.120:9200',
+  ],
   methods: ['GET', 'HEAD', 'POST', 'PUT', 'DELETE', 'PATCH'],
   headers: true,
   exposeHeaders: ['Authorization'],

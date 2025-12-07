@@ -32,6 +32,7 @@
 import { ref, watch } from 'vue'
 import axios from 'axios'
 import { useQuasar } from 'quasar'
+import API_URL from '../config/api'
 
 // Props pre komponent
 const props = defineProps<{
@@ -79,7 +80,7 @@ async function saveSettings() {
     if (!token) throw new Error('No auth token found')
 
     // PUT request na backend
-    const url = `http://localhost:3333/user_channel/${userId}/${props.channelId}`
+    const url = `${API_URL}/user_channel/${userId}/${props.channelId}`
     await axios.put<{ message: string; notificationSettings: string }>(
       url,
       { notificationSettings: selectedOption.value },

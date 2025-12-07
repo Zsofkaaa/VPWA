@@ -63,8 +63,8 @@
             color="white"
             dark
             :rules="[
-              val => !!val || 'Email is required',
-              val => /^[^\\s@]{3,}@[^\s@]{3,}\\.[^\\s@]{2,}$/.test(val) || 'Please enter a valid email'
+              (val: string) => !!val || 'Email is required',
+              (val: string) => /^[^\s@]{3,}@[^\s@]{3,}\.[^\s@]{2,}$/.test(val) || 'Please enter a valid email'
             ]"
           >
             <template v-slot:prepend>
@@ -111,7 +111,7 @@
             placeholder="Confirm your new password"
             color="white"
             dark
-            :rules="[val => val === password || 'Passwords do not match']"
+            :rules="[(val: string) => val === password || 'Passwords do not match']"
           >
             <template v-slot:prepend>
               <q-icon name="lock" color="white" />
@@ -137,12 +137,12 @@ import { ref, computed, onMounted } from 'vue'
 import { useQuasar } from 'quasar'
 import axios from 'axios'
 import type { UserData } from '@/types'
+import API_URL from '../config/api'
 
 // Quasar notifikácie
 const $q = useQuasar()
 
-// API URL a token
-const API_URL = 'http://localhost:3333'
+// Token
 const token = localStorage.getItem('auth_token')
 
 // Stav dialógu a zobrazenia hesla

@@ -160,7 +160,7 @@ async function onRegister() {
   const success = await authRegister(registerData)
 
   if (success) {
-    Notify.create({ type: 'positive', message: 'Registrácia úspešná, teraz sa prihlás' })
+    Notify.create({ type: 'positive', message: 'Registration successful, please log in' })
 
     // prepnutie späť na login
     mode.value = 'login'
