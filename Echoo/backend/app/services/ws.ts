@@ -16,11 +16,35 @@ class Ws {
     // Inicializácia Socket.IO
     this.io = new Server(server.getNodeServer(), {
       cors: {
-        origin: [
-          'http://localhost:9200', // 9000 → 9200
-          'http://127.0.0.1:9200', // 9000 → 9200
-          process.env.CORS_ORIGIN || 'http://192.168.43.120:9200',
-        ],
+        // ⭐ Ugyanaz mint HTTP CORS, de callback nélkül
+        origin: (origin, callback) => {
+          if (!origin) return callback(null, true)
+
+          try {
+            const url = new URL(origin)
+            const hostname = url.hostname
+
+            // Localhost
+            if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1') {
+              return callback(null, true)
+            }
+
+            // Private networks (RFC 1918)
+            if (
+              /^10\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(hostname) ||
+              /^172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3}$/.test(hostname) ||
+              /^192\.168\.\d{1,3}\.\d{1,3}$/.test(hostname)
+            ) {
+              return callback(null, true)
+            }
+
+            console.log('[WS] ❌ Rejected origin:', origin)
+            callback(new Error('Not allowed by CORS'))
+          } catch (err) {
+            console.error('[WS] ⚠️ Error parsing origin:', origin, err)
+            callback(new Error('Invalid origin'))
+          }
+        },
         credentials: true,
         methods: ['GET', 'POST'],
       },

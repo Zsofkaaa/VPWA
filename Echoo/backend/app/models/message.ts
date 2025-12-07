@@ -1,10 +1,8 @@
-import { BaseModel, column, belongsTo, hasMany, hasOne } from '@adonisjs/lucid/orm'
-import type { BelongsTo, HasMany, HasOne } from '@adonisjs/lucid/types/relations'
+import { BaseModel, column, belongsTo, hasMany } from '@adonisjs/lucid/orm'
+import type { BelongsTo, HasMany } from '@adonisjs/lucid/types/relations'
 import Channel from './channel.js'
 import User from './user.js'
 import MessageMention from './message_mention.js'
-import ChannelHistory from './channel_history.js'
-import UserMessageCommand from './user_message_command.js'
 import { DateTime } from 'luxon'
 
 export default class Message extends BaseModel {
@@ -24,12 +22,6 @@ export default class Message extends BaseModel {
   @belongsTo(() => Channel, { foreignKey: 'channelId' })
   declare channel: BelongsTo<typeof Channel>
 
-  @hasOne(() => UserMessageCommand, { foreignKey: 'messageId' })
-  declare userMessageCommands: HasOne<typeof UserMessageCommand>
-
   @hasMany(() => MessageMention, { foreignKey: 'messageId' })
   declare mentions: HasMany<typeof MessageMention>
-
-  @hasOne(() => ChannelHistory, { foreignKey: 'lastFetchedMessageId' })
-  declare relatedHistories: HasOne<typeof ChannelHistory>
 }

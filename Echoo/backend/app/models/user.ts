@@ -2,7 +2,6 @@ import { BaseModel, beforeSave, column, hasMany, manyToMany } from '@adonisjs/lu
 import type { HasMany, ManyToMany } from '@adonisjs/lucid/types/relations'
 import Message from './message.js'
 import Channel from './channel.js'
-import UserMessageCommand from './user_message_command.js'
 import MessageMention from './message_mention.js'
 import UserChannel from './user_channel.js'
 import { DateTime } from 'luxon'
@@ -30,9 +29,6 @@ export default class User extends BaseModel {
       user.password = await hash.make(user.password)
     }
   }
-
-  @hasMany(() => UserMessageCommand, { foreignKey: 'user_id' })
-  declare userMessageCommands: HasMany<typeof UserMessageCommand>
 
   @hasMany(() => MessageMention, { foreignKey: 'mentionedUserId' })
   declare mentions: HasMany<typeof MessageMention>

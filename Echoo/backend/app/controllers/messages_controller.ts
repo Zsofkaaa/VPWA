@@ -38,7 +38,7 @@ export default class MessagesController {
     let query = Message.query()
       .where('channel_id', channelId)
       .preload('sender')
-      .preload('mentions', (q) => q.select('mentionedUserId'))
+      .preload('mentions')
       .orderBy('id', 'desc')
       .limit(limit)
 
