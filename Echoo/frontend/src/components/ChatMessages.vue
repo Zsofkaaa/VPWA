@@ -83,7 +83,6 @@ function extractMentions(text: string): string[] {
 async function onLoad(index: number, done: (stop?: boolean) => void) {
   const now = Date.now()
   if (now - lastLoadTime.value < 1000) {
-    // console.log('[INFINITE SCROLL] Throttled - too soon')
     done()
     return
   }
@@ -95,7 +94,6 @@ async function onLoad(index: number, done: (stop?: boolean) => void) {
   }
 
   if (isLoadingOlder.value) {
-    // console.log('[INFINITE SCROLL] Already loading')
     done()
     return
   }
@@ -106,8 +104,6 @@ async function onLoad(index: number, done: (stop?: boolean) => void) {
   const token = localStorage.getItem('auth_token')
   const beforeId = oldestMessageId.value ?? ''
   const url = `${API_URL}/channels/${currentChannelId.value}/messages?before=${beforeId}&limit=20`
-
-  // console.log(`[INFINITE SCROLL] Fetching older messages before ID: ${beforeId}`)
 
   try {
     const response = await fetch(url, {
@@ -122,7 +118,6 @@ async function onLoad(index: number, done: (stop?: boolean) => void) {
     }
 
     const newMessages: Message[] = await response.json()
-    // console.log(`[INFINITE SCROLL] Received ${newMessages.length} messages`)
 
     if (newMessages.length === 0) {
       hasMoreMessages.value = false
@@ -138,14 +133,12 @@ async function onLoad(index: number, done: (stop?: boolean) => void) {
       localMessages.value = [...uniqueNewMessages, ...localMessages.value]
       const allIds = localMessages.value.map(m => m.id)
       oldestMessageId.value = Math.min(...allIds)
-      // console.log(`[INFINITE SCROLL] Added ${uniqueNewMessages.length} unique messages. Oldest ID: ${oldestMessageId.value}`)
     }
 
     if (newMessages.length < 20) {
       hasMoreMessages.value = false
     }
 
-    // Kis késleltetés az animáció megjelenítéséhez
     setTimeout(() => {
       done()
     }, 300)
@@ -162,27 +155,50 @@ async function onLoad(index: number, done: (stop?: boolean) => void) {
 }
 
 function formatMessage(text: string): string {
-  const escaped = text
+  // FIRST: Find and mark mentions BEFORE escaping
+  // Replace mentions with a placeholder that won't be escaped
+  const MENTION_PLACEHOLDER = '___MENTION___'
+  const mentions: Array<{ original: string; display: string }> = []
+
+  const textWithPlaceholders = text.replace(
+    /@(?:"([^"]+)"|'([^']+)'|(\S+))/g,
+    (match, quoted1, quoted2, single) => {
+      const mentionText = quoted1 || quoted2 || single
+      mentions.push({
+        original: match,
+        display: `<span class="ping-highlight">@${mentionText}</span>`
+      })
+      return `${MENTION_PLACEHOLDER}${mentions.length - 1}${MENTION_PLACEHOLDER}`
+    }
+  )
+
+  // SECOND: Escape HTML
+  const escaped = textWithPlaceholders
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
 
-  return escaped.replace(
-    /@(?:"([^"]+)"|'([^']+)'|(\S+))/g,
-    (match, quoted1, quoted2, single) => {
-      const mentionText = quoted1 || quoted2 || single
-      return `<span class="ping-highlight">@${mentionText}</span>`
-    }
-  )
+  // THIRD: Replace placeholders with actual mention HTML
+  let result = escaped
+  mentions.forEach((mention, index) => {
+    result = result.replace(
+      `${MENTION_PLACEHOLDER}${index}${MENTION_PLACEHOLDER}`,
+      mention.display
+    )
+  })
+
+  return result
 }
 
 function isPingedMessage(msg: Message): boolean {
   if (msg.userId === currentUserId) return false
 
+  // Check if mentioned by user ID
   if (msg.mentionedUserIds && msg.mentionedUserIds.length > 0) {
     if (msg.mentionedUserIds.includes(currentUserId as number)) return true
   }
 
+  // Fallback: check by nickname (for backward compatibility)
   const currentNickname = getCurrentUserNickname()
   if (!currentNickname) return false
   const mentions = extractMentions(msg.text)
@@ -216,30 +232,32 @@ watch(
       const isChannelChange = newVal.length > 0 && newVal.every(m => !currentIds.has(m.id))
 
       if (isChannelChange) {
-        // console.log('[MESSAGES] Channel changed, resetting...')
         localMessages.value = [...newVal]
         hasMoreMessages.value = true
         isLoadingOlder.value = false
+        userScrolledUp.value = false
 
         if (newVal.length > 0) {
           const allIds = newVal.map(m => m.id)
           oldestMessageId.value = Math.min(...allIds)
         }
+
+        await nextTick()
+        setTimeout(scrollToBottom, 150)
       } else {
         const existingIds = new Set(localMessages.value.map(m => m.id))
         const uniqueNewMessages = newVal.filter(m => !existingIds.has(m.id))
 
         if (uniqueNewMessages.length > 0) {
-          // console.log(`[MESSAGES] Adding ${uniqueNewMessages.length} new messages`)
           localMessages.value = [...localMessages.value, ...uniqueNewMessages]
         }
+
+        await nextTick()
+
+        if (wasBottom || !userScrolledUp.value) {
+          setTimeout(scrollToBottom, 100)
+        }
       }
-    }
-
-    await nextTick()
-
-    if (wasBottom || !userScrolledUp.value) {
-      setTimeout(scrollToBottom, 100)
     }
   },
   { immediate: true, deep: true }
@@ -253,6 +271,10 @@ watch(
     localMessages.value = []
     userScrolledUp.value = false
     lastLoadTime.value = 0
+
+    void nextTick(() => {
+      setTimeout(scrollToBottom, 300)
+    })
   }
 )
 
@@ -261,14 +283,21 @@ onMounted(() => {
   if (el) {
     el.addEventListener('scroll', handleScroll)
   }
-  setTimeout(scrollToBottom, 500)
+
+  void nextTick(() => {
+    setTimeout(scrollToBottom, 500)
+  })
 })
 </script>
 
 <style scoped>
-.ping-highlight {
+/* MENTION HIGHLIGHT - ALWAYS VISIBLE (using :deep for v-html content) */
+.message-content :deep(.ping-highlight) {
   color: #00aff4 !important;
   font-weight: 700;
+  background-color: rgba(0, 175, 244, 0.15);
+  padding: 2px 4px;
+  border-radius: 3px;
 }
 
 .chat-messages {
@@ -286,6 +315,7 @@ onMounted(() => {
   color: white;
 }
 
+/* BLUE BORDER - ONLY FOR PINGED MESSAGES */
 .ping-message {
   background-color: rgba(88, 101, 242, 0.15) !important;
   border: 2px solid #5865f2;
