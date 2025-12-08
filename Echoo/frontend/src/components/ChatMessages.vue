@@ -156,7 +156,6 @@ async function onLoad(index: number, done: (stop?: boolean) => void) {
 
 function formatMessage(text: string): string {
   // FIRST: Find and mark mentions BEFORE escaping
-  // Replace mentions with a placeholder that won't be escaped
   const MENTION_PLACEHOLDER = '___MENTION___'
   const mentions: Array<{ original: string; display: string }> = []
 
