@@ -30,7 +30,7 @@ export function useMessages(
     }
 
     try {
-      const res = await axios.get<Channel[]>('${API_URL}/channels')
+      const res = await axios.get<Channel[]>(`${API_URL}/channels`)
       const channelsData: Channel[] = res.data
 
       const channelDb = channelsData.find(c => c.name === channel.name)
