@@ -1,5 +1,5 @@
 import { ref, type Ref } from 'vue'
-import type { Message, Channel, UserChannel } from '@/types'
+import type { Message, UserChannel } from '@/types'
 import axios from 'axios'
 import type { QVueGlobals } from 'quasar'
 import type io from "socket.io-client"
@@ -18,31 +18,35 @@ export function useMessages(
   const newMessage = ref('')
 
   async function loadMessages(channelPath: string) {
+    console.log('[LOAD MESSAGES] Called with path:', channelPath)
+
     const channelIdStr = channelPath.split('/chat/')[1]
     const channelId = Number(channelIdStr)
+    console.log('[LOAD MESSAGES] Channel ID:', channelId)
 
     const channel = [...privateChannels.value, ...publicChannels.value]
       .find(c => c.id === channelId)
 
+    console.log('[LOAD MESSAGES] Found channel:', channel)
+
     if (!channel) {
+      console.warn('[LOAD MESSAGES] Channel not found!')
       messages.value = []
       return
     }
 
     try {
-      const res = await axios.get<Channel[]>(`${API_URL}/channels`)
-      const channelsData: Channel[] = res.data
-
-      const channelDb = channelsData.find(c => c.name === channel.name)
-      if (!channelDb) return
-
+      // ⭐ FIXED: Use backtick and limit parameter ⭐
       const msgRes = await axios.get<Message[]>(
-        `${API_URL}/channels/${channelDb.id}/messages`
+        `${API_URL}/channels/${channelId}/messages?limit=30`
       )
 
+      console.log('[LOAD MESSAGES] Received messages:', msgRes.data.length)
       messages.value = msgRes.data.reverse()
+      console.log('[LOAD MESSAGES] Messages set to:', messages.value.length)
     } catch (e) {
-      console.error("Failed to load messages", e)
+      console.error("[LOAD MESSAGES] Failed to load messages", e)
+      messages.value = []
     }
   }
 

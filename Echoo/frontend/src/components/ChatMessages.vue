@@ -1,8 +1,8 @@
 <template>
   <div ref="messagesContainer" class="chat-messages">
     <q-infinite-scroll
-      :offset="150"
-      :disable="isLoadingOlder || !hasMoreMessages"
+      :offset="250"
+      :disable="isLoadingOlder || !hasMoreMessages || isInitializing"
       @load="onLoad"
       reverse
     >
@@ -53,6 +53,7 @@ const bottomElement = ref<HTMLElement | null>(null)
 const userScrolledUp = ref(false)
 const oldestMessageId = ref<number | null>(null)
 const lastLoadTime = ref<number>(0)
+const isInitializing = ref(false) // ⭐ ÚJ FLAG
 
 function getCurrentUserNickname(): string | null {
   const savedUser = localStorage.getItem('user')
@@ -82,18 +83,29 @@ function extractMentions(text: string): string[] {
 
 async function onLoad(index: number, done: (stop?: boolean) => void) {
   const now = Date.now()
+  console.log('[INFINITE SCROLL] onLoad called, oldestMessageId:', oldestMessageId.value, 'hasMoreMessages:', hasMoreMessages.value, 'isInitializing:', isInitializing.value)
+
+  // ⭐ Ha még inicializálunk, ne töltsünk
+  if (isInitializing.value) {
+    console.log('[INFINITE SCROLL] Still initializing, skipping load')
+    done()
+    return
+  }
+
   if (now - lastLoadTime.value < 1000) {
+    console.log('[INFINITE SCROLL] Rate limited')
     done()
     return
   }
 
   if (!currentChannelId?.value) {
-    console.warn("No channel selected.")
+    console.warn("[INFINITE SCROLL] No channel selected.")
     done(true)
     return
   }
 
   if (isLoadingOlder.value) {
+    console.log('[INFINITE SCROLL] Already loading')
     done()
     return
   }
@@ -105,21 +117,25 @@ async function onLoad(index: number, done: (stop?: boolean) => void) {
   const beforeId = oldestMessageId.value ?? ''
   const url = `${API_URL}/channels/${currentChannelId.value}/messages?before=${beforeId}&limit=20`
 
+  console.log('[INFINITE SCROLL] Fetching URL:', url)
+
   try {
     const response = await fetch(url, {
       headers: { Authorization: `Bearer ${token}` }
     })
 
     if (!response.ok) {
-      console.error('Failed to fetch messages:', response.status)
+      console.error('[INFINITE SCROLL] Failed to fetch messages:', response.status)
       hasMoreMessages.value = false
       done(true)
       return
     }
 
     const newMessages: Message[] = await response.json()
+    console.log('[INFINITE SCROLL] Received', newMessages.length, 'messages')
 
     if (newMessages.length === 0) {
+      console.log('[INFINITE SCROLL] No more messages available')
       hasMoreMessages.value = false
       done(true)
       return
@@ -133,9 +149,11 @@ async function onLoad(index: number, done: (stop?: boolean) => void) {
       localMessages.value = [...uniqueNewMessages, ...localMessages.value]
       const allIds = localMessages.value.map(m => m.id)
       oldestMessageId.value = Math.min(...allIds)
+      console.log('[INFINITE SCROLL] Updated oldestMessageId to:', oldestMessageId.value)
     }
 
     if (newMessages.length < 20) {
+      console.log('[INFINITE SCROLL] Received less than 20 messages, no more available')
       hasMoreMessages.value = false
     }
 
@@ -231,24 +249,53 @@ watch(
       const isChannelChange = newVal.length > 0 && newVal.every(m => !currentIds.has(m.id))
 
       if (isChannelChange) {
+        console.log('[ChatMessages] Channel change detected')
+
+        // ⭐ AKTIVÁLD az inicializálást
+        isInitializing.value = true
+
         localMessages.value = [...newVal]
         hasMoreMessages.value = true
         isLoadingOlder.value = false
         userScrolledUp.value = false
 
+        // ⭐ KRITIKUS: Mindig állítsd be az oldestMessageId-t channel change esetén
         if (newVal.length > 0) {
           const allIds = newVal.map(m => m.id)
           oldestMessageId.value = Math.min(...allIds)
+          console.log('[ChatMessages] oldestMessageId set to:', oldestMessageId.value, 'from', allIds.length, 'messages')
         }
 
         await nextTick()
-        setTimeout(scrollToBottom, 150)
+
+        // ⭐ Scroll le előbb, aztán csak engedélyezd az infinite scrollt
+        setTimeout(() => {
+          scrollToBottom()
+
+          // ⭐ Várj még egy kicsit, aztán engedélyezd az infinite scrollt
+          setTimeout(() => {
+            isInitializing.value = false
+            console.log('[ChatMessages] Initialization complete, infinite scroll enabled')
+          }, 500) // További 500ms delay
+        }, 150)
+
       } else {
         const existingIds = new Set(localMessages.value.map(m => m.id))
         const uniqueNewMessages = newVal.filter(m => !existingIds.has(m.id))
 
         if (uniqueNewMessages.length > 0) {
+          console.log('[ChatMessages] Adding', uniqueNewMessages.length, 'new messages')
           localMessages.value = [...localMessages.value, ...uniqueNewMessages]
+
+          // ⭐ ÚJ: Frissítsd az oldestMessageId-t új üzenetek esetén is
+          const allIds = localMessages.value.map(m => m.id)
+          if (allIds.length > 0) {
+            const newOldest = Math.min(...allIds)
+            if (oldestMessageId.value === null || newOldest < oldestMessageId.value) {
+              oldestMessageId.value = newOldest
+              console.log('[ChatMessages] Updated oldestMessageId to:', oldestMessageId.value)
+            }
+          }
         }
 
         await nextTick()
@@ -265,11 +312,13 @@ watch(
 watch(
   () => currentChannelId?.value,
   () => {
+    console.log('[ChatMessages] Channel ID changed, resetting state')
     hasMoreMessages.value = true
     oldestMessageId.value = null
     localMessages.value = []
     userScrolledUp.value = false
     lastLoadTime.value = 0
+    isInitializing.value = true // ⭐ Reset initialization flag is
 
     void nextTick(() => {
       setTimeout(scrollToBottom, 300)

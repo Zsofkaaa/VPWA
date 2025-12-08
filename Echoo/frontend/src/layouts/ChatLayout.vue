@@ -287,7 +287,7 @@ watch(
       messages.value = []
     }
   },
-  { immediate: true }
+  { immediate: false }
 )
 
 // App Initialization (onMounted/onBeforeUnmount logic)
@@ -309,7 +309,8 @@ useAppInitialization({
   setupSocketListeners,
   cleanupSocketListeners,
   handleIncomingMessage,
-  router
+  router,
+  loadMessages
 })
 
 // Provide data pre child komponenty
