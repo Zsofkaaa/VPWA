@@ -106,17 +106,19 @@ export function useChannelCommands(
 
     try {
       const token = localStorage.getItem('auth_token')
-      const users = await axios.get<AppUser[]>(
-        `${API_URL}/users`,
+
+      // ✅ Csak a csatorna tagjait kérdezzük le
+      const membersRes = await axios.get<{ id: number, nickName: string, role: string }[]>(
+        `${API_URL}/channels/${channelId}/members`,
         { headers: { Authorization: `Bearer ${token}` } }
       )
 
-      const targetUser = users.data.find(
-        u => u.nickName.toLowerCase() === targetName.toLowerCase()
+      const targetUser = membersRes.data.find(
+        m => m.nickName.toLowerCase() === targetName.toLowerCase()
       )
 
       if (!targetUser) {
-        $q.notify({ type: 'negative', message: 'User not found!' })
+        $q.notify({ type: 'negative', message: 'User not found in this channel!' })
         return
       }
 
@@ -231,7 +233,7 @@ export function useChannelCommands(
     }
 
     const channelId = currentChannelId.value
-    const targetName = parts[1]
+    const targetName = parts.slice(1).join(' ')  // ✅ JAVÍTVA: többszavas nevek támogatása
 
     if (!targetName) {
       $q.notify({ type: 'negative', message: 'Usage: /ban nickName' })
@@ -255,17 +257,19 @@ export function useChannelCommands(
 
     try {
       const token = localStorage.getItem('auth_token')
-      const users = await axios.get<AppUser[]>(
-        `${API_URL}/users`,
+
+      // ✅ Csak a csatorna tagjait kérdezzük le
+      const membersRes = await axios.get<{ id: number, nickName: string, role: string }[]>(
+        `${API_URL}/channels/${channelId}/members`,
         { headers: { Authorization: `Bearer ${token}` } }
       )
 
-      const targetUser = users.data.find(
-        (u) => u.nickName.toLowerCase() === targetName.toLowerCase()
+      const targetUser = membersRes.data.find(
+        m => m.nickName.toLowerCase() === targetName.toLowerCase()
       )
 
       if (!targetUser) {
-        $q.notify({ type: 'negative', message: 'User not found!' })
+        $q.notify({ type: 'negative', message: 'User not found in this channel!' })
         return
       }
 
@@ -389,7 +393,7 @@ export function useChannelCommands(
     }
 
     const channelId = currentChannelId.value
-    const targetName = parts[1]
+    const targetName = parts.slice(1).join(' ')  // ✅ JAVÍTVA: többszavas nevek támogatása
 
     if (!targetName) {
       return $q.notify({ type: 'negative', message: 'Usage: /revoke nickName' })
@@ -411,17 +415,18 @@ export function useChannelCommands(
     try {
       const token = localStorage.getItem('auth_token')
 
-      const users = await axios.get<AppUser[]>(
-        `${API_URL}/users`,
+      // ✅ Csak a csatorna tagjait kérdezzük le
+      const membersRes = await axios.get<{ id: number, nickName: string, role: string }[]>(
+        `${API_URL}/channels/${channelId}/members`,
         { headers: { Authorization: `Bearer ${token}` } }
       )
 
-      const targetUser = users.data.find(
-        (u) => u.nickName.toLowerCase() === targetName.toLowerCase()
+      const targetUser = membersRes.data.find(
+        m => m.nickName.toLowerCase() === targetName.toLowerCase()
       )
 
       if (!targetUser) {
-        return $q.notify({ type: 'negative', message: 'User not found!' })
+        return $q.notify({ type: 'negative', message: 'User not found in this channel!' })
       }
 
       await axios.delete(
@@ -463,17 +468,35 @@ export function useChannelCommands(
       let channelId: number
 
       if (existingChannelGlobal) {
-        // 2️⃣ CSATLAKOZÁS LÉTEZŐ CSATORNÁHOZ
-        await axios.post(
+        // 🔒 PRIVÁT CSATORNA VÉDELEM
+        if (isPrivate) {
+          $q.notify({
+            type: 'negative',
+            message: `Private channel "${channelName}" already exists. You can only join via invite.`
+          })
+          return
+        }
+
+        // 2️⃣ CSATLAKOZÁS LÉTEZŐ CSATORNÁHOZ (csak public esetén)
+        const joinResponse = await axios.post<UserChannel | { error: string }>(
           `${API_URL}/user_channel`,
           {
             channelId: existingChannelGlobal.id,
             userId: currentUserId.value,
-            role: isPrivate ? 'admin' : 'member',
+            role: 'member',
             notificationSettings: 'all'
           },
           { headers: { Authorization: `Bearer ${token}` } }
         )
+
+        // ⚠️ ELLENŐRZÉS: bannolva vagy?
+        if ('error' in joinResponse.data) {
+          $q.notify({
+            type: 'negative',
+            message: joinResponse.data.error
+          })
+          return // MEGÁLLÍTJUK a folyamatot
+        }
 
         channelId = existingChannelGlobal.id
 
