@@ -17,8 +17,8 @@
         <q-spinner-dots color="white" size="40px" />
       </div>
 
-      <div v-for="msg in localMessages" :key="msg.id" class="q-mb-md">
-        <div class="text-bold">
+      <div v-for="msg in localMessages" :key="msg.id" class="q-mb-md message-wrapper">
+        <div class="text-bold message-author">
           {{ msg.user }}
           <span v-if="currentUserId === msg.userId" class="you-label">(You)</span>
         </div>
@@ -357,10 +357,44 @@ onMounted(() => {
   flex-direction: column;
 }
 
+/* ✅ Message wrapper - biztosítja hogy a teljes üzenet blokkban marad */
+.message-wrapper {
+  max-width: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+/* ✅ Author name - ne folyjon ki */
+.message-author {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ✅ Message content - KRITIKUS JAVÍTÁS */
 .message-content {
   border-radius: 8px;
   background-color: #2d2d2d;
   color: white;
+
+  /* ⭐ SZÖVEG TÖRDELÉS - Ez a kulcs! */
+  word-wrap: break-word;           /* Régi böngészők */
+  overflow-wrap: break-word;       /* Modern szabvány */
+  word-break: break-word;          /* Hosszú szavak törése */
+  white-space: pre-wrap;           /* Sortörések megtartása + tördelés */
+
+  /* ⭐ MÉRET KORLÁTOZÁS */
+  max-width: 100%;                 /* Ne menjen túl a konténeren */
+  width: fit-content;              /* Csak akkora legyen mint kell */
+  min-width: 0;                    /* Flexbox overflow fix */
+
+  /* ⭐ OVERFLOW KEZELÉS */
+  overflow-wrap: anywhere;         /* Bárhol törhet ha kell */
+  hyphens: auto;                   /* Automatikus szótörés (ha a nyelv támogatja) */
+
+  /* Box model */
+  box-sizing: border-box;
 }
 
 /* BLUE BORDER - ONLY FOR PINGED MESSAGES */
