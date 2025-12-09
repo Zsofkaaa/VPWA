@@ -6,6 +6,10 @@ const BACKEND_PORT = 3333
 const currentHostname = window.location.hostname
 const currentPort = window.location.port
 
+console.log('[API CONFIG] Window location:', window.location.href)
+console.log('[API CONFIG] Frontend hostname:', currentHostname)
+console.log('[API CONFIG] Frontend port:', currentPort)
+
 // Smart API URL detection
 let API_URL: string
 
@@ -18,21 +22,24 @@ if (currentHostname === 'localhost' || currentHostname === '127.0.0.1') {
   API_URL = `http://${currentHostname}:${BACKEND_PORT}`
 }
 
-// Environment variable override (optional, de nem kötelező)
+// Environment variable override - DE CSAK HA LOCALHOST!
 if (import.meta.env.VITE_API_URL) {
   const envUrl = import.meta.env.VITE_API_URL.replace(/\/$/, '')
+
+  console.log('[API CONFIG] Found VITE_API_URL:', envUrl)
 
   // Ha localhost-ról jössz, használj localhost-ot még env variable esetén is
   if (currentHostname === 'localhost' || currentHostname === '127.0.0.1') {
     API_URL = `http://localhost:${BACKEND_PORT}`
+    console.log('[API CONFIG] Localhost detected, forcing localhost backend')
   } else {
-    API_URL = envUrl
+    // Network IP esetén FIGYELMEN KÍVÜL HAGYJUK az env variable-t!
+    console.log('[API CONFIG] Network IP detected, ignoring env variable')
+    API_URL = `http://${currentHostname}:${BACKEND_PORT}`
   }
 }
 
-console.log('[API CONFIG] Frontend hostname:', currentHostname)
-console.log('[API CONFIG] Frontend port:', currentPort)
-console.log('[API CONFIG] Detected API URL:', API_URL)
+console.log('[API CONFIG] ✅ Final API URL:', API_URL)
 
 export default API_URL
 export { API_URL }

@@ -1,15 +1,15 @@
 import io from "socket.io-client"
 import { boot } from "quasar/wrappers"
+import API_URL from '../config/api' // ⭐ IMPORT a config-ból!
 
 export default boot(({ app }) => {
-  const SOCKET_URL = import.meta.env.VITE_API_URL?.replace(/\/$/, '') || 'http://localhost:3333'
+  console.log("[SOCKET] Using API_URL from config:", API_URL)
 
-  const socket = io(SOCKET_URL, {
+  const socket = io(API_URL, { // ⭐ Használd a config/api.ts-ből!
     transports: ["websocket", "polling"],
     reconnection: true,
     reconnectionDelay: 1000,
     reconnectionAttempts: 10,
-    // ⭐ withCredentials törölve - nem kell Socket.IO-hoz
   })
 
   socket.on('connect', () => {
@@ -24,7 +24,7 @@ export default boot(({ app }) => {
     console.error('[SOCKET] ⚠️ Connection error:', error.message)
   })
 
-  console.log("[SOCKET] Socket boot loaded, connecting to:", SOCKET_URL)
+  console.log("[SOCKET] Socket boot loaded, connecting to:", API_URL)
 
   // Globális elérés
   app.config.globalProperties.$socket = socket

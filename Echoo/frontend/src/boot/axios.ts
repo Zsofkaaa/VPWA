@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/prefer-promise-reject-errors */
 import { boot } from 'quasar/wrappers'
 import axios from 'axios'
+import API_URL from '../config/api' // ⭐ IMPORT a config-ból!
 
 // Typová definícia pre kompatibilitu so starším Axiosom
 type AxiosInstance = ReturnType<typeof axios.create>
@@ -12,16 +13,11 @@ declare module '@vue/runtime-core' {
   }
 }
 
-// ⭐ DEBUG: Log the environment variable
-console.log('[AXIOS] VITE_API_URL:', import.meta.env.VITE_API_URL)
-
-const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:3333'
-
-// ⭐ DEBUG: Log the final baseURL
-console.log('[AXIOS] Using baseURL:', baseURL)
+// ⭐ DEBUG: Log the API URL from config
+console.log('[AXIOS] Using API_URL from config:', API_URL)
 
 const api = axios.create({
-  baseURL,
+  baseURL: API_URL, // ⭐ Használd a config/api.ts-ből!
   headers: {
     'Content-Type': 'application/json',
     Accept: 'application/json'
