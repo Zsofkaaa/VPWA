@@ -104,7 +104,7 @@ function validateLogin() {
 
 // validuje formát emailu
 function validateEmail(email: string): boolean {
-  return /^[^\s@]{3,}@[^\s@]{3,}\.[^\s@]{2,}$/.test(email)
+  return /^[a-zA-Z0-9._-]{3,}@[a-zA-Z0-9.-]{3,}\.[a-zA-Z]{2,}$/.test(email)
 }
 
 // validácia registračného formulára
