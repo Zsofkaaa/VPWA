@@ -11,7 +11,7 @@ export default class extends BaseSchema {
       table.string('nick_name').unique().notNullable()
       table.string('email').notNullable()
       table.string('password').notNullable()
-      table.string('status').defaultTo('active')
+      table.string('status').defaultTo('online')
       table.timestamp('created_at')
       table.timestamp('updated_at')
     })

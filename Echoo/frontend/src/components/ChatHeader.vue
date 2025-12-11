@@ -44,7 +44,10 @@
           :current-channel="currentChannel"
           :channel-id="currentChannelId"
         />
-      <UserStatus />
+      <UserStatus
+        :status="userStatus"
+        @status-changed="$emit('status-changed', $event)"
+      />
       <SettingsMenu />
       <InfoBox />
     </div>
@@ -65,11 +68,13 @@ defineProps<{
   drawerOpen: boolean
   currentChannel?: string
   currentChannelId?: number | null
+  userStatus?: 'online' | 'dnd' | 'offline'
 }>()
 
 // Emits: udalosti, ktoré komponent vysiela
 defineEmits<{
   'update:drawerOpen': [value: boolean]
+  'status-changed': ['online' | 'dnd' | 'offline']
 }>()
 
 

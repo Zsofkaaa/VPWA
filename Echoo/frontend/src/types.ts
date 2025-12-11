@@ -3,6 +3,8 @@ export interface TypingData {
   channelId: number
 }
 
+export type UserStatus = 'online' | 'dnd' | 'offline'
+
 export interface UserData {
   firstName: string
   lastName: string
@@ -112,6 +114,13 @@ export interface User {
 export interface Member {
   userId: number
   username: string
+}
+
+export interface ChannelMember {
+  id: number
+  nickName: string
+  role: string
+  status: UserStatus
 }
 
 // WebSocket notification interfaces

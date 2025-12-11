@@ -1,9 +1,9 @@
 import { ref, onMounted, onBeforeUnmount, type Ref } from 'vue'
 import type { Router } from 'vue-router'
-import type { Message, UserChannel } from '@/types'
+import type { Message, UserChannel, UserStatus } from '@/types'
 import { useQuasar } from 'quasar'
 
-export function useNotifications() {
+export function useNotifications(currentStatus?: Ref<UserStatus>) {
   const $q = useQuasar()
   const showNotification = ref(false)
   const notificationSender = ref('')
@@ -24,6 +24,11 @@ export function useNotifications() {
     messages: Ref<Message[]>,
     router: Router
   ) {
+    const status = currentStatus?.value ?? 'online'
+
+    // Ignore real-time payloads completely while offline
+    if (status === 'offline') return
+
     if (msg.channelId === currentChannelId) {
       messages.value.push(msg)
     }
@@ -50,6 +55,9 @@ export function useNotifications() {
     }
 
     if (!shouldNotify) return
+
+    // Respect DND: still update messages but silence notifications
+    if (status === 'dnd') return
 
     // Ak je aplikácia viditeľná, použi Quasar notify
     if (isAppVisible.value) {

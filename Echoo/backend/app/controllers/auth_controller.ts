@@ -3,6 +3,7 @@ import User from '#models/user'
 import hash from '@adonisjs/core/services/hash'
 import Channel from '#models/channel'
 import UserChannel from '#models/user_channel'
+import ws from '#services/ws'
 
 export default class AuthController {
   // Prihlásenie
@@ -55,6 +56,7 @@ export default class AuthController {
         nickName: nickname,
         email,
         password,
+        status: 'online',
       })
 
       // Automatické pridanie do General a Development kanálov
@@ -74,6 +76,8 @@ export default class AuthController {
 
       const token = await User.accessTokens.create(user)
 
+      ws.broadcastUserStatus(user.id, user.status)
+
       return response.created({
         type: 'bearer',
         token: token.value!.release(),
@@ -91,6 +95,13 @@ export default class AuthController {
   public async logout({ auth, response }: HttpContext) {
     try {
       const apiAuth: any = auth.use('api')
+      const user = auth.user as User | null
+
+      if (user) {
+        user.status = 'offline'
+        await user.save()
+        ws.broadcastUserStatus(user.id, user.status)
+      }
 
       if (apiAuth.token) {
         await apiAuth.token.delete()

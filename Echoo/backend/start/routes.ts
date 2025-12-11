@@ -80,6 +80,11 @@ router
   .put('/user/update', async (ctx) => userController.update(ctx))
   .middleware([middleware.auth()])
 
+// Update user status
+router
+  .put('/user/status', async (ctx) => userController.updateStatus(ctx))
+  .middleware([middleware.auth()])
+
 // Get channel members
 router.get('/channels/:id/members', async (ctx) => {
   const module = await UserChannelController()

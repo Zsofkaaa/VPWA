@@ -1,5 +1,6 @@
 import { ref } from 'vue'
 import { api } from 'boot/axios'
+import type { UserStatus } from '@/types'
 
 interface LoginCredentials {
   email: string
@@ -20,7 +21,7 @@ interface User {
   lastName: string
   nickName: string
   email: string
-  status: string
+  status?: UserStatus
 }
 
 interface AuthResponse {

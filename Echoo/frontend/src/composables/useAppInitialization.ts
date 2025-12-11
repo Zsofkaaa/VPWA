@@ -1,6 +1,6 @@
 import { onMounted, onBeforeUnmount, type Ref } from 'vue'
 import type { RouteLocationNormalizedLoaded, Router } from 'vue-router'
-import type { UserChannel, Message } from '@/types'
+import type { UserChannel, Message, UserStatus } from '@/types'
 
 interface AppInitializationOptions {
   currentUserId: Ref<number | null>
@@ -29,6 +29,7 @@ interface AppInitializationOptions {
   ) => void
   router: Router
   loadMessages: (channelPath: string) => Promise<void>
+  userStatus?: Ref<UserStatus>
 }
 
 export function useAppInitialization(options: AppInitializationOptions) {
@@ -51,7 +52,8 @@ export function useAppInitialization(options: AppInitializationOptions) {
     cleanupSocketListeners,
     handleIncomingMessage,
     router,
-    loadMessages
+    loadMessages,
+    userStatus
   } = options
 
   onMounted(async () => {
@@ -87,7 +89,7 @@ export function useAppInitialization(options: AppInitializationOptions) {
       console.log('[APP INIT] Found channel:', found)
 
       if (found) {
-        // ⭐ SET THESE FIRST - so ChatMessages component can see them ⭐
+        // SET THESE FIRST - so ChatMessages component can see them
         currentChannelId.value = found.id
         currentChannelName.value = found.name
         activeChannelPath.value = found.path
@@ -98,12 +100,16 @@ export function useAppInitialization(options: AppInitializationOptions) {
           path: activeChannelPath.value
         })
 
-        // ⭐ Join channel first ⭐
-        if (typeof currentUserId.value === 'number' && typeof found.id === 'number') {
+        // Join channel first
+        if (
+          typeof currentUserId.value === 'number' &&
+          typeof found.id === 'number' &&
+          userStatus?.value !== 'offline'
+        ) {
           console.log('[APP INIT] Joining channel...')
           joinChannel(found.id)
 
-          // ⭐ Wait for next tick to ensure reactivity ⭐
+          // Wait for next tick to ensure reactivity 
           await new Promise(resolve => setTimeout(resolve, 100))
 
           console.log('[APP INIT] Loading messages...')
@@ -115,21 +121,25 @@ export function useAppInitialization(options: AppInitializationOptions) {
 
     // Join user's personal room for invite/kick/ban notifications
     if (currentUserId.value) {
-      console.log('[APP INIT] Joining user room:', currentUserId.value)
-      joinUserRoom(currentUserId.value)
+      if (userStatus?.value !== 'offline') {
+        console.log('[APP INIT] Joining user room:', currentUserId.value)
+        joinUserRoom(currentUserId.value)
+      }
     }
 
     // Setup message listener
-    setupSocketListeners((msg: Message) => {
-      handleIncomingMessage(
-        msg,
-        [...privateChannels.value, ...publicChannels.value],
-        currentUserId.value,
-        currentChannelId.value,
-        messages,
-        router
-      )
-    })
+    if (userStatus?.value !== 'offline') {
+      setupSocketListeners((msg: Message) => {
+        handleIncomingMessage(
+          msg,
+          [...privateChannels.value, ...publicChannels.value],
+          currentUserId.value,
+          currentChannelId.value,
+          messages,
+          router
+        )
+      })
+    }
 
     // Load pending invites
     await loadInvites()

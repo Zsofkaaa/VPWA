@@ -45,6 +45,7 @@ export default class UserChannelController {
       id: uc.user?.id ?? 0,
       nickName: uc.user?.nickName ?? 'UNKNOWN',
       role: uc.role,
+      status: uc.user?.status ?? 'offline',
     }))
 
     return response.ok(members)

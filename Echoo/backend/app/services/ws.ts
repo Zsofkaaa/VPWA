@@ -222,6 +222,11 @@ class Ws {
     })
   }
 
+  // Broadcast user status change to everyone
+  broadcastUserStatus(userId: number, status: string) {
+    this.io?.emit('user_status_changed', { userId, status })
+  }
+
   // Vylepšená funkcia na extrakciu všetkých @nickname zo správy
   // Podporuje aj @"user name" a @'user name' formát
   private extractMentions(text: string): string[] {

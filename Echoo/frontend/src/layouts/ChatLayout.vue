@@ -5,6 +5,8 @@
       v-model:drawer-open="drawerOpen"
       :current-channel="currentChannelName"
       :current-channel-id="currentChannelId"
+      :user-status="currentUserStatus"
+      @status-changed="onStatusChanged"
     />
 
     <!-- Bočný panel s kanálmi -->
@@ -71,6 +73,7 @@ import { useNotifications } from 'src/composables/useNotifications'
 import { useInvites } from 'src/composables/useInvites'
 import { useChannelRemoval } from 'src/composables/useChannelRemoval'
 import { useAppInitialization } from 'src/composables/useAppInitialization'
+import type { Message, UserStatus } from '@/types'
 
 // Komponenty
 import Header from 'components/ChatHeader.vue'
@@ -89,6 +92,7 @@ const socket = instance!.appContext.config.globalProperties.$socket
 // Základné stavy
 const drawerOpen = ref($q.screen.gt.sm)
 const currentUserId = ref<number | null>(null)
+const currentUserStatus = ref<UserStatus>('online')
 
 // Channel Management Composable
 const {
@@ -182,7 +186,7 @@ const {
   notificationMessage,
   requestNotificationPermission,
   handleIncomingMessage
-} = useNotifications()
+} = useNotifications(currentUserStatus)
 
 // Invites Composable
 const {
@@ -225,6 +229,49 @@ const typingStatusStyle = computed(() => ({
   zIndex: 2150
 }))
 
+// Helper to (re)attach socket listeners with the current handler
+function attachSocketListeners() {
+  cleanupSocketListeners()
+
+  setupSocketListeners((msg: Message) => {
+    handleIncomingMessage(
+      msg,
+      [...privateChannels.value, ...publicChannels.value],
+      currentUserId.value,
+      currentChannelId.value,
+      messages,
+      router
+    )
+  })
+}
+
+// Persist status in localStorage user payload
+function persistStatusLocally(status: UserStatus) {
+  const savedUser = localStorage.getItem('user')
+  if (!savedUser) return
+
+  try {
+    const parsed = JSON.parse(savedUser)
+    parsed.status = status
+    localStorage.setItem('user', JSON.stringify(parsed))
+  } catch (err) {
+    console.warn('Failed to persist status locally', err)
+  }
+}
+
+// Initialize status from stored user if present
+const savedUser = localStorage.getItem('user')
+if (savedUser) {
+  try {
+    const parsed = JSON.parse(savedUser)
+    if (parsed.status) {
+      currentUserStatus.value = parsed.status as UserStatus
+    }
+  } catch (err) {
+    console.warn('Failed to parse stored user', err)
+  }
+}
+
 // Wrapper pre onEnterPress, ktorý spracuje príkazy
 function onEnterPress(e: KeyboardEvent) {
   if (e.key !== 'Enter' || newMessage.value.trim() === '') return
@@ -237,6 +284,11 @@ function onEnterPress(e: KeyboardEvent) {
   }
 
   newMessage.value = ""
+}
+
+// Handle status change from header component
+function onStatusChanged(status: UserStatus) {
+  currentUserStatus.value = status
 }
 
 // Logout handler
@@ -290,6 +342,50 @@ watch(
   { immediate: false }
 )
 
+// React on status changes (offline disconnect, online reload)
+watch(
+  () => currentUserStatus.value,
+  async (status, prevStatus) => {
+    persistStatusLocally(status)
+
+    if (status === 'offline') {
+      cleanupSocketListeners()
+      socket.disconnect()
+      return
+    }
+
+    // Online / DND after being offline -> reconnect and refresh
+    if (prevStatus === 'offline') {
+      if (socket.disconnected) {
+        socket.connect()
+      }
+
+      attachSocketListeners()
+
+      if (currentUserId.value) {
+        joinUserRoom(currentUserId.value)
+      }
+
+      if (currentChannelId.value) {
+        joinChannel(currentChannelId.value)
+      }
+
+      const token = localStorage.getItem('auth_token')
+      if (token && currentUserId.value) {
+        await loadUserChannels(currentUserId.value, token)
+      }
+
+      await loadInvites()
+
+      if (activeChannelPath.value) {
+        await loadMessages(activeChannelPath.value)
+      }
+    }
+  }
+  ,
+  { immediate: true }
+)
+
 // App Initialization (onMounted/onBeforeUnmount logic)
 useAppInitialization({
   currentUserId,
@@ -310,7 +406,8 @@ useAppInitialization({
   cleanupSocketListeners,
   handleIncomingMessage,
   router,
-  loadMessages
+  loadMessages,
+  userStatus: currentUserStatus
 })
 
 // Provide data pre child komponenty

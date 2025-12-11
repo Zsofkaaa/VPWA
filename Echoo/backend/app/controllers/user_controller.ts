@@ -1,10 +1,17 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import User from '#models/user'
+import ws from '#services/ws'
+
+const ALLOWED_STATUSES = ['online', 'dnd', 'offline']
+
+function isValidStatus(status: unknown): status is 'online' | 'dnd' | 'offline' {
+  return typeof status === 'string' && ALLOWED_STATUSES.includes(status)
+}
 
 export default class UsersController {
   // Získanie zoznamu používateľov s ID a prezývkou
   public async index({ response }: HttpContext) {
-    const users = await User.query().select('id', 'nickName')
+    const users = await User.query().select('id', 'nickName', 'status')
     return response.ok(users)
   }
 
@@ -19,6 +26,7 @@ export default class UsersController {
       lastName: user.lastName,
       nickName: user.nickName,
       email: user.email,
+      status: user.status,
     })
   }
 
@@ -52,6 +60,31 @@ export default class UsersController {
     return response.ok({
       message: 'Profile updated successfully',
       user,
+    })
+  }
+
+  // Aktualizácia statusu používateľa
+  public async updateStatus({ auth, request, response }: HttpContext) {
+    const user = auth.user as User | null
+    if (!user) return response.unauthorized()
+
+    const requestData = request.only(['status'])
+    const newStatus = requestData.status
+
+    if (!isValidStatus(newStatus)) {
+      return response.badRequest({
+        error: 'Invalid status. Allowed values: online, dnd, offline',
+      })
+    }
+
+    user.status = newStatus
+    await user.save()
+
+    ws.broadcastUserStatus(user.id, user.status)
+
+    return response.ok({
+      message: 'Status updated successfully',
+      status: user.status,
     })
   }
 }
