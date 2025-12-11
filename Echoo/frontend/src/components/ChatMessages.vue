@@ -12,21 +12,24 @@
         </div>
       </template>
 
-      <!-- Loading animácia a tetején (mivel reverse mode van) -->
       <div v-if="isLoadingOlder" class="row justify-center q-my-md">
         <q-spinner-dots color="white" size="40px" />
       </div>
 
       <div v-for="msg in localMessages" :key="msg.id" class="q-mb-md message-wrapper">
-        <div class="text-bold message-author">
-          {{ msg.user }}
-          <span v-if="currentUserId === msg.userId" class="you-label">(You)</span>
-        </div>
         <div
-          class="message-content q-pa-sm q-mt-xs"
-          :class="{ 'ping-message': isPingedMessage(msg) }"
+          class="message-container"
+          :class="{ 'my-message': currentUserId === msg.userId }"
         >
-          <span v-html="formatMessage(msg.text)"></span>
+          <div class="text-bold message-author">
+            {{ msg.user }}
+          </div>
+          <div
+            class="message-content q-pa-sm q-mt-xs"
+            :class="{ 'ping-message': isPingedMessage(msg) }"
+          >
+            <span v-html="formatMessage(msg.text)"></span>
+          </div>
         </div>
       </div>
 
@@ -53,7 +56,26 @@ const bottomElement = ref<HTMLElement | null>(null)
 const userScrolledUp = ref(false)
 const oldestMessageId = ref<number | null>(null)
 const lastLoadTime = ref<number>(0)
-const isInitializing = ref(false) // ⭐ ÚJ FLAG
+const isInitializing = ref(false)
+const channelMembers = ref<Array<{ id: number, nickName: string, role: string }>>([])
+
+async function loadChannelMembers() {
+  if (!currentChannelId?.value) return
+
+  try {
+    const token = localStorage.getItem('auth_token')
+    const res = await fetch(`${API_URL}/channels/${currentChannelId.value}/members`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+
+    if (res.ok) {
+      channelMembers.value = await res.json()
+      console.log('[ChatMessages] Loaded', channelMembers.value.length, 'channel members')
+    }
+  } catch (err) {
+    console.error('[ChatMessages] Failed to load members:', err)
+  }
+}
 
 function getCurrentUserNickname(): string | null {
   const savedUser = localStorage.getItem('user')
@@ -85,7 +107,6 @@ async function onLoad(index: number, done: (stop?: boolean) => void) {
   const now = Date.now()
   console.log('[INFINITE SCROLL] onLoad called, oldestMessageId:', oldestMessageId.value, 'hasMoreMessages:', hasMoreMessages.value, 'isInitializing:', isInitializing.value)
 
-  // ⭐ Ha még inicializálunk, ne töltsünk
   if (isInitializing.value) {
     console.log('[INFINITE SCROLL] Still initializing, skipping load')
     done()
@@ -173,29 +194,34 @@ async function onLoad(index: number, done: (stop?: boolean) => void) {
 }
 
 function formatMessage(text: string): string {
-  // FIRST: Find and mark mentions BEFORE escaping
   const MENTION_PLACEHOLDER = '___MENTION___'
   const mentions: Array<{ original: string; display: string }> = []
+
+  const memberNicknames = new Set(
+    channelMembers.value.map(m => m.nickName.toLowerCase())
+  )
 
   const textWithPlaceholders = text.replace(
     /@(?:"([^"]+)"|'([^']+)'|(\S+))/g,
     (match, quoted1, quoted2, single) => {
       const mentionText = quoted1 || quoted2 || single
+      const isValidMention = memberNicknames.has(mentionText.toLowerCase())
+
       mentions.push({
         original: match,
-        display: `<span class="ping-highlight">@${mentionText}</span>`
+        display: isValidMention
+          ? `<span class="ping-highlight">@${mentionText}</span>`
+          : `@${mentionText}`
       })
       return `${MENTION_PLACEHOLDER}${mentions.length - 1}${MENTION_PLACEHOLDER}`
     }
   )
 
-  // SECOND: Escape HTML
   const escaped = textWithPlaceholders
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
 
-  // THIRD: Replace placeholders with actual mention HTML
   let result = escaped
   mentions.forEach((mention, index) => {
     result = result.replace(
@@ -210,12 +236,10 @@ function formatMessage(text: string): string {
 function isPingedMessage(msg: Message): boolean {
   if (msg.userId === currentUserId) return false
 
-  // Check if mentioned by user ID
   if (msg.mentionedUserIds && msg.mentionedUserIds.length > 0) {
     if (msg.mentionedUserIds.includes(currentUserId as number)) return true
   }
 
-  // Fallback: check by nickname (for backward compatibility)
   const currentNickname = getCurrentUserNickname()
   if (!currentNickname) return false
   const mentions = extractMentions(msg.text)
@@ -251,7 +275,6 @@ watch(
       if (isChannelChange) {
         console.log('[ChatMessages] Channel change detected')
 
-        // ⭐ AKTIVÁLD az inicializálást
         isInitializing.value = true
 
         localMessages.value = [...newVal]
@@ -259,7 +282,6 @@ watch(
         isLoadingOlder.value = false
         userScrolledUp.value = false
 
-        // ⭐ KRITIKUS: Mindig állítsd be az oldestMessageId-t channel change esetén
         if (newVal.length > 0) {
           const allIds = newVal.map(m => m.id)
           oldestMessageId.value = Math.min(...allIds)
@@ -268,15 +290,13 @@ watch(
 
         await nextTick()
 
-        // ⭐ Scroll le előbb, aztán csak engedélyezd az infinite scrollt
         setTimeout(() => {
           scrollToBottom()
 
-          // ⭐ Várj még egy kicsit, aztán engedélyezd az infinite scrollt
           setTimeout(() => {
             isInitializing.value = false
             console.log('[ChatMessages] Initialization complete, infinite scroll enabled')
-          }, 500) // További 500ms delay
+          }, 500)
         }, 150)
 
       } else {
@@ -287,7 +307,6 @@ watch(
           console.log('[ChatMessages] Adding', uniqueNewMessages.length, 'new messages')
           localMessages.value = [...localMessages.value, ...uniqueNewMessages]
 
-          // ⭐ ÚJ: Frissítsd az oldestMessageId-t új üzenetek esetén is
           const allIds = localMessages.value.map(m => m.id)
           if (allIds.length > 0) {
             const newOldest = Math.min(...allIds)
@@ -318,7 +337,10 @@ watch(
     localMessages.value = []
     userScrolledUp.value = false
     lastLoadTime.value = 0
-    isInitializing.value = true // ⭐ Reset initialization flag is
+    isInitializing.value = true
+    channelMembers.value = []
+
+    void loadChannelMembers()
 
     void nextTick(() => {
       setTimeout(scrollToBottom, 300)
@@ -332,6 +354,8 @@ onMounted(() => {
     el.addEventListener('scroll', handleScroll)
   }
 
+  void loadChannelMembers()
+
   void nextTick(() => {
     setTimeout(scrollToBottom, 500)
   })
@@ -339,7 +363,6 @@ onMounted(() => {
 </script>
 
 <style scoped>
-/* MENTION HIGHLIGHT - ALWAYS VISIBLE (using :deep for v-html content) */
 .message-content :deep(.ping-highlight) {
   color: #00aff4 !important;
   font-weight: 700;
@@ -357,14 +380,33 @@ onMounted(() => {
   flex-direction: column;
 }
 
-/* ✅ Message wrapper - biztosítja hogy a teljes üzenet blokkban marad */
 .message-wrapper {
   max-width: 100%;
   width: 100%;
   overflow: hidden;
 }
 
-/* ✅ Author name - ne folyjon ki */
+.message-container {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 100%;
+  margin-bottom: 8px;
+}
+
+/* Saját üzenet - jobb oldal */
+/*
+.my-message {
+  align-items: flex-end;
+}
+  */
+
+.my-message .message-author {
+  color: #c6dfff;
+  font-weight: 700;
+  /*text-align: right;*/
+}
+
 .message-author {
   max-width: 100%;
   overflow: hidden;
@@ -372,47 +414,34 @@ onMounted(() => {
   white-space: nowrap;
 }
 
-/* ✅ Message content - KRITIKUS JAVÍTÁS */
 .message-content {
-  border-radius: 8px;
+  border-radius: 12px;
   background-color: #2d2d2d;
   color: white;
+  width: 100%;
 
-  /* ⭐ SZÖVEG TÖRDELÉS - Ez a kulcs! */
-  word-wrap: break-word;           /* Régi böngészők */
-  overflow-wrap: break-word;       /* Modern szabvány */
-  word-break: break-word;          /* Hosszú szavak törése */
-  white-space: pre-wrap;           /* Sortörések megtartása + tördelés */
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  white-space: pre-wrap;
 
-  /* ⭐ MÉRET KORLÁTOZÁS */
-  max-width: 100%;                 /* Ne menjen túl a konténeren */
-  width: fit-content;              /* Csak akkora legyen mint kell */
-  min-width: 0;                    /* Flexbox overflow fix */
+  min-width: 0;
+  overflow-wrap: anywhere;
+  hyphens: auto;
 
-  /* ⭐ OVERFLOW KEZELÉS */
-  overflow-wrap: anywhere;         /* Bárhol törhet ha kell */
-  hyphens: auto;                   /* Automatikus szótörés (ha a nyelv támogatja) */
-
-  /* Box model */
   box-sizing: border-box;
 }
 
-/* BLUE BORDER - ONLY FOR PINGED MESSAGES */
+/* Saját üzenet - purple háttér */
+.my-message .message-content {
+  background: #262e38 !important;
+  color: white;
+  /*text-align: right;*/
+}
+
 .ping-message {
   background-color: rgba(88, 101, 242, 0.15) !important;
   border: 2px solid #5865f2;
   font-weight: 600;
-}
-
-.you-label {
-  display: inline-block;
-  background-color: #355377;
-  color: white;
-  font-size: 0.7em;
-  font-weight: 600;
-  padding: 2px 6px;
-  border-radius: 4px;
-  margin-left: 6px;
-  vertical-align: middle;
 }
 </style>

@@ -1,8 +1,10 @@
 import { ref, onMounted, onBeforeUnmount, type Ref } from 'vue'
 import type { Router } from 'vue-router'
 import type { Message, UserChannel } from '@/types'
+import { useQuasar } from 'quasar'
 
 export function useNotifications() {
+  const $q = useQuasar()
   const showNotification = ref(false)
   const notificationSender = ref('')
   const notificationMessage = ref('')
@@ -49,18 +51,21 @@ export function useNotifications() {
 
     if (!shouldNotify) return
 
-    // Ak je aplikácia viditeľná, použi in-app popup
+    // Ak je aplikácia viditeľná, použi Quasar notify
     if (isAppVisible.value) {
-      /*
-      notificationSender.value = `${msg.user} (#${channel.name})`
-      notificationMessage.value = msg.text
-      showNotification.value = true
-
-      setTimeout(() => {
-        showNotification.value = false
-      }, 5000)
-      */
-      return // AK MAS VLASTNY POP UP TAK TOTO ODKOMENTUJ
+      if (msg.channelId !== currentChannelId) {
+        // Zobraz notifikáciu len ak príde správa do iného kanála
+        $q.notify({
+          type: 'info',
+          icon: 'chat',
+          color: 'grey',
+          message: `${msg.user} (#${channel.name}): ${msg.text.length > 30 ? msg.text.substring(0, 30) + '...' : msg.text}`,
+          position: 'top-right',
+          timeout: 2000,
+          classes: 'q-mt-xl'
+        })
+      }
+      return
     }
     // Ak je aplikácia na pozadí, zobraz systémovú notifikáciu
     else if ('Notification' in window && Notification.permission === 'granted') {

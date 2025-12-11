@@ -17,8 +17,6 @@ let API_URL: string
 if (currentHostname === 'localhost' || currentHostname === '127.0.0.1') {
   API_URL = `http://localhost:${BACKEND_PORT}`
 } else {
-  // Ha bármilyen más IP-n fut (192.168.x.x, 10.x.x.x, stb.)
-  // akkor feltételezzük hogy a backend UGYANAZON az IP-n fut
   API_URL = `http://${currentHostname}:${BACKEND_PORT}`
 }
 
