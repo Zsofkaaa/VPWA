@@ -12,7 +12,7 @@
         </div>
       </template>
 
-      <!-- Loading animácia a tetején (mivel reverse mode van) -->
+      <!-- Načítavacia animácia hore (v reverse režime) -->
       <div v-if="isLoadingOlder" class="row justify-center q-my-md">
         <q-spinner-dots color="white" size="40px" />
       </div>
@@ -53,7 +53,7 @@ const bottomElement = ref<HTMLElement | null>(null)
 const userScrolledUp = ref(false)
 const oldestMessageId = ref<number | null>(null)
 const lastLoadTime = ref<number>(0)
-const isInitializing = ref(false) // ⭐ ÚJ FLAG
+const isInitializing = ref(false) // Vlajka pre inicializáciu
 
 function getCurrentUserNickname(): string | null {
   const savedUser = localStorage.getItem('user')
@@ -85,7 +85,7 @@ async function onLoad(index: number, done: (stop?: boolean) => void) {
   const now = Date.now()
   console.log('[INFINITE SCROLL] onLoad called, oldestMessageId:', oldestMessageId.value, 'hasMoreMessages:', hasMoreMessages.value, 'isInitializing:', isInitializing.value)
 
-  // ⭐ Ha még inicializálunk, ne töltsünk
+  // Ak ešte inicializujeme, nenačítavaj
   if (isInitializing.value) {
     console.log('[INFINITE SCROLL] Still initializing, skipping load')
     done()
@@ -173,7 +173,7 @@ async function onLoad(index: number, done: (stop?: boolean) => void) {
 }
 
 function formatMessage(text: string): string {
-  // FIRST: Find and mark mentions BEFORE escaping
+  // Krok 1: Nájsť a označiť mentions pred escapovaním
   const MENTION_PLACEHOLDER = '___MENTION___'
   const mentions: Array<{ original: string; display: string }> = []
 
@@ -189,13 +189,13 @@ function formatMessage(text: string): string {
     }
   )
 
-  // SECOND: Escape HTML
+  // Krok 2: Escapovať HTML
   const escaped = textWithPlaceholders
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
 
-  // THIRD: Replace placeholders with actual mention HTML
+  // Krok 3: Nahradiť placeholdery skutočným HTML pre mention
   let result = escaped
   mentions.forEach((mention, index) => {
     result = result.replace(
@@ -210,12 +210,12 @@ function formatMessage(text: string): string {
 function isPingedMessage(msg: Message): boolean {
   if (msg.userId === currentUserId) return false
 
-  // Check if mentioned by user ID
+  // Kontrola zmienky podľa user ID
   if (msg.mentionedUserIds && msg.mentionedUserIds.length > 0) {
     if (msg.mentionedUserIds.includes(currentUserId as number)) return true
   }
 
-  // Fallback: check by nickname (for backward compatibility)
+  // Záloha: kontrola podľa nickname (spätná kompatibilita)
   const currentNickname = getCurrentUserNickname()
   if (!currentNickname) return false
   const mentions = extractMentions(msg.text)
@@ -251,7 +251,7 @@ watch(
       if (isChannelChange) {
         console.log('[ChatMessages] Channel change detected')
 
-        // ⭐ AKTIVÁLD az inicializálást
+        // Aktivuj inicializáciu
         isInitializing.value = true
 
         localMessages.value = [...newVal]
@@ -259,7 +259,7 @@ watch(
         isLoadingOlder.value = false
         userScrolledUp.value = false
 
-        // ⭐ KRITIKUS: Mindig állítsd be az oldestMessageId-t channel change esetén
+        // Dôležité: pri zmene kanála nastav oldestMessageId
         if (newVal.length > 0) {
           const allIds = newVal.map(m => m.id)
           oldestMessageId.value = Math.min(...allIds)
@@ -268,15 +268,15 @@ watch(
 
         await nextTick()
 
-        // ⭐ Scroll le előbb, aztán csak engedélyezd az infinite scrollt
+        // Najprv scroll na spodok, potom povoľ infinite scroll
         setTimeout(() => {
           scrollToBottom()
 
-          // ⭐ Várj még egy kicsit, aztán engedélyezd az infinite scrollt
+          // Počkajte ešte chvíľu a potom povoľte infinite scroll
           setTimeout(() => {
             isInitializing.value = false
             console.log('[ChatMessages] Initialization complete, infinite scroll enabled')
-          }, 500) // További 500ms delay
+          }, 500) // Dodatočné oneskorenie 500 ms
         }, 150)
 
       } else {
@@ -287,7 +287,7 @@ watch(
           console.log('[ChatMessages] Adding', uniqueNewMessages.length, 'new messages')
           localMessages.value = [...localMessages.value, ...uniqueNewMessages]
 
-          // ⭐ ÚJ: Frissítsd az oldestMessageId-t új üzenetek esetén is
+          // Aktualizuj oldestMessageId aj pri nových správach
           const allIds = localMessages.value.map(m => m.id)
           if (allIds.length > 0) {
             const newOldest = Math.min(...allIds)
@@ -318,7 +318,7 @@ watch(
     localMessages.value = []
     userScrolledUp.value = false
     lastLoadTime.value = 0
-    isInitializing.value = true // ⭐ Reset initialization flag is
+    isInitializing.value = true // Reset príznaku inicializácie
 
     void nextTick(() => {
       setTimeout(scrollToBottom, 300)
@@ -339,7 +339,7 @@ onMounted(() => {
 </script>
 
 <style scoped>
-/* MENTION HIGHLIGHT - ALWAYS VISIBLE (using :deep for v-html content) */
+/* Zvýraznenie mention – vždy viditeľné (používa :deep pre v-html) */
 .message-content :deep(.ping-highlight) {
   color: #00aff4 !important;
   font-weight: 700;
@@ -357,14 +357,14 @@ onMounted(() => {
   flex-direction: column;
 }
 
-/* ✅ Message wrapper - biztosítja hogy a teljes üzenet blokkban marad */
+/* Obal správy – udrží celý blok pokope */
 .message-wrapper {
   max-width: 100%;
   width: 100%;
   overflow: hidden;
 }
 
-/* ✅ Author name - ne folyjon ki */
+/* Meno autora – nesmie pretiecť */
 .message-author {
   max-width: 100%;
   overflow: hidden;
@@ -372,32 +372,31 @@ onMounted(() => {
   white-space: nowrap;
 }
 
-/* ✅ Message content - KRITIKUS JAVÍTÁS */
+/* Obsah správy – dôležité nastavenia pre zalomenie */
 .message-content {
   border-radius: 8px;
   background-color: #2d2d2d;
   color: white;
 
-  /* ⭐ SZÖVEG TÖRDELÉS - Ez a kulcs! */
-  word-wrap: break-word;           /* Régi böngészők */
-  overflow-wrap: break-word;       /* Modern szabvány */
-  word-break: break-word;          /* Hosszú szavak törése */
-  white-space: pre-wrap;           /* Sortörések megtartása + tördelés */
+  /* Zalomenie textu */
+  word-wrap: break-word;           /* Podpora pre staršie prehliadače */
+  overflow-wrap: break-word;       /* Moderný štandard */
+  word-break: break-word;          /* Láme dlhé slová, ak treba */
+  white-space: pre-wrap;           /* Zachováva nové riadky a zalamuje */
 
-  /* ⭐ MÉRET KORLÁTOZÁS */
-  max-width: 100%;                 /* Ne menjen túl a konténeren */
-  width: fit-content;              /* Csak akkora legyen mint kell */
-  min-width: 0;                    /* Flexbox overflow fix */
+  /* Obmedzenie veľkosti */
+  max-width: 100%;                 /* Nech nepresiahne kontajner */
+  min-width: 0;                    /* Fix pre overflow vo flexe */
 
-  /* ⭐ OVERFLOW KEZELÉS */
-  overflow-wrap: anywhere;         /* Bárhol törhet ha kell */
-  hyphens: auto;                   /* Automatikus szótörés (ha a nyelv támogatja) */
+  /* Riešenie overflow */
+  overflow-wrap: anywhere;         /* Môže lámať kdekoľvek */
+  hyphens: auto;                   /* Automatické delenie slov, ak je podporované */
 
   /* Box model */
   box-sizing: border-box;
 }
 
-/* BLUE BORDER - ONLY FOR PINGED MESSAGES */
+/* BLUE BORDER - len pre ping */
 .ping-message {
   background-color: rgba(88, 101, 242, 0.15) !important;
   border: 2px solid #5865f2;
