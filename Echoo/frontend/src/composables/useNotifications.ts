@@ -59,7 +59,7 @@ export function useNotifications() {
           type: 'info',
           icon: 'chat',
           color: 'grey',
-          message: `#${channel.name}: ${msg.user} - ${msg.text.length > 30 ? msg.text.substring(0, 30) + '...' : msg.text}`,
+          message: `${msg.user} (#${channel.name}): ${msg.text.length > 30 ? msg.text.substring(0, 30) + '...' : msg.text}`,
           position: 'top-right',
           timeout: 4000
         })
