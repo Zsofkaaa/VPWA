@@ -57,7 +57,6 @@ import { ref, watch, onMounted, onBeforeUnmount, getCurrentInstance } from 'vue'
 import axios from 'axios'
 import { useQuasar } from 'quasar'
 import type { UserStatus } from '@/types'
-import type { Socket, DefaultEventsMap } from 'socket.io-client'
 import API_URL from '../config/api'
 
 const $q = useQuasar()
@@ -74,10 +73,8 @@ const props = defineProps<{
   channelId?: number | null
 }>()
 
-type AppSocket = Socket<DefaultEventsMap, DefaultEventsMap>
-
 const instance = getCurrentInstance()
-const socket = instance?.appContext.config.globalProperties.$socket as AppSocket
+const socket = instance?.appContext.config.globalProperties.$socket
 
 // const API_URL = 'http://localhost:3333'
 

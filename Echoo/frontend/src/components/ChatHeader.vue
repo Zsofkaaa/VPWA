@@ -45,7 +45,7 @@
           :channel-id="currentChannelId"
         />
       <UserStatus
-        :status="userStatus"
+        :status="userStatus ?? 'online'"
         @status-changed="$emit('status-changed', $event)"
       />
       <SettingsMenu />
