@@ -26,7 +26,7 @@
           class="message-content q-pa-sm q-mt-xs"
           :class="{ 'ping-message': isPingedMessage(msg) }"
         >
-          <span v-html="formatMessage(msg.text)"></span>
+          <span v-html="formatMessage(msg.text, msg.mentionedUserIds)"></span>
         </div>
       </div>
 
@@ -172,18 +172,23 @@ async function onLoad(index: number, done: (stop?: boolean) => void) {
   }
 }
 
-function formatMessage(text: string): string {
+function formatMessage(text: string, mentionedUserIds: number[] = []): string {
   // Krok 1: Nájsť a označiť mentions pred escapovaním
   const MENTION_PLACEHOLDER = '___MENTION___'
   const mentions: Array<{ original: string; display: string }> = []
+  const hasValidMentions = mentionedUserIds && mentionedUserIds.length > 0
 
   const textWithPlaceholders = text.replace(
     /@(?:"([^"]+)"|'([^']+)'|(\S+))/g,
     (match, quoted1, quoted2, single) => {
       const mentionText = quoted1 || quoted2 || single
+      // Zvýrazníme mention iba ak backend potvrdil existenciu
+      const display = hasValidMentions
+        ? `<span class="ping-highlight">@${mentionText}</span>`
+        : `@${mentionText}`
       mentions.push({
         original: match,
-        display: `<span class="ping-highlight">@${mentionText}</span>`
+        display
       })
       return `${MENTION_PLACEHOLDER}${mentions.length - 1}${MENTION_PLACEHOLDER}`
     }
