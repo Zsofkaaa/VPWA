@@ -80,6 +80,7 @@ import Header from 'components/ChatHeader.vue'
 import Sidebar from 'components/ChatSidebar.vue'
 import ChatFooter from 'components/ChatFooter.vue'
 import TypingStatus from 'components/TypingStatus.vue'
+//import UserStatus from '@/components/UserStatus.vue'
 
 // Vue a utility
 const router = useRouter()
@@ -151,7 +152,7 @@ const {
     // console.log('[LAYOUT] New invite received:', inviteData)
     void loadInvites()
     $q.notify({
-      type: 'info',
+      type: 'negative',
       message: `You have a new invite to "${inviteData.channel.name}"`,
       position: 'top-right',
       timeout: 3000
@@ -277,10 +278,21 @@ function onEnterPress(e: KeyboardEvent) {
   if (e.key !== 'Enter' || newMessage.value.trim() === '') return
   const content = newMessage.value.trim()
 
-  if (content.startsWith('/')) {
-    void handleCommand(content)
-  } else {
-    sendMessage(content)
+  if (currentUserStatus.value != 'offline') {
+    if (content.startsWith('/')) {
+      void handleCommand(content)
+    } else {
+      sendMessage(content)
+    }
+  }
+  else {
+    $q.notify({
+      type: 'warning',
+      message: `You are currently in offline mode! <br> Change to online or dnd to send messages`,
+      position: 'top',
+      timeout: 3000,
+      html: true
+    })
   }
 
   newMessage.value = ""
