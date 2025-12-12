@@ -1,11 +1,13 @@
 <template>
   <div ref="messagesContainer" class="chat-messages">
+    <!-- Infinite scroll pre načítavanie starších správ -->
     <q-infinite-scroll
       :offset="250"
       :disable="isLoadingOlder || !hasMoreMessages || isInitializing"
       @load="onLoad"
       reverse
     >
+      <!-- Načítavacia animácia -->
       <template v-slot:loading>
         <div class="row justify-center q-my-md">
           <q-spinner-dots color="white" size="40px" />
@@ -17,23 +19,27 @@
         <q-spinner-dots color="white" size="40px" />
       </div>
 
+      <!-- Zoznam správ -->
       <div v-for="msg in localMessages" :key="msg.id" class="q-mb-md message-wrapper">
         <div
           class="message-container"
           :class="{ 'my-message': currentUserId === msg.userId }"
         >
+          <!-- Meno odosielateľa -->
           <div class="text-bold message-author">
             {{ msg.user }}
           </div>
+          <!-- Obsah správy -->
           <div
             class="message-content q-pa-sm q-mt-xs"
             :class="{ 'ping-message': isPingedMessage(msg) }"
           >
-            <span v-html="formatMessage(msg.text, msg.mentionedUserIds)"></span>
+            <span v-html="formatMessage(msg.text)"></span>
           </div>
         </div>
       </div>
 
+      <!-- Element na spodku pre scrollovanie -->
       <div ref="bottomElement"></div>
     </q-infinite-scroll>
   </div>
@@ -44,21 +50,45 @@ import { nextTick, ref, watch, onMounted, inject, type Ref } from 'vue'
 import type { Message } from '@/types';
 import API_URL from '../config/api';
 
+// Injektované hodnoty z rodiča
 const currentUserId = inject<number>('currentUserId')
 const currentChannelId = inject<Ref<number | null>>('currentChannelId')
 
+// Props z rodiča
 const props = defineProps<{ messages: Message[] }>()
 
-const isLoadingOlder = ref(false)
-const hasMoreMessages = ref(true)
-const localMessages = ref<Message[]>([])
-const messagesContainer = ref<HTMLElement | null>(null)
-const bottomElement = ref<HTMLElement | null>(null)
-const userScrolledUp = ref(false)
-const oldestMessageId = ref<number | null>(null)
-const lastLoadTime = ref<number>(0)
-const isInitializing = ref(false) // Vlajka pre inicializáciu
+// Stavy
+const isLoadingOlder = ref(false) // Či sa práve načítavajú staršie správy
+const hasMoreMessages = ref(true) // Či sú k dispozícii ďalšie staršie správy
+const localMessages = ref<Message[]>([]) // Lokálny zoznam správ
+const messagesContainer = ref<HTMLElement | null>(null) // Ref na kontajner správ
+const bottomElement = ref<HTMLElement | null>(null) // Ref na spodný element
+const userScrolledUp = ref(false) // Či používateľ scrolloval hore
+const oldestMessageId = ref<number | null>(null) // ID najstaršej správy (pre načítanie ďalších)
+const lastLoadTime = ref<number>(0) // Čas posledného načítania (rate limiting)
+const isInitializing = ref(false) // Či prebieha inicializácia (blokuje infinite scroll)
+const channelMembers = ref<Array<{ id: number, nickName: string, role: string }>>([]) // Členovia kanála
 
+// Načítaj členov kanála z API
+async function loadChannelMembers() {
+  if (!currentChannelId?.value) return
+
+  try {
+    const token = localStorage.getItem('auth_token')
+    const res = await fetch(`${API_URL}/channels/${currentChannelId.value}/members`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+
+    if (res.ok) {
+      channelMembers.value = await res.json()
+      console.log('[ChatMessages] Loaded', channelMembers.value.length, 'channel members')
+    }
+  } catch (err) {
+    console.error('[ChatMessages] Failed to load members:', err)
+  }
+}
+
+// Získaj nickname aktuálneho používateľa z localStorage
 function getCurrentUserNickname(): string | null {
   const savedUser = localStorage.getItem('user')
   if (!savedUser) return null
@@ -70,13 +100,14 @@ function getCurrentUserNickname(): string | null {
   }
 }
 
+// Extrahuj všetky mentions zo správy (case-sensitive)
 function extractMentions(text: string): string[] {
   const mentionRegex = /@(?:"([^"]+)"|'([^']+)'|(\S+))/g
   const matches = text.matchAll(mentionRegex)
   const mentions: string[] = []
 
   for (const match of matches) {
-    const mention = (match[1] || match[2] || match[3])
+    const mention = match[1] || match[2] || match[3]
     if (mention) {
       mentions.push(mention)
     }
@@ -85,29 +116,33 @@ function extractMentions(text: string): string[] {
   return mentions
 }
 
+// Načítaj staršie správy (infinite scroll callback)
 async function onLoad(index: number, done: (stop?: boolean) => void) {
   const now = Date.now()
   console.log('[INFINITE SCROLL] onLoad called, oldestMessageId:', oldestMessageId.value, 'hasMoreMessages:', hasMoreMessages.value, 'isInitializing:', isInitializing.value)
 
-  // Ak ešte inicializujeme, nenačítavaj
+  // Ak ešte inicializujeme, nič nerob
   if (isInitializing.value) {
     console.log('[INFINITE SCROLL] Still initializing, skipping load')
     done()
     return
   }
 
+  // Rate limiting - max 1 request za sekundu
   if (now - lastLoadTime.value < 1000) {
     console.log('[INFINITE SCROLL] Rate limited')
     done()
     return
   }
 
+  // Ak nie je vybraný kanál
   if (!currentChannelId?.value) {
     console.warn("[INFINITE SCROLL] No channel selected.")
     done(true)
     return
   }
 
+  // Ak už načítavame
   if (isLoadingOlder.value) {
     console.log('[INFINITE SCROLL] Already loading')
     done()
@@ -138,6 +173,7 @@ async function onLoad(index: number, done: (stop?: boolean) => void) {
     const newMessages: Message[] = await response.json()
     console.log('[INFINITE SCROLL] Received', newMessages.length, 'messages')
 
+    // Ak nie sú žiadne správy, koniec
     if (newMessages.length === 0) {
       console.log('[INFINITE SCROLL] No more messages available')
       hasMoreMessages.value = false
@@ -145,17 +181,20 @@ async function onLoad(index: number, done: (stop?: boolean) => void) {
       return
     }
 
+    // Otočíme poradie správ (API vracia od najnovšej po najstaršiu)
     const sortedMessages = [...newMessages].reverse()
     const existingIds = new Set(localMessages.value.map(m => m.id))
     const uniqueNewMessages = sortedMessages.filter(m => !existingIds.has(m.id))
 
     if (uniqueNewMessages.length > 0) {
+      // Pridaj staršie správy na začiatok
       localMessages.value = [...uniqueNewMessages, ...localMessages.value]
       const allIds = localMessages.value.map(m => m.id)
       oldestMessageId.value = Math.min(...allIds)
       console.log('[INFINITE SCROLL] Updated oldestMessageId to:', oldestMessageId.value)
     }
 
+    // Ak je menej ako 20 správ, nemáme už viac
     if (newMessages.length < 20) {
       console.log('[INFINITE SCROLL] Received less than 20 messages, no more available')
       hasMoreMessages.value = false
@@ -176,20 +215,29 @@ async function onLoad(index: number, done: (stop?: boolean) => void) {
   }
 }
 
-function formatMessage(text: string, mentionedUserIds: number[] = []): string {
-  // Krok 1: Nájsť a označiť mentions pred escapovaním
+// Naformátuj text správy - zvýrazni validné mentions
+function formatMessage(text: string): string {
   const MENTION_PLACEHOLDER = '___MENTION___'
   const mentions: Array<{ original: string; display: string }> = []
-  const hasValidMentions = mentionedUserIds && mentionedUserIds.length > 0
 
+  // Set členov kanála pre validáciu (case-sensitive)
+  const memberNicknames = new Set(
+    channelMembers.value.map(m => m.nickName)
+  )
+
+  // Nahraď mentions placeholdermi (aby sme neescapovali HTML)
   const textWithPlaceholders = text.replace(
     /@(?:"([^"]+)"|'([^']+)'|(\S+))/g,
     (match, quoted1, quoted2, single) => {
       const mentionText = quoted1 || quoted2 || single
-      // Zvýrazníme mention iba ak backend potvrdil existenciu
-      const display = hasValidMentions
+
+      // Zvýrazni len ak je validný člen kanála (case-sensitive)
+      const isValidMention = memberNicknames.has(mentionText)
+
+      const display = isValidMention
         ? `<span class="ping-highlight">@${mentionText}</span>`
         : `@${mentionText}`
+
       mentions.push({
         original: match,
         display
@@ -198,13 +246,13 @@ function formatMessage(text: string, mentionedUserIds: number[] = []): string {
     }
   )
 
-  // Krok 2: Escapovať HTML
+  // Escapuj HTML znaky (okrem placeholderov)
   const escaped = textWithPlaceholders
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
 
-  // Krok 3: Nahradiť placeholdery skutočným HTML pre mention
+  // Nahraď placeholdery skutočným HTML
   let result = escaped
   mentions.forEach((mention, index) => {
     result = result.replace(
@@ -216,21 +264,24 @@ function formatMessage(text: string, mentionedUserIds: number[] = []): string {
   return result
 }
 
+// Skontroluj či správa pingla aktuálneho používateľa
 function isPingedMessage(msg: Message): boolean {
+  // Vlastné správy sa nepingujú
   if (msg.userId === currentUserId) return false
 
-  // Kontrola zmienky podľa user ID
+  // Kontrola cez mentionedUserIds z backendu
   if (msg.mentionedUserIds && msg.mentionedUserIds.length > 0) {
     if (msg.mentionedUserIds.includes(currentUserId as number)) return true
   }
 
-  // Záloha: kontrola podľa nickname (spätná kompatibilita)
+  // Fallback: kontrola cez nickname (spätná kompatibilita, case-sensitive)
   const currentNickname = getCurrentUserNickname()
   if (!currentNickname) return false
   const mentions = extractMentions(msg.text)
   return mentions.includes(currentNickname)
 }
 
+// Zisti či je používateľ na spodku chatu
 function isAtBottom(): boolean {
   const el = messagesContainer.value
   if (!el) return true
@@ -238,16 +289,19 @@ function isAtBottom(): boolean {
   return el.scrollHeight - el.scrollTop - el.clientHeight <= threshold
 }
 
+// Scrollni na spodok chatu (smooth)
 function scrollToBottom() {
   const el = bottomElement.value
   if (!el) return
   el.scrollIntoView({ behavior: 'smooth', block: 'start' })
 }
 
+// Spracuj scroll event
 function handleScroll() {
   userScrolledUp.value = !isAtBottom()
 }
 
+// Sleduj zmeny v správach (nové správy, zmena kanála)
 watch(
   () => props.messages,
   async (newVal) => {
@@ -258,9 +312,10 @@ watch(
       const isChannelChange = newVal.length > 0 && newVal.every(m => !currentIds.has(m.id))
 
       if (isChannelChange) {
+        // Zmena kanála - reinicializuj všetko
         console.log('[ChatMessages] Channel change detected')
 
-        // Aktivuj inicializáciu
+        // Aktivuj inicializáciu - blokuj infinite scroll
         isInitializing.value = true
 
         localMessages.value = [...newVal]
@@ -268,7 +323,7 @@ watch(
         isLoadingOlder.value = false
         userScrolledUp.value = false
 
-        // Dôležité: pri zmene kanála nastav oldestMessageId
+        // Nastav oldestMessageId pre načítanie starších správ
         if (newVal.length > 0) {
           const allIds = newVal.map(m => m.id)
           oldestMessageId.value = Math.min(...allIds)
@@ -277,18 +332,18 @@ watch(
 
         await nextTick()
 
-        // Najprv scroll na spodok, potom povoľ infinite scroll
+        // Scrollni na spodok, potom povoľ infinite scroll
         setTimeout(() => {
           scrollToBottom()
 
-          // Počkajte ešte chvíľu a potom povoľte infinite scroll
           setTimeout(() => {
             isInitializing.value = false
             console.log('[ChatMessages] Initialization complete, infinite scroll enabled')
-          }, 500) // Dodatočné oneskorenie 500 ms
+          }, 500)
         }, 150)
 
       } else {
+        // Pridaj nové správy (nie zmena kanála)
         const existingIds = new Set(localMessages.value.map(m => m.id))
         const uniqueNewMessages = newVal.filter(m => !existingIds.has(m.id))
 
@@ -296,7 +351,7 @@ watch(
           console.log('[ChatMessages] Adding', uniqueNewMessages.length, 'new messages')
           localMessages.value = [...localMessages.value, ...uniqueNewMessages]
 
-          // Aktualizuj oldestMessageId aj pri nových správach
+          // Aktualizuj oldestMessageId
           const allIds = localMessages.value.map(m => m.id)
           if (allIds.length > 0) {
             const newOldest = Math.min(...allIds)
@@ -309,6 +364,7 @@ watch(
 
         await nextTick()
 
+        // Scrollni na spodok len ak bol používateľ už dolu
         if (wasBottom || !userScrolledUp.value) {
           setTimeout(scrollToBottom, 100)
         }
@@ -318,6 +374,7 @@ watch(
   { immediate: true, deep: true }
 )
 
+// Sleduj zmeny kanála (reset všetkého)
 watch(
   () => currentChannelId?.value,
   () => {
@@ -327,7 +384,10 @@ watch(
     localMessages.value = []
     userScrolledUp.value = false
     lastLoadTime.value = 0
-    isInitializing.value = true // Reset príznaku inicializácie
+    isInitializing.value = true
+    channelMembers.value = []
+
+    void loadChannelMembers()
 
     void nextTick(() => {
       setTimeout(scrollToBottom, 300)
@@ -335,12 +395,18 @@ watch(
   }
 )
 
+// Pri mount-e komponentu
 onMounted(() => {
+  // Pridaj scroll listener
   const el = messagesContainer.value
   if (el) {
     el.addEventListener('scroll', handleScroll)
   }
 
+  // Načítaj členov kanála
+  void loadChannelMembers()
+
+  // Scrollni na spodok
   void nextTick(() => {
     setTimeout(scrollToBottom, 500)
   })
@@ -348,7 +414,7 @@ onMounted(() => {
 </script>
 
 <style scoped>
-/* Zvýraznenie mention – vždy viditeľné (používa :deep pre v-html) */
+/* Zvýraznenie mention (modré) */
 .message-content :deep(.ping-highlight) {
   color: #00aff4 !important;
   font-weight: 700;
@@ -357,6 +423,7 @@ onMounted(() => {
   border-radius: 3px;
 }
 
+/* Kontajner správ */
 .chat-messages {
   flex: 1;
   overflow-y: auto;
@@ -366,13 +433,14 @@ onMounted(() => {
   flex-direction: column;
 }
 
-/* Obal správy – udrží celý blok pokope */
+/* Wrapper pre každú správu */
 .message-wrapper {
   max-width: 100%;
   width: 100%;
   overflow: hidden;
 }
 
+/* Kontajner správy (autor + obsah) */
 .message-container {
   display: flex;
   flex-direction: column;
@@ -381,19 +449,13 @@ onMounted(() => {
   margin-bottom: 8px;
 }
 
-/* Vlastný message - prava strana */
-/*
-.my-message {
-  align-items: flex-end;
-}
-  */
-
+/* Meno autora pre vlastné správy (svetlo modrá) */
 .my-message .message-author {
   color: #c6dfff;
   font-weight: 700;
-  /*text-align: right;*/
 }
 
+/* Meno autora */
 .message-author {
   max-width: 100%;
   overflow: hidden;
@@ -401,13 +463,14 @@ onMounted(() => {
   white-space: nowrap;
 }
 
-/* Obsah správy – dôležité nastavenia pre zalomenie */
+/* Obsah správy */
 .message-content {
   border-radius: 12px;
   background-color: #2d2d2d;
   color: white;
   width: 100%;
 
+  /* Text wrapping */
   word-wrap: break-word;
   overflow-wrap: break-word;
   word-break: break-word;
@@ -420,12 +483,13 @@ onMounted(() => {
   box-sizing: border-box;
 }
 
+/* Obsah vlastnej správy (modro-šedé pozadie) */
 .my-message .message-content {
   background: #2b3137 !important;
   color: white;
-  /*text-align: right;*/
 }
 
+/* Správa ktorá pingla používateľa (fialový border) */
 .ping-message {
   background-color: rgba(88, 101, 242, 0.15) !important;
   border: 2px solid #5865f2;

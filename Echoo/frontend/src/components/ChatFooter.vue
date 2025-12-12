@@ -3,7 +3,7 @@
     class="chat-footer row items-center q-pa-sm"
     :style="footerStyle"
   >
-    <!-- Typing Preview Icon -->
+    <!-- Tlačidlo pre zobrazenie kto píše -->
     <q-btn
       flat
       round
@@ -15,19 +15,57 @@
     >
     </q-btn>
 
-    <!-- Input Field -->
-    <q-input
-      :model-value="newMessage"
-      @update:model-value="handleInput"
-      placeholder="Start writing..."
-      class="col chat-input"
-      dense
-      outlined
-      borderless
-      @keydown="$emit('enterPress', $event)"
-    />
+    <!-- Textové pole s mention autocomplete -->
+    <div class="col" style="position: relative;">
+      <q-input
+        ref="inputRef"
+        :model-value="newMessage"
+        @update:model-value="handleInput"
+        placeholder="Start writing..."
+        class="chat-input"
+        dense
+        outlined
+        borderless
+        @keydown="handleKeydown"
+      />
 
-    <!-- Typing Preview Dialog -->
+      <!-- Dropdown menu pre výber členov -->
+      <q-menu
+        v-model="showMentionMenu"
+        :target="inputRef?.$el"
+        anchor="bottom left"
+        self="top left"
+        :offset="[0, 8]"
+        max-height="300px"
+        class="mention-menu"
+        no-parent-event
+        no-focus
+        no-refocus
+      >
+        <q-list class="mention-list">
+          <!-- Zoznam členov -->
+          <q-item
+            v-for="(member, index) in filteredMembers"
+            :key="member.id"
+            clickable
+            :class="{ 'bg-blue-grey-9': index === selectedIndex }"
+            @click="selectMention(member)"
+          >
+            <q-item-section>
+              <q-item-label>{{ member.nickName }}</q-item-label>
+            </q-item-section>
+          </q-item>
+          <!-- Ak nie sú žiadni členovia -->
+          <q-item v-if="filteredMembers.length === 0">
+            <q-item-section>
+              <q-item-label class="text-grey">No members found</q-item-label>
+            </q-item-section>
+          </q-item>
+        </q-list>
+      </q-menu>
+    </div>
+
+    <!-- Dialog pre zobrazenie kto píše -->
     <q-dialog v-model="showTypingPreview">
       <q-card class="typing-preview-card">
         <q-card-section class="row items-center q-pb-none">
@@ -37,12 +75,12 @@
         </q-card-section>
 
         <q-card-section>
-          <!-- If nobody is typing -->
+          <!-- Ak nikto nepíše -->
           <div v-if="typingUsers.length === 0" class="no-typing-message">
             <div class="text-grey-6 q-mt-md">Currently no one is typing</div>
           </div>
 
-          <!-- List of typing users -->
+          <!-- Zoznam používateľov ktorí píšu -->
           <div v-else class="typing-users-list">
             <div
               v-for="user in typingUsers"
@@ -52,9 +90,11 @@
               <div class="user-header">
                 <span class="user-name">{{ user.user }}</span>
               </div>
+              <!-- Zobraz obsah ak existuje -->
               <div v-if="user.content" class="user-content">
                 "{{ user.content }}"
               </div>
+              <!-- Inak zobraz default text -->
               <div v-else class="user-content-empty">
                 <em>Just started typing...</em>
               </div>
@@ -67,15 +107,18 @@
 </template>
 
 <script lang="ts" setup>
-import { ref } from 'vue'
+import { ref, computed, watch, inject, type Ref } from 'vue'
 import type { TypingUser } from '@/types'
+import API_URL from '../config/api'
 
-defineProps<{
+// Props z rodiča
+const props = defineProps<{
   newMessage: string
   footerStyle: Record<string, string | number>
   typingUsers: TypingUser[]
 }>()
 
+// Emity do rodiča
 const emit = defineEmits<{
   'update:newMessage': [value: string | number | null]
   'enterPress': [event: KeyboardEvent]
@@ -83,17 +126,210 @@ const emit = defineEmits<{
   'typingContent': [content: string]
 }>()
 
-const showTypingPreview = ref(false)
+// Injektuj aktuálny channel ID
+const currentChannelId = inject<Ref<number | null>>('currentChannelId')
 
+// Stavy
+const showTypingPreview = ref(false)
+const showMentionMenu = ref(false)
+const inputRef = ref<{ $el: HTMLElement } | null>(null)
+const selectedIndex = ref(-1) // Index vybraného člena (-1 = nič nie je vybrané)
+const mentionStartPos = ref(-1) // Pozícia @ v texte
+const mentionQuery = ref('') // Text za @ (hľadaný string)
+const channelMembers = ref<Array<{ id: number, nickName: string, role: string }>>([])
+
+// Načítaj členov kanála z API
+async function loadChannelMembers() {
+  if (!currentChannelId?.value) return
+
+  try {
+    const token = localStorage.getItem('auth_token')
+    const res = await fetch(`${API_URL}/channels/${currentChannelId.value}/members`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+
+    if (res.ok) {
+      channelMembers.value = await res.json()
+      console.log('[ChatFooter] Loaded', channelMembers.value.length, 'channel members')
+    }
+  } catch (err) {
+    console.error('[ChatFooter] Failed to load members:', err)
+  }
+}
+
+// Filtruj členov podľa query, max 5 výsledkov (zobrazené odzadu vďaka CSS)
+const filteredMembers = computed(() => {
+  // Ak nie je query, zobraz prvých 5
+  if (!mentionQuery.value) {
+    return channelMembers.value.slice(0, 5)
+  }
+
+  // Filtruj case-insensitive
+  const query = mentionQuery.value.toLowerCase()
+  const matches = channelMembers.value.filter(m =>
+    m.nickName.toLowerCase().includes(query)
+  )
+
+  // Max 5 výsledkov
+  return matches.slice(0, 5)
+})
+
+// Detekuj či sa má zobraziť mention menu (@ na správnom mieste)
+function checkMentionTrigger(text: string, cursorPos: number): boolean {
+  // Nájdi posledné @ pred kurzorom
+  let lastAtPos = -1
+  for (let i = cursorPos - 1; i >= 0; i--) {
+    if (text[i] === '@') {
+      lastAtPos = i
+      break
+    }
+    // Zastav ak narazíš na medzeru alebo nový riadok
+    if (text[i] === ' ' || text[i] === '\n') {
+      break
+    }
+  }
+
+  // @ nenájdené
+  if (lastAtPos === -1) return false
+
+  // @ musí byť na začiatku alebo po medzere/novom riadku
+  const isValidPosition = lastAtPos === 0 || text[lastAtPos - 1] === ' ' || text[lastAtPos - 1] === '\n'
+  if (!isValidPosition) return false
+
+  // Text medzi @ a kurzorom
+  const textAfterAt = text.substring(lastAtPos + 1, cursorPos)
+
+  // Ak je medzera po @, nezobraz menu
+  if (textAfterAt.includes(' ') || textAfterAt.includes('\n')) {
+    return false
+  }
+
+  // Nastav globálne hodnoty
+  mentionStartPos.value = lastAtPos
+  mentionQuery.value = textAfterAt
+  return true
+}
+
+// Spracuj zmenu textu v inpute
 function handleInput(value: string | number | null) {
-  emit('update:newMessage', value)
+  const text = String(value || '')
+
+  // Emituj zmeny do rodiča
+  emit('update:newMessage', text)
   emit('typing')
-  emit('typingContent', String(value || ''))
+  emit('typingContent', text)
+
+  // Získaj pozíciu kurzora
+  const input = inputRef.value?.$el?.querySelector('input')
+  const cursorPos = input?.selectionStart || text.length
+
+  // Skontroluj či sa má zobraziť mention menu
+  if (checkMentionTrigger(text, cursorPos)) {
+    showMentionMenu.value = true
+    selectedIndex.value = -1 // Žiadny člen nie je vybraný
+  } else {
+    showMentionMenu.value = false
+    mentionStartPos.value = -1
+    mentionQuery.value = ''
+  }
+}
+
+// Vyber člena zo zoznamu a vlož do textu
+function selectMention(member: { id: number, nickName: string, role: string }) {
+  if (mentionStartPos.value === -1) return
+
+  const text = String(props.newMessage || '')
+  const input = inputRef.value?.$el?.querySelector('input')
+  const cursorPos = input?.selectionStart || text.length
+
+  // Pridaj úvodzovky ak má meno medzery
+  const hasSpace = member.nickName.includes(' ')
+  const mentionText = hasSpace ? `@"${member.nickName}"` : `@${member.nickName}`
+
+  // Zostav nový text s mention
+  const newText = text.substring(0, mentionStartPos.value) +
+            mentionText + ' ' +
+            text.substring(cursorPos)
+
+  // Emituj nový text
+  emit('update:newMessage', newText)
+
+  // Zavri menu
+  showMentionMenu.value = false
+  mentionStartPos.value = -1
+  mentionQuery.value = ''
+  selectedIndex.value = -1 // Reset výberu
+
+  // Vráť focus späť do inputu a nastav kurzor za mention
+  setTimeout(() => {
+    input?.focus()
+    const newCursorPos = mentionStartPos.value + mentionText.length + 1
+    input?.setSelectionRange(newCursorPos, newCursorPos)
+  }, 50)
+}
+
+// Spracuj klávesové skratky
+function handleKeydown(event: KeyboardEvent) {
+  // Ak je menu otvorené
+  if (showMentionMenu.value) {
+    if (event.key === 'ArrowDown') {
+      // Šípka dole - vizuálne dole, ale index sa znižuje (kvôli column-reverse)
+      event.preventDefault()
+      if (selectedIndex.value === -1) {
+        selectedIndex.value = 0 // Vyber prvý element (vizuálne dole)
+      } else if (selectedIndex.value > 0) {
+        selectedIndex.value = selectedIndex.value - 1
+      } else {
+        selectedIndex.value = -1 // Z prvého späť na žiadny výber
+      }
+    } else if (event.key === 'ArrowUp') {
+      // Šípka hore - vizuálne hore, ale index sa zvyšuje (kvôli column-reverse)
+      event.preventDefault()
+      if (selectedIndex.value === -1) {
+        selectedIndex.value = filteredMembers.value.length - 1 // Vyber posledný (vizuálne hore)
+      } else if (selectedIndex.value < filteredMembers.value.length - 1) {
+        selectedIndex.value = selectedIndex.value + 1
+      } else {
+        selectedIndex.value = -1 // Z posledného späť na žiadny výber
+      }
+    } else if (event.key === 'Tab') {
+      // Tab vyberá zo zoznamu (len ak je niečo vybrané)
+      if (selectedIndex.value >= 0) {
+        const selectedMember = filteredMembers.value[selectedIndex.value]
+        if (selectedMember) {
+          event.preventDefault()
+          selectMention(selectedMember)
+          return
+        }
+      }
+    } else if (event.key === 'Escape') {
+      // Escape zatvorí menu
+      event.preventDefault()
+      showMentionMenu.value = false
+      mentionStartPos.value = -1
+      mentionQuery.value = ''
+    } else if (event.key === 'Enter') {
+      // Enter zatvorí menu a pošle správu
+      showMentionMenu.value = false
+      mentionStartPos.value = -1
+      mentionQuery.value = ''
+      // Nech sa event prepošle do rodiča
+    }
+  }
+
+  // Prepošli event do rodiča (pre odoslanie správy)
+  emit('enterPress', event)
+}
+
+// Načítaj členov pri zmene kanála
+if (currentChannelId) {
+  watch(currentChannelId, () => {
+    void loadChannelMembers()
+  }, { immediate: true })
 }
 </script>
 
 <style scoped>
-/* HLAVNÝ ŠTÝL FOOTERA */
 .chat-footer {
   z-index: 2100;
   background-color: #1E1E1E;
@@ -107,16 +343,52 @@ function handleInput(value: string | number | null) {
   flex-shrink: 0;
 }
 
-/* TYPING PREVIEW BUTTON */
 .typing-preview-btn {
   flex-shrink: 0;
 }
 
-/* ŠTÝL PRE TEXTOVÉ POLE */
 .chat-input {
   border-radius: 15px;
   background-color: white;
   padding: 6px 12px;
+}
+
+/* Mention Autocomplete Menu */
+.mention-menu {
+  background-color: #2d2d2d;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.mention-list {
+  background-color: #2d2d2d;
+  color: white;
+  max-height: 300px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column-reverse; /* Vizuálne obrátené - prvý element sa zobrazí dole */
+}
+
+.mention-list .q-item {
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.mention-list .q-item:hover {
+  background-color: #3d3d3d;
+}
+
+.mention-list .q-item.bg-blue-grey-9 {
+  background-color: #455a64;
+}
+
+.mention-list .q-item-label {
+  color: white;
+}
+
+.mention-list .q-item-label.caption {
+  color: #999;
+  font-size: 11px;
 }
 
 /* TYPING PREVIEW CARD */
