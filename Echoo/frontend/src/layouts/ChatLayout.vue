@@ -152,7 +152,7 @@ const {
     // console.log('[LAYOUT] New invite received:', inviteData)
     void loadInvites()
     $q.notify({
-      type: 'negative',
+      type: 'info',
       message: `You have a new invite to "${inviteData.channel.name}"`,
       position: 'top-right',
       timeout: 3000

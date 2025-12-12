@@ -31,7 +31,7 @@ export default class ChannelBans extends BaseSchema {
         .inTable('users')
         .onDelete('SET NULL')
 
-      table.string('reason', 255).nullable()
+      //table.string('reason', 255).nullable()
 
       table.timestamp('created_at').defaultTo(this.now())
       table.timestamp('updated_at').defaultTo(this.now())
