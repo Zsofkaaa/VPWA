@@ -162,10 +162,10 @@ async function onRegister() {
   if (success) {
     Notify.create({ type: 'positive', message: 'Registration successful, please log in' })
 
-    // prepnutie späť na login
+    // prepnutie späť na prihlásenie
     mode.value = 'login'
 
-    // vyčistenie polí
+    // vyčistenie polí formulára
     reg.value = {
       firstName: '',
       lastName: '',

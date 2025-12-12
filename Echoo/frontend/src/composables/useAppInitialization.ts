@@ -59,18 +59,18 @@ export function useAppInitialization(options: AppInitializationOptions) {
   onMounted(async () => {
     console.log('[APP INIT] Starting initialization...')
 
-    // Request notification permission
+    // Požiadať o povolenie notifikácií
     await requestNotificationPermission()
 
-    // Load current user from localStorage
-    const savedUser = localStorage.getItem("user")
+    // Načítaj aktuálneho používateľa z localStorage
+    const savedUser = localStorage.getItem('user')
     if (savedUser) {
       const user = JSON.parse(savedUser)
       currentUserId.value = user.id
       console.log('[APP INIT] Current user ID:', currentUserId.value)
     }
 
-    // Load user's channels
+    // Načítaj kanály používateľa
     const token = localStorage.getItem('auth_token')
     if (token && currentUserId.value) {
       console.log('[APP INIT] Loading user channels...')
@@ -80,7 +80,7 @@ export function useAppInitialization(options: AppInitializationOptions) {
         public: publicChannels.value.length
       })
 
-      // Find channel matching current route
+      // Nájdi kanál zodpovedajúci aktuálnej trase
       const found = [...privateChannels.value, ...publicChannels.value].find(
         ch => ch.path === route.path
       )
@@ -89,7 +89,7 @@ export function useAppInitialization(options: AppInitializationOptions) {
       console.log('[APP INIT] Found channel:', found)
 
       if (found) {
-        // SET THESE FIRST - so ChatMessages component can see them
+        // Nastaviť tieto prvé, aby ich ChatMessages komponent videl
         currentChannelId.value = found.id
         currentChannelName.value = found.name
         activeChannelPath.value = found.path
@@ -100,7 +100,7 @@ export function useAppInitialization(options: AppInitializationOptions) {
           path: activeChannelPath.value
         })
 
-        // Join channel first
+        // Pripoj sa na kanál najprv
         if (
           typeof currentUserId.value === 'number' &&
           typeof found.id === 'number' &&
@@ -109,7 +109,7 @@ export function useAppInitialization(options: AppInitializationOptions) {
           console.log('[APP INIT] Joining channel...')
           joinChannel(found.id)
 
-          // Wait for next tick to ensure reactivity 
+          // Počkaj na ďalší tick, aby sa zabezpečila reaktivita
           await new Promise(resolve => setTimeout(resolve, 100))
 
           console.log('[APP INIT] Loading messages...')
@@ -119,7 +119,7 @@ export function useAppInitialization(options: AppInitializationOptions) {
       }
     }
 
-    // Join user's personal room for invite/kick/ban notifications
+    // Pripoj sa na osobnú izbu používateľa pre notifikácie o pozvánke/vyhadzovaní/bane
     if (currentUserId.value) {
       if (userStatus?.value !== 'offline') {
         console.log('[APP INIT] Joining user room:', currentUserId.value)
@@ -127,7 +127,7 @@ export function useAppInitialization(options: AppInitializationOptions) {
       }
     }
 
-    // Setup message listener
+    // Nastav listener na správy
     if (userStatus?.value !== 'offline') {
       setupSocketListeners((msg: Message) => {
         handleIncomingMessage(
@@ -141,7 +141,7 @@ export function useAppInitialization(options: AppInitializationOptions) {
       })
     }
 
-    // Load pending invites
+    // Načítaj čakajúce pozvánky
     await loadInvites()
 
     console.log('[APP INIT] Initialization complete!')

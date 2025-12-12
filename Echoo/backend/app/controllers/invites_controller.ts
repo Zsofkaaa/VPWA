@@ -3,14 +3,14 @@ import UserChannel from '#models/user_channel'
 import ChannelBan from '#models/channel_ban'
 import ws from '#services/ws'
 
-// a HttpContextContract helyett használjunk any-t
+// Namiesto HttpContextContract použijeme typ any
 export default class InvitesController {
   public async invite({ auth, request, params, response }: any) {
     const channelId = Number(params.id)
     const invitedUserId = Number(request.input('userId'))
     const inviterId = auth.user.id
 
-    // 1) inviter role
+    // 1) rola pozývajúceho
     const inviterChannel = await UserChannel.query()
       .where('channelId', channelId)
       .andWhere('userId', inviterId)
@@ -22,7 +22,7 @@ export default class InvitesController {
 
     const inviterRole = inviterChannel.role
 
-    // 2) banned?
+    // 2) je používateľ zabanovaný?
     const banned = await ChannelBan.query()
       .where('channelId', channelId)
       .andWhere('userId', invitedUserId)
@@ -32,7 +32,7 @@ export default class InvitesController {
       return response.status(403).json({ error: 'User is banned from channel' })
     }
 
-    // 3) already member?
+    // 3) je už členom?
     const exists = await UserChannel.query()
       .where('channelId', channelId)
       .andWhere('userId', invitedUserId)
@@ -42,7 +42,7 @@ export default class InvitesController {
       return response.status(409).json({ error: 'User already in channel' })
     }
 
-    // 4) pending invite?
+    // 4) čaká na pozvánku?
     const pending = await ChannelInvite.query()
       .where('channelId', channelId)
       .where('userId', invitedUserId)
@@ -53,7 +53,7 @@ export default class InvitesController {
       return response.status(409).json({ error: 'Invite already sent' })
     }
 
-    // 5) create invite
+    // 5) vytvorenie pozvánky
     const invite = await ChannelInvite.create({
       channelId,
       userId: invitedUserId,
@@ -61,10 +61,10 @@ export default class InvitesController {
       status: 'pending',
     })
 
-    // 6) Load channel info pre WebSocket notifikáciu
+    // 6) načítanie informácií o kanáli pre WebSocket notifikáciu
     await invite.load('channel')
 
-    // 7) Pošli real-time notifikáciu invitee-mu
+    // 7) odoslanie real-time notifikácie pozvanému používateľovi
     ws.sendInviteNotification(invitedUserId, {
       id: invite.id,
       channel_id: channelId,
@@ -105,10 +105,10 @@ export default class InvitesController {
       notificationSettings: 'all',
     })
 
-    // Load channel info
+    // Načítanie informácií o kanáli
     await invite.load('channel')
 
-    // Pošli real-time notifikáciu užívateľovi
+    // Odošli real-time notifikáciu používateľovi
     ws.sendChannelUpdate(auth.user.id, {
       id: invite.channel.id,
       name: invite.channel.name,

@@ -101,16 +101,16 @@ const $q = useQuasar()
   font-size: 1.25rem;
   font-weight: 700;
   color: white;
-  white-space: nowrap; /* prevents text from wrapping to a new line */
-  overflow: hidden; /* hides text that goes beyond the element's width */
-  text-overflow: ellipsis; /* adds "..." at the end of the truncated text */
+  white-space: nowrap; /* zabraňuje zalomeniu textu */
+  overflow: hidden; /* skryje text, ktorý presahuje šírku prvku */
+  text-overflow: ellipsis; /* pridá "..." na konci skráteného textu */
 }
 
 /* Centrálne zobrazenie textu */
 .centered {
-  position: absolute; /* takes the element out of normal flow and positions it absolutely */
-  left: 50%; /* moves the element’s left edge to the horizontal center of its parent */
-  transform: translateX(-50%); /* shifts it left by half of its own width to truly center it */
+  position: absolute; /* vyberie prvok z bežného toku a umiestňuje ho absolútne */
+  left: 50%; /* posunie ľavý okraj prvku do horizontálneho centra rodičovského prvku */
+  transform: translateX(-50%); /* posunie ho doľava o polovicu jeho vlastnej šírky, aby bol naozaj centrovaný */
 }
 
 /* Flex elementy sa nezalamujú */

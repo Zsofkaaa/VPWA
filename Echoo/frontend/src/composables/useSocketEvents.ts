@@ -19,7 +19,7 @@ export function useSocketEvents(
   let lastContentEmitTime = 0
   let cleanupInterval: ReturnType<typeof setInterval> | null = null
 
-  // Computed pre reactive array typing users
+  // Computed pre reaktívne pole zapisujúcich používateľov
   const typingUsers = computed(() => {
     return Array.from(typingUsersMap.value.values())
   })
@@ -111,7 +111,7 @@ export function useSocketEvents(
   function setupSocketListeners(onMessageReceived: (msg: Message) => void) {
     socket.on('newMessage', onMessageReceived)
 
-    // Real-time invite notification
+    // Notifikácia v reálnom čase o pozvánke
     if (onInviteReceived) {
       socket.on('new_invite', (inviteData: InviteNotification) => {
         console.log('[SOCKET] Received new invite:', inviteData)
@@ -119,7 +119,7 @@ export function useSocketEvents(
       })
     }
 
-    // Real-time channel join notification (when someone accepts your invite)
+    // Notifikácia v reálnom čase o pripojení do kanála (keď niekto akceptuje vašu pozvánku)
     if (onChannelJoined) {
       socket.on('channel_joined', (channelData: ChannelUpdateNotification) => {
         console.log('[SOCKET] Channel joined notification:', channelData)
@@ -127,7 +127,7 @@ export function useSocketEvents(
       })
     }
 
-    // Real-time channel deleted notification
+    // Notifikácia v reálnom čase o vymazaní kanála
     if (onChannelDeleted) {
       socket.on('channel_deleted', (data: ChannelDeletedNotification) => {
         console.log('[SOCKET] Channel deleted notification:', data)
@@ -135,7 +135,7 @@ export function useSocketEvents(
       })
     }
 
-    // Real-time user kicked notification
+    // Notifikácia v reálnom čase o vyhadzovaní používateľa
     if (onUserKicked) {
       socket.on('user_kicked', (data: UserKickedNotification) => {
         console.log('[SOCKET] User kicked notification:', data)
@@ -143,7 +143,7 @@ export function useSocketEvents(
       })
     }
 
-    // Real-time user banned notification
+    // Notifikácia v reálnom čase o zabanovaní používateľa
     if (onUserBanned) {
       socket.on('user_banned', (data: UserBannedNotification) => {
         console.log('[SOCKET] User banned notification:', data)

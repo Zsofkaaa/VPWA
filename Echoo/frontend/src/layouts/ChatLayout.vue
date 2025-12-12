@@ -31,7 +31,7 @@
         <router-view />
       </q-page-container>
 
-      <!-- Indikátor písania správy - UPDATED -->
+      <!-- Indikátor písania správy -->
       <TypingStatus
         v-if="isTyping"
         :typing-users="typingUsers"
@@ -132,7 +132,7 @@ const {
   $q
 )
 
-// Socket Events Composable - UPDATED
+// Socket Events Composable
 const {
   isTyping,
   typingUsers,
@@ -146,7 +146,7 @@ const {
 } = useSocketEvents(
   socket,
   currentChannelId,
-  // Invite callback
+  // Callback pri pozvánke
   (inviteData) => {
     // console.log('[LAYOUT] New invite received:', inviteData)
     void loadInvites()
@@ -157,7 +157,7 @@ const {
       timeout: 3000
     })
   },
-  // Channel joined callback
+  // Callback pri pripojení ku kanálu
   (channelData) => {
     console.log('[LAYOUT] Channel joined:', channelData)
     const token = localStorage.getItem('auth_token')
@@ -165,15 +165,15 @@ const {
       void loadUserChannels(currentUserId.value, token)
     }
   },
-  // Channel deleted callback
+  // Callback pri zmazaní kanála
   (data) => {
     handleChannelDeleted(data.channelId, data.channelName, data.deletedBy, currentUserId.value)
   },
-  // User kicked callback
+  // Callback pri vyhodení používateľa
   (data) => {
     handleUserKicked(data.userId, data.channelId, data.channelName, currentUserId.value)
   },
-  // User banned callback
+  // Callback pri zabanovaní používateľa
   (data) => {
     handleUserBanned(data.userId, data.channelId, data.channelName, currentUserId.value)
   }
@@ -229,7 +229,7 @@ const typingStatusStyle = computed(() => ({
   zIndex: 2150
 }))
 
-// Helper to (re)attach socket listeners with the current handler
+// Pomocná funkcia na (znovu)pripojenie socket listenerov s aktuálnym handlerom
 function attachSocketListeners() {
   cleanupSocketListeners()
 
@@ -245,7 +245,7 @@ function attachSocketListeners() {
   })
 }
 
-// Persist status in localStorage user payload
+// Uložiť status do localStorage v používateľskom objekte
 function persistStatusLocally(status: UserStatus) {
   const savedUser = localStorage.getItem('user')
   if (!savedUser) return
@@ -259,7 +259,7 @@ function persistStatusLocally(status: UserStatus) {
   }
 }
 
-// Initialize status from stored user if present
+// Inicializovať status zo storage, ak je dostupný
 const savedUser = localStorage.getItem('user')
 if (savedUser) {
   try {
@@ -272,7 +272,7 @@ if (savedUser) {
   }
 }
 
-// Wrapper pre onEnterPress, ktorý spracuje príkazy
+// Obal pre onEnterPress, ktorý spracuje príkazy
 function onEnterPress(e: KeyboardEvent) {
   if (e.key !== 'Enter' || newMessage.value.trim() === '') return
   const content = newMessage.value.trim()
@@ -286,12 +286,12 @@ function onEnterPress(e: KeyboardEvent) {
   newMessage.value = ""
 }
 
-// Handle status change from header component
+// Spracovanie zmeny statusu z header komponentu
 function onStatusChanged(status: UserStatus) {
   currentUserStatus.value = status
 }
 
-// Logout handler
+// Odhlásenie používateľa
 async function handleLogout() {
   await logout()
   await router.push('/auth')
@@ -342,7 +342,7 @@ watch(
   { immediate: false }
 )
 
-// React on status changes (offline disconnect, online reload)
+// Reakcia na zmeny statusu (offline odpojenie, online znovupripojenie)
 watch(
   () => currentUserStatus.value,
   async (status, prevStatus) => {
@@ -386,7 +386,7 @@ watch(
   { immediate: true }
 )
 
-// App Initialization (onMounted/onBeforeUnmount logic)
+// Inicializácia aplikácie (logika onMounted/onBeforeUnmount)
 useAppInitialization({
   currentUserId,
   currentChannelId,
@@ -410,7 +410,7 @@ useAppInitialization({
   userStatus: currentUserStatus
 })
 
-// Provide data pre child komponenty
+// Poskytnúť dáta pre podradené komponenty
 provide('messages', messages)
 provide('currentUserId', currentUserId)
 provide('userChannels', computed(() => [...privateChannels.value, ...publicChannels.value]))

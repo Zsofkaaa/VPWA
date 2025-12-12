@@ -36,7 +36,7 @@ export function useMessages(
     }
 
     try {
-      // ⭐ FIXED: Use backtick and limit parameter ⭐
+      // Use backtick and limit parameter
       const msgRes = await axios.get<Message[]>(
         `${API_URL}/channels/${channelId}/messages?limit=30`
       )

@@ -1,7 +1,7 @@
 import type { RouteRecordRaw } from 'vue-router'
 
 const routes: RouteRecordRaw[] = [
-  // AUTH route
+  // Prihlasovacia trasa
   {
     path: '/auth',
     component: () => import('layouts/AuthLayout.vue'),
@@ -14,7 +14,7 @@ const routes: RouteRecordRaw[] = [
     ]
   },
 
-  // ROOT - redirect to appropriate page
+  // ROOT - presmerovanie na vhodnú stránku
   {
     path: '/',
     redirect: () => {

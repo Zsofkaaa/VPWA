@@ -7,7 +7,7 @@ import ChannelInvite from '#models/channel_invite'
 import ws from '#services/ws'
 
 export default class ChannelsController {
-  // Vytvorenie novej channel
+  // Vytvorenie nového kanála
   public async store({ auth, request, response }: any) {
     try {
       const { name, type, invitedMembers, notificationSettings } = request.only([
@@ -17,11 +17,11 @@ export default class ChannelsController {
         'notificationSettings',
       ])
 
-      // 0️⃣ Név alapján megnézzük, létezik-e már ilyen csatorna
+      // 0) Podľa názvu overíme, či už taký kanál existuje
       const sameNameChannels = await Channel.query().where('name', name)
 
       if (sameNameChannels.length > 0) {
-        // Név egyezik → ellenőrizzük a típust
+        // Ak sa názov zhoduje, skontrolujeme typ
         const sameTypeChannel = sameNameChannels.find((c) => c.type === type)
 
         if (sameTypeChannel) {
@@ -29,10 +29,10 @@ export default class ChannelsController {
             error: `A '${name}' nevű ${type} csatorna már létezik.`,
           })
         }
-        // Ha más típus → ENGEDJÜK
+        // Ak je typ odlišný, povolíme vytvorenie
       }
 
-      // 1️⃣ Új csatorna létrehozása
+      // 1) Vytvorenie nového kanála
       const channel = await Channel.create({
         name,
         type,
@@ -40,7 +40,7 @@ export default class ChannelsController {
         lastActiveAt: DateTime.now(),
       })
 
-      // 2️⃣ Pridanie tvorcu ako admina
+      // 2) Pridanie tvorcu ako admina
       await UserChannel.create({
         channelId: channel.id,
         userId: auth.user.id,
@@ -48,7 +48,7 @@ export default class ChannelsController {
         notificationSettings: notificationSettings || 'all',
       })
 
-      // 3️⃣ Invite-ok létrehozása + WebSocket értesítések
+      // 3) Vytvorenie pozvánok a odoslanie WebSocket notifikácií
       if (Array.isArray(invitedMembers) && invitedMembers.length > 0) {
         for (const userId of invitedMembers) {
           const alreadyMember = await UserChannel.query()
@@ -66,7 +66,7 @@ export default class ChannelsController {
 
           if (pendingInvite) continue
 
-          // Invite létrehozása
+          // Vytvorenie pozvánky
           const invite = await ChannelInvite.create({
             channelId: channel.id,
             userId,
@@ -74,7 +74,7 @@ export default class ChannelsController {
             status: 'pending',
           })
 
-          // ⭐ WebSocket értesítés küldése ⭐
+          // Odoslanie WebSocket notifikácie
           ws.sendInviteNotification(userId, {
             id: invite.id,
             channel_id: channel.id,
@@ -116,7 +116,7 @@ export default class ChannelsController {
       return response.unauthorized({ message: 'Only admins can terminate channel' })
     }
 
-    // ⭐ WebSocket értesítés ELŐTTE (amikor még mindenki a channel room-ban van) ⭐
+    // WebSocket notifikácia pred odstránením (kým sú všetci v miestnosti kanála)
     ws.sendChannelDeleted(channelId, channel.name, user.id)
 
     // Odstránenie všetkých user_channel záznamov

@@ -3,21 +3,21 @@ import { defineConfig } from '@adonisjs/cors'
 const corsConfig = defineConfig({
   enabled: true,
 
-  // ⭐ Egyszerűbb megoldás - function ami boolean-t ad vissza
+  // Jednoduchšie riešenie – funkcia, ktorá vracia boolean
   origin: (origin) => {
-    // Ha nincs origin (pl. Postman, direct access), engedélyezd
+    // Ak nie je origin (napríklad Postman alebo priame volanie), povolíme ho
     if (!origin) return true
 
     try {
       const url = new URL(origin)
       const hostname = url.hostname
 
-      // Localhost (mindig engedélyezve)
+      // Localhost (vždy povolený)
       if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1') {
         return true
       }
 
-      // Privát hálózatok (RFC 1918)
+      // Súkromné siete (RFC 1918)
       // 10.0.0.0 - 10.255.255.255
       if (/^10\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(hostname)) {
         return true
@@ -33,16 +33,16 @@ const corsConfig = defineConfig({
         return true
       }
 
-      // Production domain (add your domain here when deploying)
+      // Produkčná doména (pri nasadení sem pridajte svoju doménu)
       // if (hostname === 'yourdomain.com') {
       //   return true
       // }
 
-      // Egyébként ne engedélyezd
-      console.log('[CORS] ❌ Rejected origin:', origin)
+      // Inak origin nepovolíme
+      console.log('[CORS] Rejected origin:', origin)
       return false
     } catch (err) {
-      console.error('[CORS] ⚠️ Error parsing origin:', origin, err)
+      console.error('[CORS] Error parsing origin:', origin, err)
       return false
     }
   },

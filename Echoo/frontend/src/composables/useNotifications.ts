@@ -26,7 +26,7 @@ export function useNotifications(currentStatus?: Ref<UserStatus>) {
   ) {
     const status = currentStatus?.value ?? 'online'
 
-    // Ignore real-time payloads completely while offline
+    // Úplne ignorovať real-time payloady, keď je používateľ offline
     if (status === 'offline') return
 
     if (msg.channelId === currentChannelId) {
@@ -56,13 +56,13 @@ export function useNotifications(currentStatus?: Ref<UserStatus>) {
 
     if (!shouldNotify) return
 
-    // Respect DND: still update messages but silence notifications
+    // Režim DND: správy sa aktualizujú, ale notifikácie sa nevypisujú
     if (status === 'dnd') return
 
     // Ak je aplikácia viditeľná, použi Quasar notify
     if (isAppVisible.value) {
       if (msg.channelId !== currentChannelId) {
-        // Zobraz notifikáciu len ak príde správa do iného kanála
+        // Zobraziť notifikáciu len ak správa prišla do iného kanála
         $q.notify({
           type: 'info',
           icon: 'chat',
@@ -74,7 +74,7 @@ export function useNotifications(currentStatus?: Ref<UserStatus>) {
       }
       return
     }
-    // Ak je aplikácia na pozadí, zobraz systémovú notifikáciu
+    // Keď je aplikácia na pozadí, zobraziť systémovú notifikáciu
     else if ('Notification' in window && Notification.permission === 'granted') {
       const notification = new Notification(`${msg.user} (#${channel.name})`, {
         body: msg.text.length > 100 ? msg.text.substring(0, 100) + '...' : msg.text,
@@ -83,7 +83,7 @@ export function useNotifications(currentStatus?: Ref<UserStatus>) {
         requireInteraction: false
       })
 
-      // Kliknutím na notifikáciu otvor aplikáciu
+      // Kliknutím na notifikáciu otvoriť aplikáciu
       notification.onclick = () => {
         window.focus()
         void router.push(`/chat/${msg.channelId}`)

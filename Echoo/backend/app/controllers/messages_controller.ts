@@ -17,7 +17,7 @@ export default class MessagesController {
 
     let match
     while ((match = mentionRegex.exec(content)) !== null) {
-      // match[1] = quoted with ", match[2] = quoted with ', match[3] = single word
+      // match[1] = text v úvodzovkách ", match[2] = text v úvodzovkách ', match[3] = jedno slovo
       const mentionText = (match[1] || match[2] || match[3] || '').toLowerCase()
 
       // Nájdeme používateľa s touto prezývkou

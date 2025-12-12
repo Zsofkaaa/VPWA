@@ -188,14 +188,14 @@ async function acceptInvite() {
 
     inviteDialog.value = false
 
-    // Emit event to reload invites
+    // Vyzvi udalosť na načítanie pozvánok
     emit('invite-updated')
 
-    // Navigate to the channel immediately
+    // Ihneč prejdi na kanál
     const channelId = selectedInvite.value!.channel.id
     const channelName = selectedInvite.value!.channel.name
 
-    // Small delay to allow channel list to update
+    // Malé oneskorenie, aby sa zoznam kanálov aktualizoval
     setTimeout(() => {
       emit('goToChannel', {
         id: channelId,
