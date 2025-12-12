@@ -67,7 +67,7 @@ class Ws {
       socket.on('join_user_room', (userId: number) => {
         const userRoom = `user_${userId}`
         socket.join(userRoom)
-        console.log(`[WS] User ${userId} joined personal room: ${userRoom}`)
+        // console.log(`[WS] User ${userId} joined personal room: ${userRoom}`)
       })
 
       socket.on('typing', (data: { channelId: number; user: string }) => {

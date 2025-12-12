@@ -64,7 +64,7 @@ function getCurrentUserNickname(): string | null {
   if (!savedUser) return null
   try {
     const user = JSON.parse(savedUser)
-    return user.nickName?.toLowerCase() || null
+    return user.nickName || null
   } catch {
     return null
   }
@@ -76,7 +76,7 @@ function extractMentions(text: string): string[] {
   const mentions: string[] = []
 
   for (const match of matches) {
-    const mention = (match[1] || match[2] || match[3])?.toLowerCase()
+    const mention = (match[1] || match[2] || match[3])
     if (mention) {
       mentions.push(mention)
     }
@@ -381,7 +381,7 @@ onMounted(() => {
   margin-bottom: 8px;
 }
 
-/* Saját üzenet - jobb oldal */
+/* Vlastný message - prava strana */
 /*
 .my-message {
   align-items: flex-end;
@@ -421,7 +421,7 @@ onMounted(() => {
 }
 
 .my-message .message-content {
-  background: #262e38 !important;
+  background: #2b3137 !important;
   color: white;
   /*text-align: right;*/
 }
