@@ -10,7 +10,7 @@ export default class ChannelBan extends BaseModel {
   @column({ isPrimary: true }) declare id: number
   @column() declare userId: number
   @column() declare channelId: number
-  @column() declare bannedBy: number // admin/id aki bannolt
+  @column() declare bannedBy: number // admin alebo ID používateľa, ktorý banoval
   @column.dateTime({ autoCreate: true }) declare createdAt: DateTime
   @column.dateTime({ autoCreate: true, autoUpdate: true }) declare updatedAt: DateTime
 

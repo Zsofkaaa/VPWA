@@ -32,6 +32,7 @@
                 class="member-btn"
                 align="left"
               >
+                <span class="status-dot" :class="member.status"></span>
                 {{ member.nickName }}
               </q-btn>
             </div>
@@ -52,9 +53,10 @@
 
 
 <script lang="ts" setup>
-import { ref, watch } from 'vue'
+import { ref, watch, onMounted, onBeforeUnmount, getCurrentInstance } from 'vue'
 import axios from 'axios'
 import { useQuasar } from 'quasar'
+import type { UserStatus } from '@/types'
 import API_URL from '../config/api'
 
 const $q = useQuasar()
@@ -63,7 +65,7 @@ const $q = useQuasar()
 const showMembers = ref(false)
 
 // Zoznam členov (reaktívny)
-const members = ref<{ id: number; nickName: string }[]>([])
+const members = ref<{ id: number; nickName: string; status: UserStatus }[]>([])
 
 // Props: názov a ID aktuálneho kanála
 const props = defineProps<{
@@ -71,13 +73,16 @@ const props = defineProps<{
   channelId?: number | null
 }>()
 
+const instance = getCurrentInstance()
+const socket = instance?.appContext.config.globalProperties.$socket
+
 // const API_URL = 'http://localhost:3333'
 
 // Fetch členov, keď sa dialóg otvorí
 watch(showMembers, async (val) => {
   if (val && props.channelId) {
     try {
-      const res = await axios.get<{ id: number; nickName: string }[]>(
+      const res = await axios.get<{ id: number; nickName: string; status: UserStatus }[]>(
         `${API_URL}/channels/${props.channelId}/members`
       )
       members.value = res.data
@@ -85,6 +90,21 @@ watch(showMembers, async (val) => {
       console.error('Failed to fetch members', err)
     }
   }
+})
+
+function handleStatusChanged(payload: { userId: number; status: UserStatus }) {
+  const target = members.value.find((m) => m.id === payload.userId)
+  if (target) {
+    target.status = payload.status
+  }
+}
+
+onMounted(() => {
+  socket?.on('user_status_changed', handleStatusChanged)
+})
+
+onBeforeUnmount(() => {
+  socket?.off('user_status_changed', handleStatusChanged)
 })
 </script>
 
@@ -95,5 +115,25 @@ watch(showMembers, async (val) => {
 .member-btn {
   width: 100%;
   justify-content: flex-start;
+}
+
+.status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+  margin-right: 8px;
+}
+
+.status-dot.online {
+  background-color: #21ba45;
+}
+
+.status-dot.dnd {
+  background-color: #f2c037;
+}
+
+.status-dot.offline {
+  background-color: #c10015;
 }
 </style>

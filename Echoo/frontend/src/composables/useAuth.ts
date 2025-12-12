@@ -1,5 +1,6 @@
 import { ref } from 'vue'
 import { api } from 'boot/axios'
+import type { UserStatus } from '@/types'
 
 interface LoginCredentials {
   email: string
@@ -20,7 +21,7 @@ interface User {
   lastName: string
   nickName: string
   email: string
-  status: string
+  status?: UserStatus
 }
 
 interface AuthResponse {
@@ -34,7 +35,7 @@ interface ErrorResponse {
   error?: string
 }
 
-// Type guard for Axios errors
+// Typ guard pre chyby Axiosu
 function isAxiosError(error: unknown): error is { response?: { data?: ErrorResponse } } {
   return typeof error === 'object' && error !== null && 'response' in error
 }
@@ -59,7 +60,7 @@ export function useAuth() {
     } catch (err: unknown) {
       console.error('Login error:', err)
 
-      // Check if it's an Axios error
+      // Kontrola, či je to chyba Axiosu
       if (isAxiosError(err) && err.response?.data) {
         const errorData = err.response.data
         error.value = errorData.message || errorData.error || 'Invalid email or password'
@@ -91,7 +92,7 @@ export function useAuth() {
     } catch (err: unknown) {
       console.error('Registration error:', err)
 
-      // Check if it's an Axios error
+      // Kontrola, či je to chyba Axiosu
       if (isAxiosError(err) && err.response?.data) {
         const errorData = err.response.data
         error.value = errorData.message || errorData.error || 'Registration failed'

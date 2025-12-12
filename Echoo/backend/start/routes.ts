@@ -21,7 +21,7 @@ const InvitesController = () => import('#controllers/invites_controller')
 import UserControllerClass from '#controllers/user_controller'
 const userController = new UserControllerClass()
 
-// Channels list
+// Zoznam kanálov
 router.get('/channels', async () => {
   try {
     return await Channel.query().orderBy('id', 'asc')
@@ -30,7 +30,7 @@ router.get('/channels', async () => {
   }
 })
 
-// Messages for a channel
+// Správy pre kanál
 router.get('/channels/:id/messages', async (ctx) => {
   const module = await MessagesController()
   const controller = new module.default()
@@ -40,10 +40,10 @@ router.get('/channels/:id/messages', async (ctx) => {
   })
 })
 
-// Commands
+// Príkazy
 router.get('/api/commands', '#controllers/commands_controller.index')
 
-// Post message to channel (auth required)
+// Odoslanie správy do kanála (vyžaduje autentifikáciu)
 router
   .post('/channels/:id/messages', async ({ auth, params, request }) => {
     const module = await MessagesController()
@@ -52,15 +52,15 @@ router
   })
   .middleware([middleware.auth()])
 
-// Auth routes
+// Autentifikačné trasy
 router.post('/auth/login', [AuthController, 'login'])
 router.post('/auth/register', [AuthController, 'register'])
 router.post('/auth/logout', [AuthController, 'logout']).middleware([middleware.auth()])
 
-// Create channel
+// Vytvorenie kanála
 router.post('/channels', [ChannelsController, 'store']).middleware([middleware.auth()])
 
-// Join user to channel
+// Pridanie používateľa do kanála
 router
   .post('/user_channel', async ({ request, auth }) => {
     const module = await UserChannelController()
@@ -69,25 +69,30 @@ router
   })
   .middleware([middleware.auth()])
 
-// Users list
+// Zoznam používateľov
 router.get('/users', async (ctx) => userController.index(ctx)).middleware([middleware.auth()])
 
-// Current user
+// Aktuálny používateľ
 router.get('/me', async (ctx) => userController.me(ctx)).middleware([middleware.auth()])
 
-// Update user
+// Aktualizácia používateľa
 router
   .put('/user/update', async (ctx) => userController.update(ctx))
   .middleware([middleware.auth()])
 
-// Get channel members
+// Aktualizácia statusu používateľa
+router
+  .put('/user/status', async (ctx) => userController.updateStatus(ctx))
+  .middleware([middleware.auth()])
+
+// Získanie členov kanála
 router.get('/channels/:id/members', async (ctx) => {
   const module = await UserChannelController()
   const controller = new module.default()
   return controller.members(ctx)
 })
 
-// Leave channel
+// Opustenie kanála
 router
   .delete('/channels/:id/leave', async (ctx) => {
     const module = await UserChannelController()
@@ -96,7 +101,7 @@ router
   })
   .middleware([middleware.auth()])
 
-// Get user's channels
+// Získanie kanálov používateľa
 router
   .get('/user/channels', async (ctx) => {
     const module = await UserChannelController()
@@ -105,10 +110,10 @@ router
   })
   .middleware([middleware.auth()])
 
-// Delete channel
+// Zmazanie kanála
 router.delete('/channels/:id', [ChannelsController, 'destroy']).middleware([middleware.auth()])
 
-// Ban user from channel
+// Zabanovanie používateľa z kanála
 router
   .delete('/channels/:id/ban/:userId', async (ctx) => {
     const module = await UserChannelController()
@@ -117,7 +122,7 @@ router
   })
   .middleware([middleware.auth()])
 
-// Kick user from channel
+// Vyhodenie používateľa z kanála
 router
   .delete('/channels/:id/kick/:userId', async (ctx) => {
     const module = await UserChannelController()
@@ -126,7 +131,7 @@ router
   })
   .middleware([middleware.auth()])
 
-// Notification settings
+// Nastavenie notifikácií
 router
   .get('/user_channel/:userId/:channelId', async (ctx) => {
     const module = await UserChannelController()
@@ -143,7 +148,7 @@ router
   })
   .middleware([middleware.auth()])
 
-// Invite to channel
+// Pozvanie do kanála
 router
   .post('/channels/:id/invite', async (ctx) => {
     const module = await InvitesController()
@@ -152,7 +157,7 @@ router
   })
   .middleware([middleware.auth()])
 
-// My invites
+// Moje pozvánky
 router
   .get('/invites/me', async (ctx) => {
     const module = await InvitesController()
@@ -161,7 +166,7 @@ router
   })
   .middleware([middleware.auth()])
 
-// Accept invite
+// Prijatie pozvánky
 router
   .post('/invites/:id/accept', async (ctx) => {
     const module = await InvitesController()
@@ -170,7 +175,7 @@ router
   })
   .middleware([middleware.auth()])
 
-// Reject invite
+// Odmietnutie pozvánky
 router
   .post('/invites/:id/reject', async (ctx) => {
     const module = await InvitesController()

@@ -13,7 +13,7 @@ export function useChannelCommands(
   currentChannelId: Ref<number | null>,
   currentChannelName: Ref<string>,
   activeChannelPath: Ref<string>,
-  messages: Ref<Message[]>,                   // ha van message típusod, az legyen messages: Ref<Message[]>
+  messages: Ref<Message[]>, // ak máš typ Message, nech je to messages: Ref<Message[]>
   currentUserId: Ref<number | null>,
   handleChannelLeft: (channelId: number) => void,
   $q: QVueGlobals,
@@ -107,7 +107,7 @@ export function useChannelCommands(
     try {
       const token = localStorage.getItem('auth_token')
 
-      // ✅ Csak a csatorna tagjait kérdezzük le
+      // Pýtame sa len členov aktuálneho kanála
       const membersRes = await axios.get<{ id: number, nickName: string, role: string }[]>(
         `${API_URL}/channels/${channelId}/members`,
         { headers: { Authorization: `Bearer ${token}` } }
@@ -233,7 +233,7 @@ export function useChannelCommands(
     }
 
     const channelId = currentChannelId.value
-    const targetName = parts.slice(1).join(' ')  // ✅ JAVÍTVA: többszavas nevek támogatása
+    const targetName = parts.slice(1).join(' ')  // Podpora viacslovných mien
 
     if (!targetName) {
       $q.notify({ type: 'negative', message: 'Usage: /ban nickName' })
@@ -258,7 +258,7 @@ export function useChannelCommands(
     try {
       const token = localStorage.getItem('auth_token')
 
-      // ✅ Csak a csatorna tagjait kérdezzük le
+      // Pýtame sa len členov aktuálneho kanála
       const membersRes = await axios.get<{ id: number, nickName: string, role: string }[]>(
         `${API_URL}/channels/${channelId}/members`,
         { headers: { Authorization: `Bearer ${token}` } }
@@ -344,7 +344,7 @@ export function useChannelCommands(
       return
     }
 
-    // 🔒 ADMIN ELLENŐRZÉS
+    // Kontrola, či je používateľ admin
     if (channel.role !== 'admin') {
       $q.notify({
         type: 'negative',
@@ -356,12 +356,12 @@ export function useChannelCommands(
     const token = localStorage.getItem('auth_token')
 
     try {
-      // 💣 Csatorna törlése
+      // Vymazanie kanála
       await axios.delete(`${API_URL}/channels/${channelId}`, {
         headers: { Authorization: `Bearer ${token}` }
       })
 
-      // törlés frontendből
+      // Odstránenie z frontendu
       privateChannels.value = privateChannels.value.filter(c => c.id !== channelId)
       publicChannels.value = publicChannels.value.filter(c => c.id !== channelId)
 
@@ -370,7 +370,7 @@ export function useChannelCommands(
         message: `Channel "${channel.name}" deleted.`
       })
 
-      // UI reset
+      // Reset UI
       currentChannelId.value = null
       currentChannelName.value = ''
       messages.value = []
@@ -393,7 +393,7 @@ export function useChannelCommands(
     }
 
     const channelId = currentChannelId.value
-    const targetName = parts.slice(1).join(' ')  // ✅ JAVÍTVA: többszavas nevek támogatása
+    const targetName = parts.slice(1).join(' ')  // Podpora viacslovných mien
 
     if (!targetName) {
       return $q.notify({ type: 'negative', message: 'Usage: /revoke nickName' })
@@ -415,7 +415,7 @@ export function useChannelCommands(
     try {
       const token = localStorage.getItem('auth_token')
 
-      // ✅ Csak a csatorna tagjait kérdezzük le
+      // Pýtame sa len členov aktuálneho kanála
       const membersRes = await axios.get<{ id: number, nickName: string, role: string }[]>(
         `${API_URL}/channels/${channelId}/members`,
         { headers: { Authorization: `Bearer ${token}` } }
@@ -456,7 +456,7 @@ export function useChannelCommands(
       const token = localStorage.getItem('auth_token')
       if (!token || !currentUserId.value) throw new Error('Not authenticated')
 
-      // 1️⃣ Lekérdezzük az összes csatornát globálisan
+      // Načítame všetky kanály globálne
       const allChannelsRes = await axios.get(`${API_URL}/channels`)
       const allChannels = allChannelsRes.data as Channel[]
 
@@ -468,7 +468,7 @@ export function useChannelCommands(
       let channelId: number
 
       if (existingChannelGlobal) {
-        // 🔒 PRIVÁT CSATORNA VÉDELEM
+        // Ochrana privátneho kanála
         if (isPrivate) {
           $q.notify({
             type: 'negative',
@@ -477,7 +477,7 @@ export function useChannelCommands(
           return
         }
 
-        // 2️⃣ CSATLAKOZÁS LÉTEZŐ CSATORNÁHOZ (csak public esetén)
+        // Pripojenie k existujúcemu kanálu (len public)
         const joinResponse = await axios.post<UserChannel | { error: string }>(
           `${API_URL}/user_channel`,
           {
@@ -489,13 +489,13 @@ export function useChannelCommands(
           { headers: { Authorization: `Bearer ${token}` } }
         )
 
-        // ⚠️ ELLENŐRZÉS: bannolva vagy?
+        // Kontrola: nie si zabanovaný?
         if ('error' in joinResponse.data) {
           $q.notify({
             type: 'negative',
             message: joinResponse.data.error
           })
-          return // MEGÁLLÍTJUK a folyamatot
+          return // Zastavíme proces
         }
 
         channelId = existingChannelGlobal.id
@@ -532,7 +532,7 @@ export function useChannelCommands(
         })
 
       } else {
-        // 4️⃣ LÉTREHOZÁS
+        // Vytvorenie
         const res = await axios.post<ChannelResponse>(
           `${API_URL}/channels`,
           {
@@ -551,7 +551,7 @@ export function useChannelCommands(
           {
             channelId,
             userId: currentUserId.value,
-            role: 'admin', // backend szerint mindig admin
+            role: 'admin', // podľa backendu je vytvárajúci vždy admin
             notificationSettings: 'all'
           },
           { headers: { Authorization: `Bearer ${token}` } }

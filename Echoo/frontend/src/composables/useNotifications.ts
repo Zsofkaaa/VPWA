@@ -1,9 +1,9 @@
 import { ref, onMounted, onBeforeUnmount, type Ref } from 'vue'
 import type { Router } from 'vue-router'
-import type { Message, UserChannel } from '@/types'
+import type { Message, UserChannel, UserStatus } from '@/types'
 import { useQuasar } from 'quasar'
 
-export function useNotifications() {
+export function useNotifications(currentStatus?: Ref<UserStatus>) {
   const $q = useQuasar()
   const showNotification = ref(false)
   const notificationSender = ref('')
@@ -24,6 +24,11 @@ export function useNotifications() {
     messages: Ref<Message[]>,
     router: Router
   ) {
+    const status = currentStatus?.value ?? 'online'
+
+    // Úplne ignorovať real-time payloady, keď je používateľ offline
+    if (status === 'offline') return
+
     if (msg.channelId === currentChannelId) {
       messages.value.push(msg)
     }
@@ -51,10 +56,13 @@ export function useNotifications() {
 
     if (!shouldNotify) return
 
+    // Režim DND: správy sa aktualizujú, ale notifikácie sa nevypisujú
+    if (status === 'dnd') return
+
     // Ak je aplikácia viditeľná, použi Quasar notify
     if (isAppVisible.value) {
       if (msg.channelId !== currentChannelId) {
-        // Zobraz notifikáciu len ak príde správa do iného kanála
+        // Zobraziť notifikáciu len ak správa prišla do iného kanála
         $q.notify({
           type: 'info',
           icon: 'chat',
@@ -67,7 +75,7 @@ export function useNotifications() {
       }
       return
     }
-    // Ak je aplikácia na pozadí, zobraz systémovú notifikáciu
+    // Keď je aplikácia na pozadí, zobraziť systémovú notifikáciu
     else if ('Notification' in window && Notification.permission === 'granted') {
       const notification = new Notification(`${msg.user} (#${channel.name})`, {
         body: msg.text.length > 100 ? msg.text.substring(0, 100) + '...' : msg.text,
@@ -76,7 +84,7 @@ export function useNotifications() {
         requireInteraction: false
       })
 
-      // Kliknutím na notifikáciu otvor aplikáciu
+      // Kliknutím na notifikáciu otvoriť aplikáciu
       notification.onclick = () => {
         window.focus()
         void router.push(`/chat/${msg.channelId}`)

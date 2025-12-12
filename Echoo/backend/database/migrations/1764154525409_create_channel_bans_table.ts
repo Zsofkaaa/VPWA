@@ -36,7 +36,7 @@ export default class ChannelBans extends BaseSchema {
       table.timestamp('created_at').defaultTo(this.now())
       table.timestamp('updated_at').defaultTo(this.now())
 
-      // Egy user egyszer legyen bannolva egy csatornában
+      // Jeden používateľ môže byť v jednom kanáli zabanovaný len raz
       table.unique(['channel_id', 'user_id'])
     })
   }

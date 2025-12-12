@@ -31,7 +31,7 @@ export default class KickLogs extends BaseSchema {
         .inTable('users')
         .onDelete('CASCADE')
 
-      // ❗ Nagyon fontos: egy user csak egyszer kickelhet egy másikat egy csatornában
+      // Veľmi dôležité: jeden používateľ môže iného vykopnúť v danom kanáli len raz
       table.unique(['channel_id', 'target_user_id', 'kicker_user_id'])
 
       table.timestamp('created_at', { useTz: true }).notNullable().defaultTo(this.now())

@@ -14,18 +14,16 @@ export function useChannelRemoval(
   $q: QVueGlobals
 ) {
 
-  /**
-   * Remove channel from sidebar and reset state if user was in that channel
-   */
+  // Odstráň kanál zo postranného panelu a resetuj stav, ak bol používateľ v tomto kanáli
   function removeChannelAndRedirect(
     channelId: number,
     shouldRedirect: boolean = true
   ) {
-    // Remove channel from lists
+    // Odstráň kanál zo zoznamov
     privateChannels.value = privateChannels.value.filter(c => c.id !== channelId)
     publicChannels.value = publicChannels.value.filter(c => c.id !== channelId)
 
-    // If user was in this channel, reset state and redirect
+    // Ak bol používateľ v tomto kanáli, resetuj stav a presmeruj
     if (currentChannelId.value === channelId && shouldRedirect) {
       currentChannelId.value = null
       currentChannelName.value = ''
@@ -36,9 +34,7 @@ export function useChannelRemoval(
     }
   }
 
-  /**
-   * Handle channel deleted by admin
-   */
+  // Handle channel vymazal admin
   function handleChannelDeleted(
     channelId: number,
     channelName: string,
@@ -52,7 +48,7 @@ export function useChannelRemoval(
 
     removeChannelAndRedirect(channelId, wasInChannel)
 
-    // Only show notification if user is NOT the admin who deleted it
+    // Zobraziť notifikáciu len ak používateľ NIE JE admin, ktorý ju vymazal
     if (wasInChannel && !isDeleter) {
       $q.notify({
         type: 'warning',
@@ -64,7 +60,7 @@ export function useChannelRemoval(
   }
 
   /**
-   * Handle user kicked from channel
+   * Spracuj používateľa vyhodeného z kanála
    */
   function handleUserKicked(
     userId: number,
@@ -74,7 +70,7 @@ export function useChannelRemoval(
   ) {
     console.log('[CHANNEL REMOVAL] User kicked:', { userId, channelId, channelName })
 
-    // Check if kicked user is current user
+    // Kontrola, či je vyhadzovaný používateľ aktuálny používateľ
     if (currentUserId !== userId) return
 
     const wasInChannel = currentChannelId.value === channelId
@@ -91,9 +87,7 @@ export function useChannelRemoval(
     }
   }
 
-  /**
-   * Handle user banned from channel
-   */
+  // Spracuj používateľa zabanovaného z kanála
   function handleUserBanned(
     userId: number,
     channelId: number,
@@ -102,7 +96,7 @@ export function useChannelRemoval(
   ) {
     console.log('[CHANNEL REMOVAL] User banned:', { userId, channelId, channelName })
 
-    // Check if banned user is current user
+    // Kontrola, či je zabanovaný používateľ aktuálny používateľ
     if (currentUserId !== userId) return
 
     const wasInChannel = currentChannelId.value === channelId

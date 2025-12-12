@@ -12,6 +12,7 @@
         </div>
       </template>
 
+      <!-- Načítavacia animácia hore (v reverse režime) -->
       <div v-if="isLoadingOlder" class="row justify-center q-my-md">
         <q-spinner-dots color="white" size="40px" />
       </div>
@@ -28,7 +29,7 @@
             class="message-content q-pa-sm q-mt-xs"
             :class="{ 'ping-message': isPingedMessage(msg) }"
           >
-            <span v-html="formatMessage(msg.text)"></span>
+            <span v-html="formatMessage(msg.text, msg.mentionedUserIds)"></span>
           </div>
         </div>
       </div>
@@ -56,26 +57,7 @@ const bottomElement = ref<HTMLElement | null>(null)
 const userScrolledUp = ref(false)
 const oldestMessageId = ref<number | null>(null)
 const lastLoadTime = ref<number>(0)
-const isInitializing = ref(false)
-const channelMembers = ref<Array<{ id: number, nickName: string, role: string }>>([])
-
-async function loadChannelMembers() {
-  if (!currentChannelId?.value) return
-
-  try {
-    const token = localStorage.getItem('auth_token')
-    const res = await fetch(`${API_URL}/channels/${currentChannelId.value}/members`, {
-      headers: { Authorization: `Bearer ${token}` }
-    })
-
-    if (res.ok) {
-      channelMembers.value = await res.json()
-      console.log('[ChatMessages] Loaded', channelMembers.value.length, 'channel members')
-    }
-  } catch (err) {
-    console.error('[ChatMessages] Failed to load members:', err)
-  }
-}
+const isInitializing = ref(false) // Vlajka pre inicializáciu
 
 function getCurrentUserNickname(): string | null {
   const savedUser = localStorage.getItem('user')
@@ -107,6 +89,7 @@ async function onLoad(index: number, done: (stop?: boolean) => void) {
   const now = Date.now()
   console.log('[INFINITE SCROLL] onLoad called, oldestMessageId:', oldestMessageId.value, 'hasMoreMessages:', hasMoreMessages.value, 'isInitializing:', isInitializing.value)
 
+  // Ak ešte inicializujeme, nenačítavaj
   if (isInitializing.value) {
     console.log('[INFINITE SCROLL] Still initializing, skipping load')
     done()
@@ -193,35 +176,35 @@ async function onLoad(index: number, done: (stop?: boolean) => void) {
   }
 }
 
-function formatMessage(text: string): string {
+function formatMessage(text: string, mentionedUserIds: number[] = []): string {
+  // Krok 1: Nájsť a označiť mentions pred escapovaním
   const MENTION_PLACEHOLDER = '___MENTION___'
   const mentions: Array<{ original: string; display: string }> = []
-
-  const memberNicknames = new Set(
-    channelMembers.value.map(m => m.nickName.toLowerCase())
-  )
+  const hasValidMentions = mentionedUserIds && mentionedUserIds.length > 0
 
   const textWithPlaceholders = text.replace(
     /@(?:"([^"]+)"|'([^']+)'|(\S+))/g,
     (match, quoted1, quoted2, single) => {
       const mentionText = quoted1 || quoted2 || single
-      const isValidMention = memberNicknames.has(mentionText.toLowerCase())
-
+      // Zvýrazníme mention iba ak backend potvrdil existenciu
+      const display = hasValidMentions
+        ? `<span class="ping-highlight">@${mentionText}</span>`
+        : `@${mentionText}`
       mentions.push({
         original: match,
-        display: isValidMention
-          ? `<span class="ping-highlight">@${mentionText}</span>`
-          : `@${mentionText}`
+        display
       })
       return `${MENTION_PLACEHOLDER}${mentions.length - 1}${MENTION_PLACEHOLDER}`
     }
   )
 
+  // Krok 2: Escapovať HTML
   const escaped = textWithPlaceholders
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
 
+  // Krok 3: Nahradiť placeholdery skutočným HTML pre mention
   let result = escaped
   mentions.forEach((mention, index) => {
     result = result.replace(
@@ -236,10 +219,12 @@ function formatMessage(text: string): string {
 function isPingedMessage(msg: Message): boolean {
   if (msg.userId === currentUserId) return false
 
+  // Kontrola zmienky podľa user ID
   if (msg.mentionedUserIds && msg.mentionedUserIds.length > 0) {
     if (msg.mentionedUserIds.includes(currentUserId as number)) return true
   }
 
+  // Záloha: kontrola podľa nickname (spätná kompatibilita)
   const currentNickname = getCurrentUserNickname()
   if (!currentNickname) return false
   const mentions = extractMentions(msg.text)
@@ -275,6 +260,7 @@ watch(
       if (isChannelChange) {
         console.log('[ChatMessages] Channel change detected')
 
+        // Aktivuj inicializáciu
         isInitializing.value = true
 
         localMessages.value = [...newVal]
@@ -282,6 +268,7 @@ watch(
         isLoadingOlder.value = false
         userScrolledUp.value = false
 
+        // Dôležité: pri zmene kanála nastav oldestMessageId
         if (newVal.length > 0) {
           const allIds = newVal.map(m => m.id)
           oldestMessageId.value = Math.min(...allIds)
@@ -290,13 +277,15 @@ watch(
 
         await nextTick()
 
+        // Najprv scroll na spodok, potom povoľ infinite scroll
         setTimeout(() => {
           scrollToBottom()
 
+          // Počkajte ešte chvíľu a potom povoľte infinite scroll
           setTimeout(() => {
             isInitializing.value = false
             console.log('[ChatMessages] Initialization complete, infinite scroll enabled')
-          }, 500)
+          }, 500) // Dodatočné oneskorenie 500 ms
         }, 150)
 
       } else {
@@ -307,6 +296,7 @@ watch(
           console.log('[ChatMessages] Adding', uniqueNewMessages.length, 'new messages')
           localMessages.value = [...localMessages.value, ...uniqueNewMessages]
 
+          // Aktualizuj oldestMessageId aj pri nových správach
           const allIds = localMessages.value.map(m => m.id)
           if (allIds.length > 0) {
             const newOldest = Math.min(...allIds)
@@ -337,10 +327,7 @@ watch(
     localMessages.value = []
     userScrolledUp.value = false
     lastLoadTime.value = 0
-    isInitializing.value = true
-    channelMembers.value = []
-
-    void loadChannelMembers()
+    isInitializing.value = true // Reset príznaku inicializácie
 
     void nextTick(() => {
       setTimeout(scrollToBottom, 300)
@@ -354,8 +341,6 @@ onMounted(() => {
     el.addEventListener('scroll', handleScroll)
   }
 
-  void loadChannelMembers()
-
   void nextTick(() => {
     setTimeout(scrollToBottom, 500)
   })
@@ -363,6 +348,7 @@ onMounted(() => {
 </script>
 
 <style scoped>
+/* Zvýraznenie mention – vždy viditeľné (používa :deep pre v-html) */
 .message-content :deep(.ping-highlight) {
   color: #00aff4 !important;
   font-weight: 700;
@@ -380,6 +366,7 @@ onMounted(() => {
   flex-direction: column;
 }
 
+/* Obal správy – udrží celý blok pokope */
 .message-wrapper {
   max-width: 100%;
   width: 100%;
@@ -414,6 +401,7 @@ onMounted(() => {
   white-space: nowrap;
 }
 
+/* Obsah správy – dôležité nastavenia pre zalomenie */
 .message-content {
   border-radius: 12px;
   background-color: #2d2d2d;
@@ -432,7 +420,6 @@ onMounted(() => {
   box-sizing: border-box;
 }
 
-/* Saját üzenet - purple háttér */
 .my-message .message-content {
   background: #262e38 !important;
   color: white;

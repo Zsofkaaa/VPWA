@@ -5,6 +5,8 @@
       v-model:drawer-open="drawerOpen"
       :current-channel="currentChannelName"
       :current-channel-id="currentChannelId"
+      :user-status="currentUserStatus"
+      @status-changed="onStatusChanged"
     />
 
     <!-- Bočný panel s kanálmi -->
@@ -29,7 +31,7 @@
         <router-view />
       </q-page-container>
 
-      <!-- Indikátor písania správy - UPDATED -->
+      <!-- Indikátor písania správy -->
       <TypingStatus
         v-if="isTyping"
         :typing-users="typingUsers"
@@ -71,6 +73,7 @@ import { useNotifications } from 'src/composables/useNotifications'
 import { useInvites } from 'src/composables/useInvites'
 import { useChannelRemoval } from 'src/composables/useChannelRemoval'
 import { useAppInitialization } from 'src/composables/useAppInitialization'
+import type { Message, UserStatus } from '@/types'
 
 // Komponenty
 import Header from 'components/ChatHeader.vue'
@@ -89,6 +92,7 @@ const socket = instance!.appContext.config.globalProperties.$socket
 // Základné stavy
 const drawerOpen = ref($q.screen.gt.sm)
 const currentUserId = ref<number | null>(null)
+const currentUserStatus = ref<UserStatus>('online')
 
 // Channel Management Composable
 const {
@@ -128,7 +132,7 @@ const {
   $q
 )
 
-// Socket Events Composable - UPDATED
+// Socket Events Composable
 const {
   isTyping,
   typingUsers,
@@ -142,7 +146,7 @@ const {
 } = useSocketEvents(
   socket,
   currentChannelId,
-  // Invite callback
+  // Callback pri pozvánke
   (inviteData) => {
     // console.log('[LAYOUT] New invite received:', inviteData)
     void loadInvites()
@@ -153,7 +157,7 @@ const {
       timeout: 3000
     })
   },
-  // Channel joined callback
+  // Callback pri pripojení ku kanálu
   (channelData) => {
     console.log('[LAYOUT] Channel joined:', channelData)
     const token = localStorage.getItem('auth_token')
@@ -161,15 +165,15 @@ const {
       void loadUserChannels(currentUserId.value, token)
     }
   },
-  // Channel deleted callback
+  // Callback pri zmazaní kanála
   (data) => {
     handleChannelDeleted(data.channelId, data.channelName, data.deletedBy, currentUserId.value)
   },
-  // User kicked callback
+  // Callback pri vyhodení používateľa
   (data) => {
     handleUserKicked(data.userId, data.channelId, data.channelName, currentUserId.value)
   },
-  // User banned callback
+  // Callback pri zabanovaní používateľa
   (data) => {
     handleUserBanned(data.userId, data.channelId, data.channelName, currentUserId.value)
   }
@@ -182,7 +186,7 @@ const {
   notificationMessage,
   requestNotificationPermission,
   handleIncomingMessage
-} = useNotifications()
+} = useNotifications(currentUserStatus)
 
 // Invites Composable
 const {
@@ -225,7 +229,50 @@ const typingStatusStyle = computed(() => ({
   zIndex: 2150
 }))
 
-// Wrapper pre onEnterPress, ktorý spracuje príkazy
+// Pomocná funkcia na (znovu)pripojenie socket listenerov s aktuálnym handlerom
+function attachSocketListeners() {
+  cleanupSocketListeners()
+
+  setupSocketListeners((msg: Message) => {
+    handleIncomingMessage(
+      msg,
+      [...privateChannels.value, ...publicChannels.value],
+      currentUserId.value,
+      currentChannelId.value,
+      messages,
+      router
+    )
+  })
+}
+
+// Uložiť status do localStorage v používateľskom objekte
+function persistStatusLocally(status: UserStatus) {
+  const savedUser = localStorage.getItem('user')
+  if (!savedUser) return
+
+  try {
+    const parsed = JSON.parse(savedUser)
+    parsed.status = status
+    localStorage.setItem('user', JSON.stringify(parsed))
+  } catch (err) {
+    console.warn('Failed to persist status locally', err)
+  }
+}
+
+// Inicializovať status zo storage, ak je dostupný
+const savedUser = localStorage.getItem('user')
+if (savedUser) {
+  try {
+    const parsed = JSON.parse(savedUser)
+    if (parsed.status) {
+      currentUserStatus.value = parsed.status as UserStatus
+    }
+  } catch (err) {
+    console.warn('Failed to parse stored user', err)
+  }
+}
+
+// Obal pre onEnterPress, ktorý spracuje príkazy
 function onEnterPress(e: KeyboardEvent) {
   if (e.key !== 'Enter' || newMessage.value.trim() === '') return
   const content = newMessage.value.trim()
@@ -239,7 +286,12 @@ function onEnterPress(e: KeyboardEvent) {
   newMessage.value = ""
 }
 
-// Logout handler
+// Spracovanie zmeny statusu z header komponentu
+function onStatusChanged(status: UserStatus) {
+  currentUserStatus.value = status
+}
+
+// Odhlásenie používateľa
 async function handleLogout() {
   await logout()
   await router.push('/auth')
@@ -290,7 +342,51 @@ watch(
   { immediate: false }
 )
 
-// App Initialization (onMounted/onBeforeUnmount logic)
+// Reakcia na zmeny statusu (offline odpojenie, online znovupripojenie)
+watch(
+  () => currentUserStatus.value,
+  async (status, prevStatus) => {
+    persistStatusLocally(status)
+
+    if (status === 'offline') {
+      cleanupSocketListeners()
+      socket.disconnect()
+      return
+    }
+
+    // Online / DND after being offline -> reconnect and refresh
+    if (prevStatus === 'offline') {
+      if (socket.disconnected) {
+        socket.connect()
+      }
+
+      attachSocketListeners()
+
+      if (currentUserId.value) {
+        joinUserRoom(currentUserId.value)
+      }
+
+      if (currentChannelId.value) {
+        joinChannel(currentChannelId.value)
+      }
+
+      const token = localStorage.getItem('auth_token')
+      if (token && currentUserId.value) {
+        await loadUserChannels(currentUserId.value, token)
+      }
+
+      await loadInvites()
+
+      if (activeChannelPath.value) {
+        await loadMessages(activeChannelPath.value)
+      }
+    }
+  }
+  ,
+  { immediate: true }
+)
+
+// Inicializácia aplikácie (logika onMounted/onBeforeUnmount)
 useAppInitialization({
   currentUserId,
   currentChannelId,
@@ -310,10 +406,11 @@ useAppInitialization({
   cleanupSocketListeners,
   handleIncomingMessage,
   router,
-  loadMessages
+  loadMessages,
+  userStatus: currentUserStatus
 })
 
-// Provide data pre child komponenty
+// Poskytnúť dáta pre podradené komponenty
 provide('messages', messages)
 provide('currentUserId', currentUserId)
 provide('userChannels', computed(() => [...privateChannels.value, ...publicChannels.value]))

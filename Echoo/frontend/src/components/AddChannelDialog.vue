@@ -116,7 +116,7 @@ import axios from 'axios'
 import type { ChannelData, MeResponse, AppUser } from '@/types'
 import API_URL from '../config/api'
 
-// Form state
+// Stav formulára
 const channelName = ref('')
 const type = ref<'private' | 'public'>('public')
 const invitedMembers = ref<number[]>([])
@@ -127,38 +127,38 @@ const currentUserId = ref<number | null>(null)
 //const API_URL = 'http://localhost:3333'
 const token = localStorage.getItem('auth_token')
 
-// Visibility options
+// Možnosti viditeľnosti
 const visibilityOptions = [
   { label: 'Public', value: 'public', icon: 'public' },
   { label: 'Private', value: 'private', icon: 'lock' }
 ]
 
-// Notification options
+// Možnosti notifikácií
 const notificationOptions = [
   { label: 'All Messages', value: 'all' },
   { label: 'Mentions Only', value: 'mentions' },
   { label: 'Muted', value: 'muted' }
 ]
 
-// Emits
+// Udalosti
 const emit = defineEmits<{
   'update:visible': [boolean]
   'create': [ChannelData]
 }>()
 
-// Props
+// Vlastnosti
 defineProps<{
   visible: boolean
   existingChannels?: string[]
 }>()
 
-// Close dialog and reset form
+// Zavrie dialóg a resetuje formulár
 function closeDialog() {
   emit('update:visible', false)
   resetForm()
 }
 
-// Create channel
+// Vytvorí kanál
 function createChannel() {
   emit('create', {
     name: channelName.value,
@@ -169,7 +169,7 @@ function createChannel() {
   closeDialog()
 }
 
-// Reset form
+// Resetuje formulár
 function resetForm() {
   channelName.value = ''
   type.value = 'public'
@@ -177,7 +177,7 @@ function resetForm() {
   notificationSettings.value = 'all'
 }
 
-// Load users on mount
+// Načítaj používateľov pri montáži
 onMounted(async () => {
   try {
     const me = await axios.get<MeResponse>(`${API_URL}/me`, {

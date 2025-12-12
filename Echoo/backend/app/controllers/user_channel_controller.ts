@@ -14,17 +14,17 @@ export default class UserChannelController {
 
     const { userId, channelId } = data
 
-    // ❗ Ellenőrzés: már a csatorna tagja?
+    // Kontrola: je už používateľ členom kanála?
     const exists = await UserChannel.query()
       .where('userId', userId)
       .andWhere('channelId', channelId)
       .first()
 
     if (exists) {
-      return exists // nem hozunk létre új rekordot
+      return exists // nebudeme vytvárať nový záznam
     }
 
-    // ❌ Ellenőrzés: bannolt-e a user?
+    // Kontrola: je používateľ zabanovaný?
     const banned = await ChannelBan.query()
       .where('channelId', channelId)
       .andWhere('userId', userId)
@@ -45,6 +45,7 @@ export default class UserChannelController {
       id: uc.user?.id ?? 0,
       nickName: uc.user?.nickName ?? 'UNKNOWN',
       role: uc.role,
+      status: uc.user?.status ?? 'offline',
     }))
 
     return response.ok(members)
@@ -146,21 +147,21 @@ export default class UserChannelController {
 
     if (!record) return response.notFound({ error: 'User is not in this channel' })
 
-    // Get channel name for notification
+    // Zisti názov kanála pre notifikáciu
     const channel = await Channel.find(channelId)
     const channelName = channel?.name || 'Unknown Channel'
 
-    // 1) Töröljük a csatornatagságot
+    // 1) odstránenie členstva v kanáli
     await record.delete()
 
-    // 2) Mentjük a ban-t
+    // 2) uloženie záznamu o banne
     await ChannelBan.create({
       userId,
       channelId,
       bannedBy: adminUser.id,
     })
 
-    // ⭐ 3) WebSocket értesítés a banned usernek
+    // 3) WebSocket notifikácia pre zabanovaného používateľa
     ws.sendUserBanned(userId, channelId, channelName)
 
     return response.ok({ message: 'User banned successfully' })
@@ -192,7 +193,7 @@ export default class UserChannelController {
 
     const isAdmin = kickerRecord.role === 'admin'
 
-    // Get channel name for notification
+    // Zisti názov kanála pre notifikáciu
     const channel = await Channel.find(channelId)
     const channelName = channel?.name || 'Unknown Channel'
 
@@ -200,7 +201,7 @@ export default class UserChannelController {
     if (isAdmin) {
       await targetRecord.delete()
 
-      // ⭐ WebSocket értesítés - admin ban
+      // WebSocket notifikácia – ban od admina
       ws.sendUserBanned(targetUserId, channelId, channelName)
 
       return response.ok({ message: 'User permanently banned' })
@@ -222,23 +223,23 @@ export default class UserChannelController {
 
     // Po troch rôznych kickoch sa používateľ zabanne
     if (kicks.length >= 3) {
-      // 1) Töröljük a user_channel rekordot (a user már nem tag)
+      // 1) odstránenie user_channel záznamu (používateľ už nie je člen)
       await targetRecord.delete()
 
-      // 2) Létrehozunk egy ChannelBan rekordot
+      // 2) vytvorenie záznamu v ChannelBan
       await ChannelBan.create({
         userId: targetUserId,
         channelId,
         bannedBy: kickerUser.id,
       })
 
-      // ⭐ 3) WebSocket értesítés - 3 kick után ban
+      // 3) WebSocket notifikácia – po troch kickoch ban
       ws.sendUserBanned(targetUserId, channelId, channelName)
 
       return response.ok({ message: 'User has been banned after 3 different users kicked them' })
     }
 
-    // ⭐ WebSocket értesítés - kick (nem ban)
+    // WebSocket notifikácia – kick (bez banu)
     ws.sendUserKicked(targetUserId, channelId, channelName)
 
     return response.ok({ message: `User kicked successfully (${kicks.length}/3)` })

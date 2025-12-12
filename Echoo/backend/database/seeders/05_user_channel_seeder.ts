@@ -14,7 +14,7 @@ export default class UserChannelSeeder extends BaseSeeder {
     }
 
     for (const channel of channels) {
-      // A channel.createdBy alapján megkapjuk az admin user_id-ját
+      // Podľa channel.createdBy získame ID používateľa (admina)
       const creatorId = channel.createdBy
 
       for (const user of users) {

@@ -11,7 +11,7 @@ export default class UserSeeder extends BaseSeeder {
         nickName: 'adamk',
         email: 'adam@example.com',
         password: 'password123',
-        status: 'active',
+        status: 'online',
       },
       {
         firstName: 'Bela',
@@ -19,7 +19,7 @@ export default class UserSeeder extends BaseSeeder {
         nickName: 'belus',
         email: 'bela@example.com',
         password: 'password123',
-        status: 'active',
+        status: 'online',
       },
       {
         firstName: 'Cecilia',
@@ -27,7 +27,7 @@ export default class UserSeeder extends BaseSeeder {
         nickName: 'cecilia',
         email: 'cecilia@example.com',
         password: 'password123',
-        status: 'inactive',
+        status: 'offline',
       },
     ])
   }

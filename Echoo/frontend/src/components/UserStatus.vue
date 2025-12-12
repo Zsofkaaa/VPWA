@@ -1,10 +1,18 @@
 <template>
   <div class="user-status">
     <!-- Tlačidlo zobrazujúce aktuálny status používateľa -->
-    <q-btn flat round dense icon="person" :color="statusColor" @click="cycleStatus">
+    <q-btn
+      flat
+      round
+      dense
+      icon="person"
+      :color="statusColor"
+      :disable="loading"
+      @click="cycleStatus"
+    >
       <!-- Tooltip (zobrazí sa pri prechode myšou) -->
       <q-tooltip v-if="$q.screen.gt.sm" anchor="top middle" self="bottom middle">
-        {{currentStatus.toUpperCase()}}
+        {{ currentStatus.toUpperCase() }}
       </q-tooltip>
     </q-btn>
   </div>
@@ -13,16 +21,46 @@
 
 
 <script lang="ts" setup>
-import { ref, computed } from 'vue'
-
+import { ref, computed, watch } from 'vue'
+import { api } from 'boot/axios'
 import { useQuasar } from 'quasar'
+import type { UserStatus } from '@/types'
+
 const $q = useQuasar()
 
 // Typ statusu - definuje tri možné hodnoty
-type Status = 'online' | 'dnd' | 'offline'
+type Status = UserStatus
+
+// Props: umožňujú parentovi predávať aktuálny status
+const props = defineProps<{ status?: Status }>()
+
+// Emits: informácia o zmene statusu pre parent komponent
+const emit = defineEmits<{ 'status-changed': [Status] }>()
 
 // Aktuálny status používateľa (reaktívna hodnota)
-const currentStatus = ref<Status>('online')
+const currentStatus = ref<Status>(props.status ?? 'online')
+const loading = ref(false)
+
+// Synch status z parenta do lokálneho stavu
+watch(
+  () => props.status,
+  (val) => {
+    if (val) currentStatus.value = val
+  }
+)
+
+function persistStatusLocally(status: Status) {
+  const savedUser = localStorage.getItem('user')
+  if (!savedUser) return
+
+  try {
+    const parsed = JSON.parse(savedUser)
+    parsed.status = status
+    localStorage.setItem('user', JSON.stringify(parsed))
+  } catch (err) {
+    console.warn('Failed to persist status locally', err)
+  }
+}
 
 // Určenie farby podľa aktuálneho statusu
 const statusColor = computed(() => {
@@ -38,11 +76,36 @@ const statusColor = computed(() => {
   }
 })
 
+async function updateStatus(nextStatus: Status) {
+  if (loading.value || nextStatus === currentStatus.value) return
+
+  loading.value = true
+  try {
+    await api.put('/user/status', { status: nextStatus })
+    currentStatus.value = nextStatus
+    persistStatusLocally(nextStatus)
+    emit('status-changed', nextStatus)
+  } catch (err) {
+    console.error('Failed to update status', err)
+    $q.notify({ type: 'negative', message: 'Nepodarilo sa zmeniť status' })
+  } finally {
+    loading.value = false
+  }
+}
+
 // Po kliknutí na ikonu sa cyklicky mení status: online → dnd → offline → online
-function cycleStatus() {
-  if (currentStatus.value === 'online') currentStatus.value = 'dnd'
-  else if (currentStatus.value === 'dnd') currentStatus.value = 'offline'
-  else currentStatus.value = 'online'
+async function cycleStatus() {
+  const nextStatus:
+    | 'online'
+    | 'dnd'
+    | 'offline' =
+    currentStatus.value === 'online'
+      ? 'dnd'
+      : currentStatus.value === 'dnd'
+        ? 'offline'
+        : 'online'
+
+  await updateStatus(nextStatus)
 }
 </script>
 

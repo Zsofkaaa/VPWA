@@ -16,7 +16,7 @@ class Ws {
     // Inicializácia Socket.IO
     this.io = new Server(server.getNodeServer(), {
       cors: {
-        // ⭐ Ugyanaz mint HTTP CORS, de callback nélkül
+        // Rovnaké nastavenie ako pri HTTP CORS, len bez callbacku
         origin: (origin, callback) => {
           if (!origin) return callback(null, true)
 
@@ -29,7 +29,7 @@ class Ws {
               return callback(null, true)
             }
 
-            // Private networks (RFC 1918)
+            // Súkromné siete (RFC 1918)
             if (
               /^10\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(hostname) ||
               /^172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3}$/.test(hostname) ||
@@ -38,10 +38,10 @@ class Ws {
               return callback(null, true)
             }
 
-            console.log('[WS] ❌ Rejected origin:', origin)
+            console.log('[WS] Rejected origin:', origin)
             callback(new Error('Not allowed by CORS'))
           } catch (err) {
-            console.error('[WS] ⚠️ Error parsing origin:', origin, err)
+            console.error('[WS] Error parsing origin:', origin, err)
             callback(new Error('Invalid origin'))
           }
         },
@@ -63,7 +63,7 @@ class Ws {
         // console.log(`[WS] Left room: ${room}`)
       })
 
-      // User joins their personal room for invite notifications
+      // Používateľ sa pripája do svojej osobnej miestnosti pre notifikácie o pozvánkach
       socket.on('join_user_room', (userId: number) => {
         const userRoom = `user_${userId}`
         socket.join(userRoom)
@@ -74,10 +74,10 @@ class Ws {
         const room = `channel_${data.channelId}`
         // console.log('TYPING EVENT:', data, ' -> broadcasting to ', room)
 
-        // Broadcast mindenki másnak a roomban, kivéve a küldőt
+        // Odošli správu každému inému v miestnosti okrem odosielateľa
         socket.to(room).emit('user_typing', { user: data.user, channelId: data.channelId })
 
-        // Opció: automatikus stop 5 másodperc után, ha nem jön új gépelés
+        // Voliteľné: automaticky zastav po 5 sekundách, ak nepríde nové písanie
         setTimeout(() => {
           socket.to(room).emit('user_stop_typing', { user: data.user })
         }, 5000)
@@ -85,7 +85,7 @@ class Ws {
 
       socket.on('stop_typing', (data: { channelId: number; user: string }) => {
         const room = `channel_${data.channelId}`
-        // Broadcast stop typing with username
+        // Odošli informáciu o zastavení písania s menom používateľa
         socket.to(room).emit('user_stop_typing', { user: data.user })
       })
 
@@ -93,7 +93,7 @@ class Ws {
         const room = `channel_${data.channelId}`
         // console.log('[WS] Typing content from', data.user, ':', data.content)
 
-        // Broadcast everyone else in the room
+        // Odošli obsah všetkým ostatným v miestnosti
         socket.to(room).emit('user_typing_content', {
           user: data.user,
           channelId: data.channelId,
@@ -175,21 +175,21 @@ class Ws {
     console.log('[WS] WebSocket server is running')
   }
 
-  // Send invite notification to specific user
+  // Odošli notifikáciu o pozvánke konkrétnemu používateľovi
   sendInviteNotification(userId: number, inviteData: any) {
     const userRoom = `user_${userId}`
     // console.log(`[WS] Sending invite notification to user ${userId} in room ${userRoom}`)
     this.io?.to(userRoom).emit('new_invite', inviteData)
   }
 
-  // Notify user about channel updates (when accepted invite)
+  // Notifikuj používateľa o aktualizácii kanála (po prijatí pozvánky)
   sendChannelUpdate(userId: number, channelData: any) {
     const userRoom = `user_${userId}`
     // console.log(`[WS] Sending channel update to user ${userId}`)
     this.io?.to(userRoom).emit('channel_joined', channelData)
   }
 
-  // Notify all users in channel that it was deleted
+  // Notifikuj všetkých používateľov v kanáli, že bol zmazaný
   sendChannelDeleted(channelId: number, channelName: string, deletedBy: number) {
     const channelRoom = `channel_${channelId}`
     // console.log(`[WS] Sending channel deleted notification to channel ${channelId}`)
@@ -200,7 +200,7 @@ class Ws {
     })
   }
 
-  // Notify user that they were kicked from channel
+  // Notifikuj používateľa, že bol vyhodený z kanála
   sendUserKicked(userId: number, channelId: number, channelName: string) {
     const userRoom = `user_${userId}`
     // console.log(`[WS] Sending user kicked notification to user ${userId}`)
@@ -211,7 +211,7 @@ class Ws {
     })
   }
 
-  // Notify user that they were banned from channel
+  // Notifikuj používateľa, že bol zabanovaný v kanáli
   sendUserBanned(userId: number, channelId: number, channelName: string) {
     const userRoom = `user_${userId}`
     console.log(`[WS] Sending user banned notification to user ${userId}`)
@@ -220,6 +220,11 @@ class Ws {
       channelId,
       channelName,
     })
+  }
+
+  // Odošli zmenu statusu používateľa všetkým
+  broadcastUserStatus(userId: number, status: string) {
+    this.io?.emit('user_status_changed', { userId, status })
   }
 
   // Vylepšená funkcia na extrakciu všetkých @nickname zo správy
@@ -231,7 +236,7 @@ class Ws {
     const mentions: string[] = []
 
     for (const match of matches) {
-      // match[1] = quoted with ", match[2] = quoted with ', match[3] = single word
+      // match[1] = text v úvodzovkách ", match[2] = text v úvodzovkách ', match[3] = jedno slovo
       const mention = match[1] || match[2] || match[3]
       if (mention) {
         mentions.push(mention)
