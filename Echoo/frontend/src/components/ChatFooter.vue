@@ -16,9 +16,9 @@
     </q-btn>
 
     <!-- Textové pole s mention autocomplete -->
-    <div class="col" style="position: relative;">
+    <div class="col" style="position: relative;" ref="inputRef">
       <q-input
-        ref="inputRef"
+        ref="innerInputRef"
         :model-value="newMessage"
         @update:model-value="handleInput"
         placeholder="Start writing..."
@@ -29,40 +29,31 @@
         @keydown="handleKeydown"
       />
 
-      <!-- Dropdown menu pre výber členov -->
-      <q-menu
-        v-model="showMentionMenu"
-        :target="inputRef?.$el"
-        anchor="bottom left"
-        self="top left"
-        :offset="[0, 8]"
-        max-height="300px"
-        class="mention-menu"
-        no-parent-event
-        no-focus
-        no-refocus
+      <!-- Inline dropdown pre výber členov (custom, non-teleported) -->
+      <div
+        v-if="showMentionMenu"
+        ref="mentionRoot"
+        class="mention-menu custom-mention-menu"
+        role="listbox"
       >
-        <q-list class="mention-list">
-          <!-- Zoznam členov -->
-          <q-item
-            v-for="(member, index) in filteredMembers"
-            :key="member.id"
-            clickable
-            :class="{ 'bg-blue-grey-9': index === selectedIndex }"
-            @click="selectMention(member)"
-          >
-            <q-item-section>
-              <q-item-label>{{ member.nickName }}</q-item-label>
-            </q-item-section>
-          </q-item>
-          <!-- Ak nie sú žiadni členovia -->
-          <q-item v-if="filteredMembers.length === 0">
-            <q-item-section>
-              <q-item-label class="text-grey">No members found</q-item-label>
-            </q-item-section>
-          </q-item>
-        </q-list>
-      </q-menu>
+              <div class="mention-list">
+                <div class="mention-spacer"></div>
+
+                <div v-if="filteredMembers.length === 0" class="no-members">
+                  <div class="no-members-label">No members found</div>
+                </div>
+
+                <div
+                  v-for="(member, index) in filteredMembers"
+                  :key="member.id"
+                  class="mention-item"
+                  :class="{ 'selected': index === selectedIndex }"
+                  @click="selectMention(member)"
+                >
+                  {{ member.nickName }}
+                </div>
+              </div>
+      </div>
     </div>
 
     <!-- Dialog pre zobrazenie kto píše -->
@@ -132,11 +123,31 @@ const currentChannelId = inject<Ref<number | null>>('currentChannelId')
 // Stavy
 const showTypingPreview = ref(false)
 const showMentionMenu = ref(false)
-const inputRef = ref<{ $el: HTMLElement } | null>(null)
+const inputRef = ref<HTMLElement | null>(null)
+const innerInputRef = ref<{ $el: HTMLElement } | null>(null)
+const mentionRoot = ref<HTMLElement | null>(null)
 const selectedIndex = ref(-1) // Index vybraného člena (-1 = nič nie je vybrané)
 const mentionStartPos = ref(-1) // Pozícia @ v texte
 const mentionQuery = ref('') // Text za @ (hľadaný string)
 const channelMembers = ref<Array<{ id: number, nickName: string, role: string }>>([])
+
+// Handle click outside to close custom dropdown
+function onDocClick(e: MouseEvent) {
+  const root = mentionRoot.value
+  if (!root) return
+  const target = e.target as Node
+  if (!root.contains(target) && !inputRef.value?.contains(target) && !innerInputRef.value?.$el?.contains(target)) {
+    showMentionMenu.value = false
+  }
+}
+
+watch(showMentionMenu, (val) => {
+  if (val) {
+    document.addEventListener('mousedown', onDocClick)
+  } else {
+    document.removeEventListener('mousedown', onDocClick)
+  }
+})
 
 // Načítaj členov kanála z API
 async function loadChannelMembers() {
@@ -157,21 +168,25 @@ async function loadChannelMembers() {
   }
 }
 
-// Filtruj členov podľa query, max 5 výsledkov (zobrazené odzadu vďaka CSS)
+// Filtruj členov podľa query, max 5 výsledkov
 const filteredMembers = computed(() => {
+  let results = []
+  
   // Ak nie je query, zobraz prvých 5
   if (!mentionQuery.value) {
-    return channelMembers.value.slice(0, 5)
+    results = channelMembers.value.slice(0, 5)
+  } else {
+    // Filtruj case-insensitive
+    const query = mentionQuery.value.toLowerCase()
+    const matches = channelMembers.value.filter(m =>
+      m.nickName.toLowerCase().includes(query)
+    )
+    // Max 5 výsledkov
+    results = matches.slice(0, 5)
   }
-
-  // Filtruj case-insensitive
-  const query = mentionQuery.value.toLowerCase()
-  const matches = channelMembers.value.filter(m =>
-    m.nickName.toLowerCase().includes(query)
-  )
-
-  // Max 5 výsledkov
-  return matches.slice(0, 5)
+  
+  // Obráť poradie, aby prvý výsledok bol na spodku
+  return results.reverse()
 })
 
 // Detekuj či sa má zobraziť mention menu (@ na správnom mieste)
@@ -220,7 +235,7 @@ function handleInput(value: string | number | null) {
   emit('typingContent', text)
 
   // Získaj pozíciu kurzora
-  const input = inputRef.value?.$el?.querySelector('input')
+  const input = innerInputRef.value?.$el?.querySelector('input')
   const cursorPos = input?.selectionStart || text.length
 
   // Skontroluj či sa má zobraziť mention menu
@@ -239,7 +254,7 @@ function selectMention(member: { id: number, nickName: string, role: string }) {
   if (mentionStartPos.value === -1) return
 
   const text = String(props.newMessage || '')
-  const input = inputRef.value?.$el?.querySelector('input')
+  const input = innerInputRef.value?.$el?.querySelector('input')
   const cursorPos = input?.selectionStart || text.length
 
   // Pridaj úvodzovky ak má meno medzery
@@ -329,7 +344,7 @@ if (currentChannelId) {
 }
 </script>
 
-<style scoped>
+<style>
 .chat-footer {
   z-index: 2100;
   background-color: #1E1E1E;
@@ -355,18 +370,18 @@ if (currentChannelId) {
 
 /* Mention Autocomplete Menu */
 .mention-menu {
-  background-color: #2d2d2d;
+  background-color: transparent !important;
   border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
 .mention-list {
-  background-color: #2d2d2d;
+  background-color: transparent;
   color: white;
   max-height: 300px;
   overflow-y: auto;
-  display: flex;
-  flex-direction: column-reverse; /* Vizuálne obrátené - prvý element sa zobrazí dole */
+  display: flex !important;
+  flex-direction: column !important;
+  min-height: auto;
 }
 
 .mention-list .q-item {
@@ -389,6 +404,39 @@ if (currentChannelId) {
 .mention-list .q-item-label.caption {
   color: #999;
   font-size: 11px;
+}
+
+.mention-spacer {
+  flex-grow: 1;
+  min-height: 0;
+}
+
+.custom-mention-menu {
+  position: absolute;
+  left: 0;
+  right: auto;
+  bottom: calc(100% + 8px);
+  width: auto;
+  z-index: 2200;
+  pointer-events: auto;
+  border-radius: 16px;
+}
+
+.mention-item {
+  padding: 10px 12px;
+  background: rgba(30,30,30,0.98);
+  color: white;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  cursor: pointer;
+}
+
+.mention-item.selected {
+  background: #455a64;
+}
+
+.no-members {
+  padding: 10px 12px;
+  color: #bbb;
 }
 
 /* TYPING PREVIEW CARD */
