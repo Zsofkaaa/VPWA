@@ -74,7 +74,7 @@ export default class MessagesController {
       senderId,
       content,
       hasPing: false,
-      hasCommand: false,
+      // hasCommand: false,
     })
 
     await message.load('sender')
