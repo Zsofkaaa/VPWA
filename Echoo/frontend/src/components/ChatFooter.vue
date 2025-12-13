@@ -33,7 +33,7 @@
       <div
         v-if="showMentionMenu"
         ref="mentionRoot"
-        class="mention-menu custom-mention-menu"
+        class="custom-mention-menu"
         role="listbox"
       >
               <div class="mention-list">
@@ -141,11 +141,14 @@ function onDocClick(e: MouseEvent) {
   }
 }
 
+// Close on outside click and reset selection when opened
 watch(showMentionMenu, (val) => {
   if (val) {
     document.addEventListener('mousedown', onDocClick)
+    selectedIndex.value = -1
   } else {
     document.removeEventListener('mousedown', onDocClick)
+    selectedIndex.value = -1
   }
 })
 
@@ -288,24 +291,24 @@ function handleKeydown(event: KeyboardEvent) {
   // Ak je menu otvorené
   if (showMentionMenu.value) {
     if (event.key === 'ArrowDown') {
-      // Šípka dole - vizuálne dole, ale index sa znižuje (kvôli column-reverse)
+      // Move selection visually down (towards bottom)
       event.preventDefault()
-      if (selectedIndex.value === -1) {
-        selectedIndex.value = 0 // Vyber prvý element (vizuálne dole)
-      } else if (selectedIndex.value > 0) {
-        selectedIndex.value = selectedIndex.value - 1
-      } else {
-        selectedIndex.value = -1 // Z prvého späť na žiadny výber
-      }
-    } else if (event.key === 'ArrowUp') {
-      // Šípka hore - vizuálne hore, ale index sa zvyšuje (kvôli column-reverse)
-      event.preventDefault()
-      if (selectedIndex.value === -1) {
-        selectedIndex.value = filteredMembers.value.length - 1 // Vyber posledný (vizuálne hore)
-      } else if (selectedIndex.value < filteredMembers.value.length - 1) {
+      const len = filteredMembers.value.length
+      if (len === 0) return
+      if (selectedIndex.value < len - 1) {
         selectedIndex.value = selectedIndex.value + 1
       } else {
-        selectedIndex.value = -1 // Z posledného späť na žiadny výber
+        selectedIndex.value = 0
+      }
+    } else if (event.key === 'ArrowUp') {
+      // Move selection visually up (towards top)
+      event.preventDefault()
+      const len = filteredMembers.value.length
+      if (len === 0) return
+      if (selectedIndex.value > 0) {
+        selectedIndex.value = selectedIndex.value - 1
+      } else {
+        selectedIndex.value = len - 1
       }
     } else if (event.key === 'Tab') {
       // Tab vyberá zo zoznamu (len ak je niečo vybrané)
@@ -368,14 +371,8 @@ if (currentChannelId) {
   padding: 6px 12px;
 }
 
-/* Mention Autocomplete Menu */
-.mention-menu {
-  background-color: transparent !important;
-  border-radius: 8px;
-}
-
 .mention-list {
-  background-color: transparent;
+  border-radius: 8px;
   color: white;
   max-height: 300px;
   overflow-y: auto;
@@ -386,7 +383,7 @@ if (currentChannelId) {
 
 .mention-list .q-item {
   padding: 12px 16px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid rgba(107, 11, 11, 0.1);
 }
 
 .mention-list .q-item:hover {
@@ -417,16 +414,13 @@ if (currentChannelId) {
   right: auto;
   bottom: calc(100% + 8px);
   width: auto;
-  z-index: 2200;
   pointer-events: auto;
-  border-radius: 16px;
 }
 
 .mention-item {
   padding: 10px 12px;
-  background: rgba(30,30,30,0.98);
+  background: rgba(58, 58, 58, 0.98);
   color: white;
-  border-bottom: 1px solid rgba(255,255,255,0.04);
   cursor: pointer;
 }
 
