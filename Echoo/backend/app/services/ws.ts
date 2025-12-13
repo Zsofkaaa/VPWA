@@ -124,7 +124,7 @@ class Ws {
             senderId: userId,
             content: text,
             hasPing: mentionedUserIds.length > 0,
-            hasCommand: false,
+            // hasCommand: false,
             sentAt: DateTime.now(),
           })
 
