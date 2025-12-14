@@ -252,7 +252,6 @@ async function rejectInvite() {
 }
 
 /* VÝBER KANÁLU */
-// Preklik na zvolený kanál (notifikácia nechávame na rodiča)
 function selectChannel(ch: Channel) {
   emit('goToChannel', ch)
 }
