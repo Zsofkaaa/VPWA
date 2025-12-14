@@ -81,6 +81,7 @@ export default class UserChannelController {
       .first()
 
     if (!userChannel) return response.notFound({ error: 'User is not a member of this channel' }) // validácia členstva
+
     if (!['all', 'mentions', 'none'].includes(notificationSettings)) {
       return response.badRequest({ error: 'Invalid notification setting' }) // neplatná hodnota
     }
@@ -180,6 +181,7 @@ export default class UserChannelController {
       .first()
 
     if (!targetRecord) return response.notFound({ error: 'User is not in this channel' })
+
     if (targetRecord.role === 'admin')
       return response.unauthorized({ error: 'You cannot kick the channel admin' })
     if (targetUserId === kickerUser.id)

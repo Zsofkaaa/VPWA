@@ -1,9 +1,10 @@
+// import type { HttpContext } from '@adonisjs/core/http'
 import ChannelInvite from '#models/channel_invite'
 import UserChannel from '#models/user_channel'
 import ChannelBan from '#models/channel_ban'
 import ws from '#services/ws'
 
-// Namiesto HttpContextContract použijeme typ any
+// Namiesto HttpContextContract použijeme typ any (pretože furt vyhodil nejaké chyby...)
 export default class InvitesController {
   public async invite({ auth, request, params, response }: any) {
     const channelId = Number(params.id)

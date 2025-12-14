@@ -26,7 +26,7 @@ export default class ChannelsController {
 
         if (sameTypeChannel) {
           return response.badRequest({
-            error: `A '${name}' nevű ${type} csatorna már létezik.`,
+            error: `'${name}' ${type} is already existing!`,
           })
         }
         // Ak je typ odlišný, povolíme vytvorenie

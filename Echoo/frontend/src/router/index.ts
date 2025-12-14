@@ -27,5 +27,22 @@ export default route(function (/* { store, ssrContext } */) {
     history: createHistory(process.env.VUE_ROUTER_BASE)
   })
 
+  Router.beforeEach((to, from, next) => {
+    const token = localStorage.getItem('auth_token')
+
+    // Ak prejdete na chránenú stránku bez tokenu
+    if (to.meta.requiresAuth && !token) {
+      next('/auth')
+    }
+    // Ak prejdete na prihlasovaciu stránku s tokenom (už ste prihlásený)
+    else if (to.meta.requiresGuest && token) {
+      next('/chat')
+    }
+    // ostatné prípady
+    else {
+      next()
+    }
+  })
+
   return Router
 })
