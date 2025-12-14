@@ -10,7 +10,7 @@ export default class InvitesController {
     const invitedUserId = Number(request.input('userId'))
     const inviterId = auth.user.id
 
-    // 1) rola pozývajúceho
+    // 1) Over rolu pozývajúceho v kanáli
     const inviterChannel = await UserChannel.query()
       .where('channelId', channelId)
       .andWhere('userId', inviterId)
@@ -22,7 +22,7 @@ export default class InvitesController {
 
     const inviterRole = inviterChannel.role
 
-    // 2) je používateľ zabanovaný?
+    // 2) Nepozývame zabanovaného (okrem admina)
     const banned = await ChannelBan.query()
       .where('channelId', channelId)
       .andWhere('userId', invitedUserId)
@@ -32,7 +32,7 @@ export default class InvitesController {
       return response.status(403).json({ error: 'User is banned from channel' })
     }
 
-    // 3) je už členom?
+    // 3) Nepozývame už člena
     const exists = await UserChannel.query()
       .where('channelId', channelId)
       .andWhere('userId', invitedUserId)
@@ -42,7 +42,7 @@ export default class InvitesController {
       return response.status(409).json({ error: 'User already in channel' })
     }
 
-    // 4) čaká na pozvánku?
+    // 4) Ak už čaká pending invite, nespamujeme
     const pending = await ChannelInvite.query()
       .where('channelId', channelId)
       .where('userId', invitedUserId)
@@ -53,7 +53,7 @@ export default class InvitesController {
       return response.status(409).json({ error: 'Invite already sent' })
     }
 
-    // 5) vytvorenie pozvánky
+    // 5) Vytvor pending pozvánku
     const invite = await ChannelInvite.create({
       channelId,
       userId: invitedUserId,
@@ -61,10 +61,10 @@ export default class InvitesController {
       status: 'pending',
     })
 
-    // 6) načítanie informácií o kanáli pre WebSocket notifikáciu
+    // 6) Potrebujeme údaje o kanáli na WS payload
     await invite.load('channel')
 
-    // 7) odoslanie real-time notifikácie pozvanému používateľovi
+    // 7) Pošli real-time notifikáciu pozvanému
     ws.sendInviteNotification(invitedUserId, {
       id: invite.id,
       channel_id: channelId,
@@ -78,7 +78,7 @@ export default class InvitesController {
   }
 
   public async myInvites({ auth }: any) {
-    return ChannelInvite.query()
+    return ChannelInvite.query() // pending pozvánky pre aktuálneho používateľa
       .where('user_id', auth.user.id)
       .where('status', 'pending')
       .preload('channel')
@@ -105,10 +105,10 @@ export default class InvitesController {
       notificationSettings: 'all',
     })
 
-    // Načítanie informácií o kanáli
+    // Načítanie informácií o kanáli pre payload
     await invite.load('channel')
 
-    // Odošli real-time notifikáciu používateľovi
+    // Odošli real-time notifikáciu používateľovi o pridaní
     ws.sendChannelUpdate(auth.user.id, {
       id: invite.channel.id,
       name: invite.channel.name,

@@ -111,54 +111,54 @@
 
 
 <script lang="ts" setup>
+// Importy: reakívne premenné, životný cyklus, HTTP klient a typy odpovedí
 import { ref, onMounted } from 'vue'
 import axios from 'axios'
 import type { ChannelData, MeResponse, AppUser } from '@/types'
 import API_URL from '../config/api'
 
-// Stav formulára
+// Stav formulára: lokálne reaktívne premenné viazané na inputy
 const channelName = ref('')
 const type = ref<'private' | 'public'>('public')
 const invitedMembers = ref<number[]>([])
 const notificationSettings = ref<'all' | 'mentions' | 'muted'>('all')
 const availableMembers = ref<{ label: string, value: number }[]>([])
 const currentUserId = ref<number | null>(null)
-
-//const API_URL = 'http://localhost:3333'
+// Token používaný na autentifikáciu pri volaniach API
 const token = localStorage.getItem('auth_token')
 
-// Možnosti viditeľnosti
+// Možnosti viditeľnosti kanála (public/private)
 const visibilityOptions = [
   { label: 'Public', value: 'public', icon: 'public' },
   { label: 'Private', value: 'private', icon: 'lock' }
 ]
 
-// Možnosti notifikácií
+// Možnosti spôsobu upozornení pre kanál
 const notificationOptions = [
   { label: 'All Messages', value: 'all' },
   { label: 'Mentions Only', value: 'mentions' },
   { label: 'Muted', value: 'muted' }
 ]
 
-// Udalosti
+// Udalosti, ktoré komponent emituje smerom k rodičovi
 const emit = defineEmits<{
   'update:visible': [boolean]
   'create': [ChannelData]
 }>()
 
-// Vlastnosti
+// Vlastnosti prijímané od rodičovského komponentu
 defineProps<{
   visible: boolean
   existingChannels?: string[]
 }>()
 
-// Zavrie dialóg a resetuje formulár
+// Zavrie dialóg a obnoví stav polí
 function closeDialog() {
   emit('update:visible', false)
   resetForm()
 }
 
-// Vytvorí kanál
+// Emitne údaje o novom kanáli a zavrie dialóg
 function createChannel() {
   emit('create', {
     name: channelName.value,
@@ -169,7 +169,7 @@ function createChannel() {
   closeDialog()
 }
 
-// Resetuje formulár
+// Vynuluje hodnoty všetkých polí formulára
 function resetForm() {
   channelName.value = ''
   type.value = 'public'
@@ -177,7 +177,7 @@ function resetForm() {
   notificationSettings.value = 'all'
 }
 
-// Načítaj používateľov pri montáži
+// Po načítaní komponentu zistí aktuálneho používateľa a pripraví zoznam členov
 onMounted(async () => {
   try {
     const me = await axios.get<MeResponse>(`${API_URL}/me`, {
@@ -199,6 +199,7 @@ onMounted(async () => {
 </script>
 
 <style>
+/* Koreňová karta dialógu a základné farby */
 .dialog-card {
   background-color: #2d4a6b;
   color: white;
@@ -207,20 +208,24 @@ onMounted(async () => {
   height: 100%;
 }
 
+/* Hlavička s názvom a tlačidlom zatvorenia */
 .header-section {
   flex: 0 0 auto;
 }
 
+/* Telo formulára s vlastným scrollom pri dlhom obsahu */
 .form-section {
   flex: 1 1 auto;
   overflow-y: auto;
 }
 
+/* Spodná akčná lišta s tlačidlami */
 .sticky-footer {
   background-color: #2d4a6b;
   border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
 
+/* Štýl pre tlačidlo Cancel */
 .cancel-btn {
   background-color: rgba(255, 255, 255, 0.1);
   border-radius: 6px;
@@ -230,6 +235,7 @@ onMounted(async () => {
   background-color: rgba(255, 255, 255, 0.2);
 }
 
+/* Štýl pre tlačidlo Create */
 .create-btn {
   background-color: #4CAF50;
   color: white;
@@ -245,11 +251,13 @@ onMounted(async () => {
   background-color: rgba(76, 175, 80, 0.5);
 }
 
+/* Čipy v dark selecte (základný vzhľad) */
 .q-field--dark .q-chip {
   background-color: #1e3b5c !important;
   color: #ffffff !important;
 }
 
+/* Pomocná trieda na blokové zobrazenie labelov */
 .block {
   display: block;
 }

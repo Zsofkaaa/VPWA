@@ -57,7 +57,7 @@ const currentChannelId = inject<Ref<number | null>>('currentChannelId')
 // Props z rodiča
 const props = defineProps<{ messages: Message[] }>()
 
-// Stavy
+// Lokálne stavy pre infinite scroll, cache a zistenie pingu
 const isLoadingOlder = ref(false) // Či sa práve načítavajú staršie správy
 const hasMoreMessages = ref(true) // Či sú k dispozícii ďalšie staršie správy
 const localMessages = ref<Message[]>([]) // Lokálny zoznam správ
@@ -69,7 +69,7 @@ const lastLoadTime = ref<number>(0) // Čas posledného načítania (rate limiti
 const isInitializing = ref(false) // Či prebieha inicializácia (blokuje infinite scroll)
 const channelMembers = ref<Array<{ id: number, nickName: string, role: string }>>([]) // Členovia kanála
 
-// Načítaj členov kanála z API
+// Načítaj členov kanála z API (pre validáciu mentions)
 async function loadChannelMembers() {
   if (!currentChannelId?.value) return
 
@@ -88,7 +88,7 @@ async function loadChannelMembers() {
   }
 }
 
-// Získaj nickname aktuálneho používateľa z localStorage
+// Pre fallback pingu si vytiahneme nick uložený v localStorage
 function getCurrentUserNickname(): string | null {
   const savedUser = localStorage.getItem('user')
   if (!savedUser) return null
@@ -116,7 +116,7 @@ function extractMentions(text: string): string[] {
   return mentions
 }
 
-// Načítaj staršie správy (infinite scroll callback)
+// Načítavanie starších správ pri scrollnutí hore (reverse infinite scroll)
 async function onLoad(index: number, done: (stop?: boolean) => void) {
   const now = Date.now()
   console.log('[INFINITE SCROLL] onLoad called, oldestMessageId:', oldestMessageId.value, 'hasMoreMessages:', hasMoreMessages.value, 'isInitializing:', isInitializing.value)
@@ -215,7 +215,7 @@ async function onLoad(index: number, done: (stop?: boolean) => void) {
   }
 }
 
-// Naformátuj text správy - zvýrazni validné mentions
+// Naformátuj text správy – zvýrazni len mentions, ktoré patria členom kanála
 function formatMessage(text: string): string {
   const MENTION_PLACEHOLDER = '___MENTION___'
   const mentions: Array<{ original: string; display: string }> = []
@@ -264,7 +264,7 @@ function formatMessage(text: string): string {
   return result
 }
 
-// Skontroluj či správa pingla aktuálneho používateľa
+// Zistí, či daná správa pinguje prihláseného používateľa
 function isPingedMessage(msg: Message): boolean {
   // Vlastné správy sa nepingujú
   if (msg.userId === currentUserId) return false
@@ -281,7 +281,7 @@ function isPingedMessage(msg: Message): boolean {
   return mentions.includes(currentNickname)
 }
 
-// Zisti či je používateľ na spodku chatu
+// Pomocník pre zistenie, či je scroll pri spodku
 function isAtBottom(): boolean {
   const el = messagesContainer.value
   if (!el) return true
@@ -289,19 +289,19 @@ function isAtBottom(): boolean {
   return el.scrollHeight - el.scrollTop - el.clientHeight <= threshold
 }
 
-// Scrollni na spodok chatu (smooth)
+// Jemný scroll na spodok (používa sa po nových správach)
 function scrollToBottom() {
   const el = bottomElement.value
   if (!el) return
   el.scrollIntoView({ behavior: 'smooth', block: 'start' })
 }
 
-// Spracuj scroll event
+// Ukladá, že používateľ sa posunul vyššie a nechce auto-scroll
 function handleScroll() {
   userScrolledUp.value = !isAtBottom()
 }
 
-// Sleduj zmeny v správach (nové správy, zmena kanála)
+// Sleduj prichádzajúce správy; rozlišuje novú várku vs. prepnutie kanála
 watch(
   () => props.messages,
   async (newVal) => {
@@ -374,7 +374,7 @@ watch(
   { immediate: true, deep: true }
 )
 
-// Sleduj zmeny kanála (reset všetkého)
+// Pri zmene kanála resetuje stav a znovu načíta členov
 watch(
   () => currentChannelId?.value,
   () => {
@@ -395,7 +395,7 @@ watch(
   }
 )
 
-// Pri mount-e komponentu
+// Pri mount-e nastaví listener, načíta členov a scrollne na spodok
 onMounted(() => {
   // Pridaj scroll listener
   const el = messagesContainer.value

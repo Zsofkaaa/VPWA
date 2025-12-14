@@ -145,7 +145,7 @@ const $q = useQuasar()
 // Token
 const token = localStorage.getItem('auth_token')
 
-// Stav dialógu a zobrazenia hesla
+// Viditeľnosť dialógu a prepínač zobrazenia hesla
 const showDialog = ref(false)
 const showPassword = ref(false)
 
@@ -157,7 +157,7 @@ const email = ref('')
 const password = ref('')
 const confirmPassword = ref('')
 
-// Overenie platnosti formulára
+// Form je validný ak má email a heslo je buď prázdne alebo zhodné a min. 8 znakov
 const isFormValid = computed(() => {
   const emailValid = email.value.length > 3
   const passValid = !password.value || (password.value === confirmPassword.value && password.value.length >= 8)
@@ -172,7 +172,7 @@ function closeDialog() {
   showPassword.value = false
 }
 
-// Uloženie zmien profilu
+// Uloženie zmien profilu na server (heslo voliteľné)
 async function saveSettings() {
   if (!isFormValid.value) return
   const payload: Partial<UserData> & { password?: string } = {
@@ -193,7 +193,7 @@ async function saveSettings() {
   }
 }
 
-// Načítanie údajov používateľa
+// Načítanie údajov používateľa po mount-e
 async function loadUserData() {
   try {
     const res = await axios.get<UserData>(`${API_URL}/me`, { headers: { Authorization: `Bearer ${token}` } })

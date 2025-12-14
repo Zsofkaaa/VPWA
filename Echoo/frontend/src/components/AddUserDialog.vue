@@ -60,7 +60,7 @@
 <script lang="ts" setup>
 import { ref, watch } from 'vue'
 
-// Props prijaté od rodiča
+// Vstupné vlastnosti od rodiča (viditeľnosť, kanál, aktuálni a dostupní používatelia)
 const props = defineProps<{
   visible: boolean
   channelId: number
@@ -68,36 +68,36 @@ const props = defineProps<{
   availableUsers: { label: string; value: number }[]
 }>()
 
-// Emit eventy
+// Udalosti, ktoré komponent posiela späť rodičovi
 const emit = defineEmits<{
   'update:visible': [boolean]
   'add-users': [number[]]
 }>()
 
-// Lokálny stav dialogu (kvôli smooth animáciám a 2-way bindingu)
+// Interný stav viditeľnosti (pre plynulý 2-way binding a animácie)
 const internalVisible = ref(props.visible)
 
-// Zoznam vybraných používateľov
+// Aktuálne vybraní používatelia, ktorí sa majú pridať
 const selectedUsers = ref<number[]>([])
 
-// Zavrie dialog a vyresetuje výber
+// Zavrie dialóg a vymaže výber
 function closeDialog() {
   internalVisible.value = false
   selectedUsers.value = []
 }
 
-// Emitne zoznam vybraných používateľov parentovi
+// Pošle rodičovi zoznam vybraných používateľov a zavrie dialóg
 function addUsers() {
   emit("add-users", selectedUsers.value)
   closeDialog()
 }
 
-// Sleduje, keď rodič zmení visible - premietne sa do interného stavu
+// Keď sa zmení viditeľnosť z rodiča, zaktualizuj lokálny stav
 watch(() => props.visible, (val) => {
   internalVisible.value = val
 })
 
-// Keď sa dialog zavrie - dáme vedieť parentovi
+// Keď sa zmení lokálna viditeľnosť, oznám to rodičovi
 watch(internalVisible, (val) => {
   emit("update:visible", val)
 })
@@ -106,7 +106,7 @@ watch(internalVisible, (val) => {
 
 
 <style scoped>
-/* Štýl pre spodnú časť dialogu (fixné pozadie) */
+/* Spodná časť dialógu s oddeleným pozadím */
 .sticky-footer {
   background-color: #2d4a6b;
   border-top: 1px solid rgba(255,255,255,0.1);

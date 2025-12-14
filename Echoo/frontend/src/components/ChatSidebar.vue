@@ -167,7 +167,7 @@ const showAddChannelDialog = ref(false)
 const inviteDialog = ref(false)
 const selectedInvite = ref<Invite | null>(null)
 
-/* ZOZNAM VŠETKÝCH NÁZVOV KANÁLOV */
+// Všetky názvy (private+public) na kontrolu duplicít pri vytváraní
 const allChannelNames = computed(() => [...props.privateChannels, ...props.publicChannels].map(ch => ch.name))
 
 /* OTVORENIE INVITE DIALÓGU */
@@ -252,6 +252,7 @@ async function rejectInvite() {
 }
 
 /* VÝBER KANÁLU */
+// Preklik na zvolený kanál (notifikácia nechávame na rodiča)
 function selectChannel(ch: Channel) {
   emit('goToChannel', ch)
 }

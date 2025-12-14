@@ -45,7 +45,7 @@ import { ref, watch } from 'vue'
 import type { AppUser } from '@/types';
 
 
-// Props pre viditeľnosť a členov
+// Props pre viditeľnosť dialogu a zoznam členov
 const props = defineProps<{
   visible: boolean
   members: AppUser[]
@@ -57,12 +57,12 @@ const emit = defineEmits<{
   "kick-users": [number[]] // vyslanie ID používateľov
 }>()
 
-// Stav dialogu a výber používateľov
+// Lokálny stav dialogu a výberu
 const internalVisible = ref(props.visible)
 const selectedUsers = ref<number[]>([])
 const memberOptions = ref<{ label: string; value: number }[]>([])
 
-// Synchronizácia props.visible s internalVisible
+// Synchronizácia props.visible s internalVisible + príprava options
 watch(() => props.visible, (v) => {
   internalVisible.value = v
   if (v) {
@@ -73,7 +73,7 @@ watch(() => props.visible, (v) => {
   }
 })
 
-// Emit viditeľnosti pri zmene internalVisible
+// Zmena vnútorného stavu sa posiela späť parentovi
 watch(internalVisible, (v) => emit("update:visible", v))
 
 // Zatvorenie dialogu a reset výberu

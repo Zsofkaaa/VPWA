@@ -13,7 +13,7 @@ class Ws {
     if (this.booted) return
     this.booted = true
 
-    // Inicializácia Socket.IO
+    // Inicializácia Socket.IO servera s vlastným CORS callbackom
     this.io = new Server(server.getNodeServer(), {
       cors: {
         // Rovnaké nastavenie ako pri HTTP CORS, len bez callbacku
@@ -105,20 +105,20 @@ class Ws {
         const { channelId, userId, text } = data
 
         try {
-          // Vylepšené extrahovanie mentions - podporuje aj viacrozmerné mená
+          // Extrahuj mentions z textu (podporuje úvodzovky)
           const mentionedNicknames = this.extractMentions(text)
           let mentionedUserIds: number[] = []
 
           if (mentionedNicknames.length > 0) {
-            const mentionedUsers = await User.query().whereIn('nickName', mentionedNicknames)
+            const mentionedUsers = await User.query().whereIn('nickName', mentionedNicknames) // nájdi všetkých mentionovaných
 
-            // Odstránenie duplikátov a vylúčenie samotného pošliteľa
+            // Odstráň duplikáty a seba samého
             mentionedUserIds = [
               ...new Set(mentionedUsers.filter((u) => u.id !== userId).map((u) => u.id)),
             ]
           }
 
-          // Uložíme správu do DB
+          // Ulož správu s príznakom ping
           const message = await Message.create({
             channelId,
             senderId: userId,
@@ -128,7 +128,7 @@ class Ws {
             sentAt: DateTime.now(),
           })
 
-          // Uložíme zmienky do MessageMention tabuľky
+          // Ulož všetky mentions do MessageMention
           if (mentionedUserIds.length > 0) {
             const mentions = mentionedUserIds.map((mentionedUserId) => ({
               messageId: message.id,
@@ -139,7 +139,7 @@ class Ws {
 
           await message.load('sender')
 
-          // Payload pre klientov
+          // Payload pre klientov s menom a ping flagom
           const messagePayload = {
             id: message.id,
             text: message.content,
@@ -152,7 +152,7 @@ class Ws {
             mentionedUserIds,
           }
 
-          // Pošleme správu všetkým klientom v kanáli
+          // Rozpošli správu všetkým v miestnosti channel_X
           this.io?.to(`channel_${channelId}`).emit('newMessage', messagePayload)
 
           // console.log(`[WS] Message sent`, {

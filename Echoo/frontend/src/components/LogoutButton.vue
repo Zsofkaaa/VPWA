@@ -16,10 +16,10 @@
 
 
 <script lang="ts" setup>
-// Definícia udalosti 'logout', ktorú komponent vysiela po kliknutí
+// Udalosť, ktorú komponent emituje po kliknutí na odhlásenie
 const emit = defineEmits<{ logout: [] }>()
 
-// Funkcia na odhlásenie používateľa
+// Po kliknutí oznámi rodičovi, že sa má vykonať odhlásenie
 function onLogout() {
   emit('logout')
 }
@@ -28,7 +28,7 @@ function onLogout() {
 
 
 <style scoped>
-/* Umiestnenie kontajnera s tlačidlom v ľavom dolnom rohu */
+/* Umiestnenie tlačidla v ľavom dolnom rohu */
 .logout-container {
   position: fixed;
   bottom: 10px;
@@ -36,7 +36,7 @@ function onLogout() {
   z-index: 2200;
 }
 
-/* Štýl tlačidla odhlásenia */
+/* Vzhľad tlačidla odhlásenia a jeho hover efekt */
 .logout-btn {
   font-weight: bold;
   text-transform: none;
@@ -44,8 +44,6 @@ function onLogout() {
   border-radius: 10px;
   transition: background-color 0.2s ease;
 }
-
-/* Efekt pri prechode kurzorom na tlačidlo */
 .logout-btn:hover {
   background-color: rgba(255, 0, 0, 0.3);
 }

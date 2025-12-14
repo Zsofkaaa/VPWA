@@ -61,10 +61,10 @@ import API_URL from '../config/api'
 
 const $q = useQuasar()
 
-// Stav dialógu
+// Viditeľnosť dialógu so zoznamom členov
 const showMembers = ref(false)
 
-// Zoznam členov (reaktívny)
+// Reaktívny zoznam členov s pripojeným statusom
 const members = ref<{ id: number; nickName: string; status: UserStatus }[]>([])
 
 // Props: názov a ID aktuálneho kanála
@@ -76,9 +76,7 @@ const props = defineProps<{
 const instance = getCurrentInstance()
 const socket = instance?.appContext.config.globalProperties.$socket
 
-// const API_URL = 'http://localhost:3333'
-
-// Fetch členov, keď sa dialóg otvorí
+// Nahratie členov vždy pri otvorení dialogu
 watch(showMembers, async (val) => {
   if (val && props.channelId) {
     try {
@@ -92,6 +90,7 @@ watch(showMembers, async (val) => {
   }
 })
 
+// Aktualizácia statusu podľa socket udalosti
 function handleStatusChanged(payload: { userId: number; status: UserStatus }) {
   const target = members.value.find((m) => m.id === payload.userId)
   if (target) {
@@ -99,10 +98,12 @@ function handleStatusChanged(payload: { userId: number; status: UserStatus }) {
   }
 }
 
+// Pri mount-e prihlásime listener na zmenu statusu
 onMounted(() => {
   socket?.on('user_status_changed', handleStatusChanged)
 })
 
+// Odstránime listener pri unmount-e
 onBeforeUnmount(() => {
   socket?.off('user_status_changed', handleStatusChanged)
 })

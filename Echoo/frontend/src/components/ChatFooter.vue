@@ -131,7 +131,7 @@ const mentionStartPos = ref(-1) // Pozícia @ v texte
 const mentionQuery = ref('') // Text za @ (hľadaný string)
 const channelMembers = ref<Array<{ id: number, nickName: string, role: string }>>([])
 
-// Handle click outside to close custom dropdown
+// Zavri mention menu pri kliknutí mimo
 function onDocClick(e: MouseEvent) {
   const root = mentionRoot.value
   if (!root) return
@@ -141,7 +141,7 @@ function onDocClick(e: MouseEvent) {
   }
 }
 
-// Close on outside click and reset selection when opened
+// Pri otvorení nasadíme listener, pri zatvorení zrušíme a resetujeme výber
 watch(showMentionMenu, (val) => {
   if (val) {
     document.addEventListener('mousedown', onDocClick)
@@ -152,7 +152,7 @@ watch(showMentionMenu, (val) => {
   }
 })
 
-// Načítaj členov kanála z API
+// Načítaj členov aktuálneho kanála pre @mention
 async function loadChannelMembers() {
   if (!currentChannelId?.value) return
 
@@ -171,7 +171,7 @@ async function loadChannelMembers() {
   }
 }
 
-// Filtruj členov podľa query, max 5 výsledkov
+// Členovia filtrovaní podľa zadanej query, max 5 položiek
 const filteredMembers = computed(() => {
   let results = []
   
@@ -192,7 +192,7 @@ const filteredMembers = computed(() => {
   return results.reverse()
 })
 
-// Detekuj či sa má zobraziť mention menu (@ na správnom mieste)
+// Over či posledné @ pred kurzorom má povoliť otvorenie menu
 function checkMentionTrigger(text: string, cursorPos: number): boolean {
   // Nájdi posledné @ pred kurzorom
   let lastAtPos = -1
@@ -228,7 +228,7 @@ function checkMentionTrigger(text: string, cursorPos: number): boolean {
   return true
 }
 
-// Spracuj zmenu textu v inpute
+// Spracovanie vstupu: emit udalostí a kontrola @mentions
 function handleInput(value: string | number | null) {
   const text = String(value || '')
 
@@ -252,7 +252,7 @@ function handleInput(value: string | number | null) {
   }
 }
 
-// Vyber člena zo zoznamu a vlož do textu
+// Vloženie vybraného člena do textu a posun kurzora
 function selectMention(member: { id: number, nickName: string, role: string }) {
   if (mentionStartPos.value === -1) return
 
@@ -286,7 +286,7 @@ function selectMention(member: { id: number, nickName: string, role: string }) {
   }, 50)
 }
 
-// Spracuj klávesové skratky
+// Klávesové skratky pri otvorenom menu aj pri odoslaní správy
 function handleKeydown(event: KeyboardEvent) {
   // Ak je menu otvorené
   if (showMentionMenu.value) {
@@ -339,7 +339,7 @@ function handleKeydown(event: KeyboardEvent) {
   emit('enterPress', event)
 }
 
-// Načítaj členov pri zmene kanála
+// Načítaj členov vždy pri prepnutí kanála
 if (currentChannelId) {
   watch(currentChannelId, () => {
     void loadChannelMembers()
