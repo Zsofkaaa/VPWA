@@ -22,6 +22,11 @@ export default class AuthController {
       return response.status(400).json({ message: 'Invalid email or password' })
     }
 
+    // Po úspešnom prihlásení nastavíme status online a oznámime to cez WS
+    user.status = 'online'
+    await user.save()
+    ws.broadcastUserStatus(user.id, user.status)
+
     // Vygenerujeme bearer token
     const token = await User.accessTokens.create(user)
 
