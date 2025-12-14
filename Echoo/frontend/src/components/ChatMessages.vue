@@ -102,11 +102,14 @@ function getCurrentUserNickname(): string | null {
 
 // Extrahuj všetky mentions zo správy (case-sensitive)
 function extractMentions(text: string): string[] {
+  // Regex na vyhľadanie všetkých mentions v texte (aj s úvodzovkami aj bez)
   const mentionRegex = /@(?:"([^"]+)"|'([^']+)'|(\S+))/g
   const matches = text.matchAll(mentionRegex)
   const mentions: string[] = []
 
+  // Prejdi všetky nájdené mentions a pridaj ich do poľa (bez zavináča a úvodzoviek)
   for (const match of matches) {
+    // Vyber meno z prvej neprázdnej skupiny (dvojité úvodzovky, jednoduché úvodzovky alebo bez úvodzoviek)
     const mention = match[1] || match[2] || match[3]
     if (mention) {
       mentions.push(mention)
@@ -119,51 +122,46 @@ function extractMentions(text: string): string[] {
 // Načítavanie starších správ pri scrollnutí hore (reverse infinite scroll)
 async function onLoad(index: number, done: (stop?: boolean) => void) {
   const now = Date.now()
-  console.log('[INFINITE SCROLL] onLoad called, oldestMessageId:', oldestMessageId.value, 'hasMoreMessages:', hasMoreMessages.value, 'isInitializing:', isInitializing.value)
 
-  // Ak ešte inicializujeme, nič nerob
+  // Blokuj načítanie, ak ešte prebieha inicializácia (napr. po prepnutí kanála)
   if (isInitializing.value) {
-    console.log('[INFINITE SCROLL] Still initializing, skipping load')
     done()
     return
   }
 
-  // Rate limiting - max 1 request za sekundu
+  // Rate limiting: povolí načítanie max. raz za sekundu
   if (now - lastLoadTime.value < 1000) {
-    console.log('[INFINITE SCROLL] Rate limited')
     done()
     return
   }
 
-  // Ak nie je vybraný kanál
+  // Ak nie je vybraný kanál, ukonči načítanie
   if (!currentChannelId?.value) {
-    console.warn("[INFINITE SCROLL] No channel selected.")
     done(true)
     return
   }
 
-  // Ak už načítavame
+  // Ak už prebieha načítavanie, nič nerob
   if (isLoadingOlder.value) {
-    console.log('[INFINITE SCROLL] Already loading')
     done()
     return
   }
 
-  isLoadingOlder.value = true
-  lastLoadTime.value = now
+  isLoadingOlder.value = true // Označ, že prebieha načítavanie
+  lastLoadTime.value = now // Ulož čas posledného načítania
 
   const token = localStorage.getItem('auth_token')
   const beforeId = oldestMessageId.value ?? ''
   const url = `${API_URL}/channels/${currentChannelId.value}/messages?before=${beforeId}&limit=20`
 
-  console.log('[INFINITE SCROLL] Fetching URL:', url)
-
   try {
+    // Načítaj správy z API
     const response = await fetch(url, {
       headers: { Authorization: `Bearer ${token}` }
     })
 
     if (!response.ok) {
+      // Ak API vráti chybu, ukonči načítanie
       console.error('[INFINITE SCROLL] Failed to fetch messages:', response.status)
       hasMoreMessages.value = false
       done(true)
@@ -171,32 +169,29 @@ async function onLoad(index: number, done: (stop?: boolean) => void) {
     }
 
     const newMessages: Message[] = await response.json()
-    console.log('[INFINITE SCROLL] Received', newMessages.length, 'messages')
 
-    // Ak nie sú žiadne správy, koniec
+    // Ak už nie sú žiadne ďalšie správy, nastav flag a ukonči
     if (newMessages.length === 0) {
-      console.log('[INFINITE SCROLL] No more messages available')
       hasMoreMessages.value = false
       done(true)
       return
     }
 
-    // Otočíme poradie správ (API vracia od najnovšej po najstaršiu)
+    // API vracia správy od najnovšej po najstaršiu, preto ich otočíme
     const sortedMessages = [...newMessages].reverse()
+    // Odstráň duplicity (už načítané správy)
     const existingIds = new Set(localMessages.value.map(m => m.id))
     const uniqueNewMessages = sortedMessages.filter(m => !existingIds.has(m.id))
 
     if (uniqueNewMessages.length > 0) {
-      // Pridaj staršie správy na začiatok
+      // Pridaj nové staršie správy na začiatok zoznamu
       localMessages.value = [...uniqueNewMessages, ...localMessages.value]
       const allIds = localMessages.value.map(m => m.id)
-      oldestMessageId.value = Math.min(...allIds)
-      console.log('[INFINITE SCROLL] Updated oldestMessageId to:', oldestMessageId.value)
+      oldestMessageId.value = Math.min(...allIds) // Aktualizuj najstaršiu správu
     }
 
-    // Ak je menej ako 20 správ, nemáme už viac
+    // Ak bolo načítaných menej ako 20 správ, už nie sú ďalšie
     if (newMessages.length < 20) {
-      console.log('[INFINITE SCROLL] Received less than 20 messages, no more available')
       hasMoreMessages.value = false
     }
 
@@ -205,10 +200,12 @@ async function onLoad(index: number, done: (stop?: boolean) => void) {
     }, 300)
 
   } catch (err) {
+    // Ak nastane chyba pri fetchi, nastav flag a ukonči
     console.error("[INFINITE SCROLL] Fetch error:", err)
     hasMoreMessages.value = false
     done(true)
   } finally {
+    // Po krátkej pauze zruš loading stav
     setTimeout(() => {
       isLoadingOlder.value = false
     }, 200)
