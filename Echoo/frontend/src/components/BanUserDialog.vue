@@ -58,30 +58,30 @@
 
 <script lang="ts" setup>
 import { ref, watch } from 'vue'
-import type { AppUser } from '@/types';
+import type { AppUser } from '@/types'
 
-// Props z rodiča
+// Vstupné hodnoty: viditeľnosť dialógu a zoznam členov kanála
 const props = defineProps<{
   visible: boolean
   members: AppUser[]
 }>()
 
-// Eventy pre rodiča
+// Udalosti smerom k rodičovi (zatvorenie/otvorenie a potvrdenie banu)
 const emit = defineEmits<{
   "update:visible": [boolean]
   "ban-users": [number[]]
 }>()
 
-// Lokálny stav dialogu
+// Interná viditeľnosť dialógu a aktuálne vybraný používateľ
 const internalVisible = ref(props.visible)
 
 // ID vybraného používateľa
 const selectedUser = ref<number | null>(null)
 
-// Zoznam možností do selectu
+// Možnosti pre select (label + value) pripravené z members
 const memberOptions = ref<{ label: string; value: number }[]>([])
 
-// Sleduje otvorenie dialogu → načíta členov
+// Pri otvorení dialógu pripraví možnosti z aktuálnych členov
 watch(() => props.visible, (v) => {
   internalVisible.value = v
   if (v) {
@@ -92,7 +92,7 @@ watch(() => props.visible, (v) => {
   }
 })
 
-// Ak sa zoznam členov zmení, aktualizujeme možnosti
+// Ak sa zmení zoznam členov, obnoví sa ponuka selectu
 watch(() => props.members, () => {
   memberOptions.value = props.members.map(m => ({
     label: m.nickName,
@@ -100,16 +100,16 @@ watch(() => props.members, () => {
   }))
 })
 
-// Sync lokálnej a rodičovskej viditeľnosti
+// Synchronizácia lokálnej a rodičovskej viditeľnosti
 watch(internalVisible, (v) => emit("update:visible", v))
 
-// Zatvorenie dialogu
+// Zavrie dialóg a resetuje výber
 function closeDialog() {
   selectedUser.value = null
   emit("update:visible", false)
 }
 
-// Potvrdenie banu
+// Pošle vybraného používateľa na zabanovanie a zavrie dialóg
 function confirmBan() {
   if (selectedUser.value) {
     // Pošleme zoznam ID používateľov na ban
@@ -122,6 +122,7 @@ function confirmBan() {
 
 
 <style scoped>
+/* Jemné zaoblenie karty dialógu */
 .q-card {
   border-radius: 12px;
 }

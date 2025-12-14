@@ -5,7 +5,7 @@ export default class CommandsController {
   // Vráti všetky dostupné príkazy
   async index({ response }: HttpContext) {
     try {
-      const commands = await Command.query()
+      const commands = await Command.query() // načítaj príkazy s popisom
         .select('id', 'name', 'description')
         .orderBy('id', 'asc')
 

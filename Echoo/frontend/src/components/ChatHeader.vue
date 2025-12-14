@@ -63,7 +63,7 @@ import InfoBox from './InfoBox.vue'
 import UserStatus from './UserStatus.vue'
 import MembersMenu from './MembersMenu.vue'
 
-// Props: vstupné vlastnosti komponentu
+// Props: stav bočného panelu, aktuálny kanál a status používateľa
 defineProps<{
   drawerOpen: boolean
   currentChannel?: string
@@ -71,7 +71,7 @@ defineProps<{
   userStatus?: 'online' | 'dnd' | 'offline'
 }>()
 
-// Emits: udalosti, ktoré komponent vysiela
+// Emits: prepína bočný drawer a oznamuje zmenu statusu
 defineEmits<{
   'update:drawerOpen': [value: boolean]
   'status-changed': ['online' | 'dnd' | 'offline']

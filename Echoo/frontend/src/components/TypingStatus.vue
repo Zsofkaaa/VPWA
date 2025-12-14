@@ -14,6 +14,7 @@ const props = defineProps<{
   typingStatusStyle: Record<string, string | number>
 }>()
 
+// Vráti text podľa počtu používateľov, ktorí práve píšu
 function getTypingText() {
   const count = props.typingUsers.length
 

@@ -17,11 +17,11 @@ export default class ChannelsController {
         'notificationSettings',
       ])
 
-      // 0) Podľa názvu overíme, či už taký kanál existuje
+      // 0) Overíme duplicitný názov kanála
       const sameNameChannels = await Channel.query().where('name', name)
 
       if (sameNameChannels.length > 0) {
-        // Ak sa názov zhoduje, skontrolujeme typ
+        // Ak názov existuje, preveríme typ aby sme neduplikovali
         const sameTypeChannel = sameNameChannels.find((c) => c.type === type)
 
         if (sameTypeChannel) {
@@ -32,7 +32,7 @@ export default class ChannelsController {
         // Ak je typ odlišný, povolíme vytvorenie
       }
 
-      // 1) Vytvorenie nového kanála
+      // 1) Vytvoríme kanál s creatorom a last_active
       const channel = await Channel.create({
         name,
         type,
@@ -40,7 +40,7 @@ export default class ChannelsController {
         lastActiveAt: DateTime.now(),
       })
 
-      // 2) Pridanie tvorcu ako admina
+      // 2) Pridáme tvorcu ako admina do user_channel
       await UserChannel.create({
         channelId: channel.id,
         userId: auth.user.id,
@@ -48,9 +48,10 @@ export default class ChannelsController {
         notificationSettings: notificationSettings || 'all',
       })
 
-      // 3) Vytvorenie pozvánok a odoslanie WebSocket notifikácií
+      // 3) Pre pozvaných pripravíme pending invites a odošleme WS
       if (Array.isArray(invitedMembers) && invitedMembers.length > 0) {
         for (const userId of invitedMembers) {
+          // Preskočíme ak je už členom
           const alreadyMember = await UserChannel.query()
             .where('channelId', channel.id)
             .where('userId', userId)
@@ -58,6 +59,7 @@ export default class ChannelsController {
 
           if (alreadyMember) continue
 
+          // Preskočíme ak už existuje pending pozvánka
           const pendingInvite = await ChannelInvite.query()
             .where('channelId', channel.id)
             .where('userId', userId)
@@ -66,7 +68,7 @@ export default class ChannelsController {
 
           if (pendingInvite) continue
 
-          // Vytvorenie pozvánky
+          // Vytvoríme pozvánku so stavom pending
           const invite = await ChannelInvite.create({
             channelId: channel.id,
             userId,
@@ -74,7 +76,7 @@ export default class ChannelsController {
             status: 'pending',
           })
 
-          // Odoslanie WebSocket notifikácie
+          // Pošleme WebSocket notifikáciu konkrétnemu používateľovi
           ws.sendInviteNotification(userId, {
             id: invite.id,
             channel_id: channel.id,
@@ -100,13 +102,13 @@ export default class ChannelsController {
     const user = auth.user as User
     const channelId = Number(params.id)
 
-    // Získanie kanála
+    // Načítame kanál podľa ID
     const channel = await Channel.find(channelId)
     if (!channel) {
       return response.notFound({ message: 'Channel not found' })
     }
 
-    // Overenie, či je používateľ admin
+    // Overíme, či má používateľ rolu admin v danom kanáli
     const userChannel = await UserChannel.query()
       .where('channel_id', channelId)
       .andWhere('user_id', user.id)
@@ -116,7 +118,7 @@ export default class ChannelsController {
       return response.unauthorized({ message: 'Only admins can terminate channel' })
     }
 
-    // WebSocket notifikácia pred odstránením (kým sú všetci v miestnosti kanála)
+    // Odkomunikujeme zmazanie kanála cez WS ešte pred jeho odstránením
     ws.sendChannelDeleted(channelId, channel.name, user.id)
 
     // Odstránenie všetkých user_channel záznamov

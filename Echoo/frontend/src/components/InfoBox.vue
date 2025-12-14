@@ -65,12 +65,12 @@ import type { Command } from '@/types'
 // Quasar objekt pre UI
 const $q = useQuasar()
 
-// Reaktívne stavy
+// Zoznam príkazov a stavy načítania/chyby
 const commands = ref<Command[]>([])
 const loading = ref(false)
 const error = ref(false)
 
-// Funkcia načíta príkazy zo servera
+// Načítanie príkazov pri otvorení menu
 const loadCommands = async () => {
   // Ak sú už príkazy načítané, nenačítavaj znova
   if (commands.value.length > 0) return

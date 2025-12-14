@@ -31,7 +31,7 @@ const $q = useQuasar()
 // Typ statusu - definuje tri možné hodnoty
 type Status = UserStatus
 
-// Props: umožňujú parentovi predávať aktuálny status
+// Props: aktuálny status z parenta (ak príde)
 const props = defineProps<{ status?: Status }>()
 
 // Emits: informácia o zmene statusu pre parent komponent
@@ -41,7 +41,7 @@ const emit = defineEmits<{ 'status-changed': [Status] }>()
 const currentStatus = ref<Status>(props.status ?? 'online')
 const loading = ref(false)
 
-// Synch status z parenta do lokálneho stavu
+// Synchronizácia pri zmene vstupného statusu
 watch(
   () => props.status,
   (val) => {
@@ -62,7 +62,7 @@ function persistStatusLocally(status: Status) {
   }
 }
 
-// Určenie farby podľa aktuálneho statusu
+// Farba ikonky podľa statusu
 const statusColor = computed(() => {
   switch (currentStatus.value) {
     case 'online':

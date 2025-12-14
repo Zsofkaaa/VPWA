@@ -10,16 +10,19 @@ export default class AuthController {
   public async login({ request, response }: HttpContext) {
     const { email, password } = request.only(['email', 'password'])
 
+    // Nájdeme používateľa podľa emailu
     const user = await User.findBy('email', email)
     if (!user) {
       return response.status(400).json({ message: 'Invalid email or password' })
     }
 
+    // Overíme heslo hashom
     const isValid = await hash.verify(user.password, password)
     if (!isValid) {
       return response.status(400).json({ message: 'Invalid email or password' })
     }
 
+    // Vygenerujeme bearer token
     const token = await User.accessTokens.create(user)
 
     return response.json({
@@ -40,16 +43,19 @@ export default class AuthController {
     ])
 
     try {
+      // Zastav ak už existuje email
       const existingEmail = await User.findBy('email', email)
       if (existingEmail) {
         return response.status(400).json({ message: 'This email is already registered' })
       }
 
+      // Zastav ak už existuje prezývka
       const existingNickname = await User.findBy('nick_name', nickname)
       if (existingNickname) {
         return response.status(400).json({ message: 'This nickname is already taken' })
       }
 
+      // Vytvoríme používateľa so statusom online
       const user = await User.create({
         firstName,
         lastName,
@@ -59,13 +65,14 @@ export default class AuthController {
         status: 'online',
       })
 
-      // Automatické pridanie do General a Development kanálov
+      // Pridáme do vopred definovaných verejných kanálov
       const targetChannelNames = ['General', 'Development']
       const targetChannels = await Channel.query()
         .whereIn('name', targetChannelNames)
         .andWhere('type', 'public')
 
       for (const channel of targetChannels) {
+        // Nový používateľ vstupuje ako member s notifikáciami all
         await UserChannel.create({
           userId: user.id,
           channelId: channel.id,
@@ -74,8 +81,10 @@ export default class AuthController {
         })
       }
 
+      // Token pre okamžité prihlásenie
       const token = await User.accessTokens.create(user)
 
+      // Rozpošleme info o statuse cez WS
       ws.broadcastUserStatus(user.id, user.status)
 
       return response.created({
@@ -98,12 +107,14 @@ export default class AuthController {
       const user = auth.user as User | null
 
       if (user) {
+        // Nastavíme status offline a oznámime WS
         user.status = 'offline'
         await user.save()
         ws.broadcastUserStatus(user.id, user.status)
       }
 
       if (apiAuth.token) {
+        // Zrušíme aktívny token
         await apiAuth.token.delete()
       }
 

@@ -179,16 +179,15 @@ const props = defineProps<{
 
 const router = useRouter()
 const $q = useQuasar()
-// const API_URL = 'http://localhost:3333'
 const token = localStorage.getItem('auth_token')
 
-// Dialogy
+// Viditeľnosť jednotlivých dialogov
 const showAddUserDialog = ref(false)
 const showKickUserDialog = ref(false)
 const showBanUserDialog = ref(false)
 const showNotificationDialog = ref(false)
 
-// Stav
+// Lokálny stav menu a medzivýpočty
 const availableUsers = ref<{ label: string; value: number }[]>([])
 const currentUserId = ref<number | null>(null)
 const currentNotificationSetting = ref('all')
@@ -201,12 +200,12 @@ const emit = defineEmits<{
   'notification-setting-changed': [channelId: number, newSetting: string]
 }>()
 
-// Computed members pre Kick/Ban dialog
+// Členovia pre Kick/Ban dialog premapovaní na potrebný tvar
 const mappedMembers = computed(() =>
   channelMembers.value.map(user => ({ id: user.id, nickName: user.nickName }))
 )
 
-// Lifecycle
+// Načítanie používateľa a notifikácií pri mount-e
 onMounted(async () => {
   await loadCurrentUser()
   await loadNotificationSettings()
@@ -242,12 +241,14 @@ function openNotificationSettings() {
   showNotificationDialog.value = true
 }
 
+// Po uložení v dialógu držíme aktuálne nastavenie aj pre parent
 function handleNotificationSettingsSaved(newSetting: string) {
   currentNotificationSetting.value = newSetting
   emit('notification-setting-changed', props.channel.id, newSetting)
 }
 
 /* API HELPERS */
+// Načítanie prihláseného používateľa (pre filtráciu akcií)
 async function loadCurrentUser() {
   try {
     const res = await axios.get<{ id: number; nickName: string }>(`${API_URL}/me`, { headers: { Authorization: `Bearer ${token}` } })
@@ -255,6 +256,7 @@ async function loadCurrentUser() {
   } catch (err) { console.error('Failed to load current user', err) }
 }
 
+// Vytiahnutie uložených notifikácií pre aktuálny kanál
 async function loadNotificationSettings() {
   if (!currentUserId.value) return
   try {
@@ -266,6 +268,7 @@ async function loadNotificationSettings() {
   } catch (err) { console.error('Failed to load notification settings', err) }
 }
 
+// Čítanie členov s vynechaním seba a adminov (na kick/ban)
 async function loadChannelMembers() {
   if (!props.channel.id) return
   if (!currentUserId.value) await loadCurrentUser()
@@ -275,6 +278,7 @@ async function loadChannelMembers() {
   } catch (err) { console.error('Failed to load channel members', err) }
 }
 
+// Používatelia, ktorých možno pridať (nie sú v kanáli a nie sme to my)
 async function loadAvailableUsers(channelId: number) {
   try {
     const allUsers = (await axios.get<User[]>(`${API_URL}/users`, { headers: { Authorization: `Bearer ${token}` } })).data
@@ -286,6 +290,7 @@ async function loadAvailableUsers(channelId: number) {
 }
 
 /* USER ACTIONS */
+// Pozvánky pre viacero používateľov po jednom volaní API
 async function addUsers(userIds: number[]) {
   try {
     for (const userId of userIds) {
@@ -307,6 +312,7 @@ async function addUsers(userIds: number[]) {
   }
 }
 
+// Kick po jednom používateľovi, s ošetrením opakovaného pokusu
 async function kickUsers(userIds: number[]) {
   if (!currentUserId.value) await loadCurrentUser()
 
@@ -340,6 +346,7 @@ async function kickUsers(userIds: number[]) {
   await loadChannelMembers()
 }
 
+// Ban viacerých používateľov; po úspechu zatvoríme dialog
 async function banUsers(userIds: number[]) {
   try {
     for (const userId of userIds) {
@@ -350,6 +357,7 @@ async function banUsers(userIds: number[]) {
   } catch (err) { console.error('Ban failed', err); $q.notify({ type: 'negative', message: 'Failed to ban users' }) }
 }
 
+// Odstránenie kanála ako admin a návrat späť do /chat
 async function terminateChannel() {
   menu.value = false
   try {
@@ -360,6 +368,7 @@ async function terminateChannel() {
   } catch (err) { console.error('Terminate failed', err); $q.notify({ type: 'negative', message: 'Failed to terminate channel' }) }
 }
 
+// Opustenie kanála členom
 async function leaveChannel() {
   menu.value = false
   try {
