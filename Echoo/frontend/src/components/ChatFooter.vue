@@ -135,7 +135,8 @@ const channelMembers = ref<Array<{ id: number, nickName: string, role: string }>
 function onDocClick(e: MouseEvent) {
   const root = mentionRoot.value
   if (!root) return
-  const target = e.target as Node
+  const target = e.target as Node // Element, na ktorý sa kliklo
+  // Ak klik nebol v mention menu, inpute ani vnútornom inpute, zavri menu
   if (!root.contains(target) && !inputRef.value?.contains(target) && !innerInputRef.value?.$el?.contains(target)) {
     showMentionMenu.value = false
   }
@@ -163,7 +164,7 @@ async function loadChannelMembers() {
     })
 
     if (res.ok) {
-      channelMembers.value = await res.json()
+      channelMembers.value = await res.json() // Uloží načítaných členov do reaktívnej premennej
       console.log('[ChatFooter] Loaded', channelMembers.value.length, 'channel members')
     }
   } catch (err) {
@@ -175,7 +176,7 @@ async function loadChannelMembers() {
 const filteredMembers = computed(() => {
   let results = []
   
-  // Ak nie je query, zobraz prvých 5
+  // Ak nie je query (nie je nic po @), zobraz prvých 5
   if (!mentionQuery.value) {
     results = channelMembers.value.slice(0, 5)
   } else {
@@ -288,30 +289,30 @@ function selectMention(member: { id: number, nickName: string, role: string }) {
 
 // Klávesové skratky pri otvorenom menu aj pri odoslaní správy
 function handleKeydown(event: KeyboardEvent) {
-  // Ak je menu otvorené
+  // Ak je otvorené mention menu
   if (showMentionMenu.value) {
     if (event.key === 'ArrowDown') {
-      // Move selection visually down (towards bottom)
+      // Šípka dole: posuň výber nižšie v zozname
       event.preventDefault()
       const len = filteredMembers.value.length
       if (len === 0) return
       if (selectedIndex.value < len - 1) {
         selectedIndex.value = selectedIndex.value + 1
       } else {
-        selectedIndex.value = 0
+        selectedIndex.value = 0 // Ak si na konci, začni od začiatku
       }
     } else if (event.key === 'ArrowUp') {
-      // Move selection visually up (towards top)
+      // Šípka hore: posuň výber vyššie v zozname
       event.preventDefault()
       const len = filteredMembers.value.length
       if (len === 0) return
       if (selectedIndex.value > 0) {
         selectedIndex.value = selectedIndex.value - 1
       } else {
-        selectedIndex.value = len - 1
+        selectedIndex.value = len - 1 // Ak si na začiatku, choď na koniec
       }
     } else if (event.key === 'Tab') {
-      // Tab vyberá zo zoznamu (len ak je niečo vybrané)
+      // Tab: vyber člena zo zoznamu (len ak je niečo vybrané)
       if (selectedIndex.value >= 0) {
         const selectedMember = filteredMembers.value[selectedIndex.value]
         if (selectedMember) {
@@ -321,17 +322,17 @@ function handleKeydown(event: KeyboardEvent) {
         }
       }
     } else if (event.key === 'Escape') {
-      // Escape zatvorí menu
+      // Escape: zatvor mention menu a resetuj stav
       event.preventDefault()
       showMentionMenu.value = false
       mentionStartPos.value = -1
       mentionQuery.value = ''
     } else if (event.key === 'Enter') {
-      // Enter zatvorí menu a pošle správu
+      // Enter: zatvor menu a zároveň odošli správu
       showMentionMenu.value = false
       mentionStartPos.value = -1
       mentionQuery.value = ''
-      // Nech sa event prepošle do rodiča
+      // Event sa prepošle do rodiča
     }
   }
 
