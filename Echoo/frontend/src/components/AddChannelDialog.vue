@@ -179,20 +179,25 @@ function resetForm() {
 
 // Po načítaní komponentu zistí aktuálneho používateľa a pripraví zoznam členov
 onMounted(async () => {
+  // Po načítaní komponentu sa pokúsi získať údaje o aktuálnom používateľovi a zozname členov
   try {
+    // Získa informácie o aktuálne prihlásenom používateľovi
     const me = await axios.get<MeResponse>(`${API_URL}/me`, {
       headers: { Authorization: `Bearer ${token}` }
     })
-    currentUserId.value = me.data.id
+    currentUserId.value = me.data.id // Uloží ID aktuálneho používateľa
 
+    // Získa zoznam všetkých používateľov
     const users = await axios.get<AppUser[]>(`${API_URL}/users`, {
       headers: { Authorization: `Bearer ${token}` }
     })
 
+    // Pripraví zoznam členov okrem aktuálneho používateľa
     availableMembers.value = users.data
-      .filter(u => u.id !== currentUserId.value)
-      .map(u => ({ label: u.nickName, value: u.id }))
+      .filter(u => u.id !== currentUserId.value) // Odstráni aktuálneho používateľa zo zoznamu
+      .map(u => ({ label: u.nickName, value: u.id })) // Pripraví objekty pre select: meno a ID
   } catch (error) {
+    // Ak sa nepodarí načítať používateľov, vypíše chybu do konzoly
     console.error('Failed to load users', error)
   }
 })
