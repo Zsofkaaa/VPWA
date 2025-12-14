@@ -5,9 +5,13 @@
 # 1. fáza: 
 Kliknuteľný prototyp (SPA): v priečinku Prototyp
 
-Dátový model: v priečinku Dátové modely -> 1_faza -> súbor 1_faza_ER_diagram.png alebo .svg
+Dátový model: v priečinku Dokumentácia -> Dátové modely -> 1_faza
 
 # 2. fáza:
 Celá aplikácia (PWA frontend + backend): v priečinku Echoo
 
-(NOT YET) Dátový model: v priečinku Dátové modely -> 2_faza
+Dátový model: v priečinku Dokumentácia -> Dátové modely -> 2_faza
+
+Diagramy architektúry aplikácie: v priečinku Dokumentácia -> Diagramy architektúry aplikácie
+
+Dokumentácia: v priečinku Dokumentácia
